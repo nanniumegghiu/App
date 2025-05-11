@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-// Assicurati di includere Font Awesome nel tuo progetto se usi le icone fa-*
 
 const TimesheetTable = ({ 
   selectedMonth, 
@@ -21,11 +20,16 @@ const TimesheetTable = ({
       
       setIsLoading(true);
       try {
-        // Prova entrambi i formati del mese (con e senza zero iniziale)
-        const rawMonth = selectedMonth.replace(/^0+/, ''); // Rimuove eventuali zeri iniziali
+        console.log(`TimesheetTable: Caricamento timesheet per month=${selectedMonth}, year=${selectedYear}`);
         
-        // Prova prima a cercare con il mese senza zero iniziale (es. "4" invece di "04")
-        const docId = `${auth.currentUser.uid}_${rawMonth}_${selectedYear}`;
+        // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+        const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+        
+        console.log(`TimesheetTable: Mese normalizzato=${normalizedMonth}`);
+        
+        // Prova prima a cercare con il mese senza zero iniziale
+        let docId = `${auth.currentUser.uid}_${normalizedMonth}_${selectedYear}`;
+        console.log(`TimesheetTable: Tentativo 1 - docId=${docId}`);
         
         // Recupera direttamente il documento dalla collezione workHours
         const docRef = doc(db, "workHours", docId);
@@ -35,6 +39,7 @@ const TimesheetTable = ({
         let entriesData = null;
         
         if (docSnap.exists()) {
+          console.log(`TimesheetTable: Documento trovato con ID ${docId}`);
           const data = docSnap.data();
           
           if (data.entries && Array.isArray(data.entries)) {
@@ -42,39 +47,52 @@ const TimesheetTable = ({
           }
         } else {
           // Prova con il mese con zero iniziale (es. "04" invece di "4")
-          const formattedMonth = selectedMonth.length === 1 ? selectedMonth.padStart(2, '0') : selectedMonth;
+          const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
           const altDocId = `${auth.currentUser.uid}_${formattedMonth}_${selectedYear}`;
+          
+          console.log(`TimesheetTable: Tentativo 2 - altDocId=${altDocId}`);
           
           if (altDocId !== docId) {
             const altDocRef = doc(db, "workHours", altDocId);
             const altDocSnap = await getDoc(altDocRef);
             
             if (altDocSnap.exists()) {
+              console.log(`TimesheetTable: Documento alternativo trovato con ID ${altDocId}`);
               const altData = altDocSnap.data();
               
               if (altData.entries && Array.isArray(altData.entries)) {
                 entriesData = altData.entries;
               }
-            } else {
-              // Se entrambi i tentativi falliscono, prova con una query più generica
-              const workHoursRef = collection(db, "workHours");
-              const q = query(
-                workHoursRef, 
-                where("userId", "==", auth.currentUser.uid),
-                where("year", "==", selectedYear)
-              );
-              
-              const querySnapshot = await getDocs(q);
-              
-              if (!querySnapshot.empty) {
-                // Cerca un documento che potrebbe corrispondere al mese
-                for (const doc of querySnapshot.docs) {
-                  const data = doc.data();
-                  if (data.month === rawMonth || data.month === formattedMonth) {
-                    if (data.entries && Array.isArray(data.entries)) {
-                      entriesData = data.entries;
-                      break;
-                    }
+            }
+          }
+          
+          if (!entriesData) {
+            // Se entrambi i tentativi falliscono, prova con una query più generica
+            console.log(`TimesheetTable: Tentativo 3 - Query generale`);
+            const workHoursRef = collection(db, "workHours");
+            const q = query(
+              workHoursRef, 
+              where("userId", "==", auth.currentUser.uid),
+              where("year", "==", selectedYear)
+            );
+            
+            const querySnapshot = await getDocs(q);
+            console.log(`TimesheetTable: Query generale ha trovato ${querySnapshot.size} documenti`);
+            
+            if (!querySnapshot.empty) {
+              // Cerca un documento che potrebbe corrispondere al mese
+              for (const doc of querySnapshot.docs) {
+                const data = doc.data();
+                console.log(`TimesheetTable: Documento trovato con month=${data.month}, confronto con ${normalizedMonth} o ${normalizedMonth.padStart(2, '0')}`);
+                
+                // Normalizza entrambi i mesi per il confronto
+                const docMonth = data.month.toString().replace(/^0+/, '');
+                
+                if (docMonth === normalizedMonth) {
+                  console.log(`TimesheetTable: Corrispondenza trovata`);
+                  if (data.entries && Array.isArray(data.entries)) {
+                    entriesData = data.entries;
+                    break;
                   }
                 }
               }
@@ -83,22 +101,26 @@ const TimesheetTable = ({
         }
         
         if (entriesData) {
+          console.log(`TimesheetTable: Dati trovati - ${entriesData.length} entries`);
           // Ordina le entries per data
           const sortedEntries = [...entriesData].sort((a, b) => {
             return new Date(a.date) - new Date(b.date);
           });
           setData(sortedEntries);
         } else {
+          console.log(`TimesheetTable: Nessun dato trovato, generando giorni vuoti`);
           // Generare giorni vuoti
-          const month = parseInt(selectedMonth);
+          const month = parseInt(normalizedMonth);
           const emptyEntries = generateEmptyMonthDays(month, parseInt(selectedYear));
           setData(emptyEntries);
         }
         
         setError(null);
       } catch (err) {
+        console.error("TimesheetTable: Errore nel caricamento timesheet:", err);
         setError("Impossibile caricare le ore lavorative. Riprova più tardi.");
-        const month = parseInt(selectedMonth);
+        const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+        const month = parseInt(normalizedMonth);
         const emptyEntries = generateEmptyMonthDays(month, parseInt(selectedYear));
         setData(emptyEntries);
       } finally {
@@ -141,7 +163,10 @@ const TimesheetTable = ({
       "Maggio", "Giugno", "Luglio", "Agosto", 
       "Settembre", "Ottobre", "Novembre", "Dicembre"
     ];
-    return months[parseInt(monthValue) - 1];
+    // Rimuovi eventuali prefissi e zeri iniziali
+    const normalizedMonth = monthValue.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    const monthIndex = parseInt(normalizedMonth) - 1;
+    return months[monthIndex] || '';
   };
 
   // Formatta la data in formato DD/MM/YYYY
@@ -168,7 +193,9 @@ const TimesheetTable = ({
     const currentMonth = today.getMonth() + 1; // getMonth() restituisce 0-11
     const currentDay = today.getDate();
     
-    const selectedMonthNum = parseInt(selectedMonth);
+    // Normalizza il mese selezionato
+    const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    const selectedMonthNum = parseInt(normalizedMonth);
     const selectedYearNum = parseInt(selectedYear);
     
     // Calcola il mese successivo a quello selezionato

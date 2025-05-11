@@ -48,12 +48,21 @@ const ReportsTable = ({ reports, selectedMonth, selectedYear, isLoading }) => {
       "Maggio", "Giugno", "Luglio", "Agosto", 
       "Settembre", "Ottobre", "Novembre", "Dicembre"
     ];
-    return months[parseInt(monthValue) - 1];
+    // Rimuovi eventuali prefissi e zeri iniziali
+    const normalizedMonth = monthValue.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    const monthIndex = parseInt(normalizedMonth) - 1;
+    return months[monthIndex] || '';
   };
+
+  // Numero di report visualizzati
+  const reportCount = reports?.length || 0;
 
   return (
     <div className="card">
-      <div className="card-header">Stato Segnalazioni - {getMonthName(selectedMonth)} {selectedYear}</div>
+      <div className="card-header">
+        <div>Stato Segnalazioni - {getMonthName(selectedMonth)} {selectedYear}</div>
+        {!isLoading && reportCount > 0 && <div>({reportCount})</div>}
+      </div>
       <div className="card-body">
         {isLoading ? (
           <div className="text-center">

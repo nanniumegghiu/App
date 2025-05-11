@@ -73,8 +73,16 @@ function App() {
       try {
         console.log(`App: Caricamento segnalazioni per userId=${user.uid}, month=${selectedMonth}, year=${selectedYear}`);
         
-        // Assicurati che il mese abbia il formato corretto (con zero iniziale se necessario)
-        const formattedMonth = selectedMonth.length === 1 ? selectedMonth.padStart(2, '0') : selectedMonth;
+        // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+        let normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+        
+        // Se il mese è vuoto dopo la normalizzazione, usa il valore originale
+        if (!normalizedMonth) normalizedMonth = selectedMonth;
+        
+        // Formato con zero iniziale per la consistenza
+        const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
+        
+        console.log(`App: Mese normalizzato=${normalizedMonth}, formattedMonth=${formattedMonth}`);
         
         const userReports = await getUserReportsByMonth(user.uid, formattedMonth, selectedYear);
         console.log("App: Segnalazioni caricate:", userReports);
@@ -139,7 +147,14 @@ function App() {
       setTimeout(async () => {
         try {
           console.log("App: Ricaricamento segnalazioni dopo invio...");
-          const formattedMonth = selectedMonth.length === 1 ? selectedMonth.padStart(2, '0') : selectedMonth;
+          
+          // Normalizza il mese
+          let normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+          if (!normalizedMonth) normalizedMonth = selectedMonth;
+          
+          // Formato con zero iniziale per la consistenza
+          const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
+          
           const updatedReports = await getUserReportsByMonth(user.uid, formattedMonth, selectedYear);
           console.log("App: Segnalazioni ricaricate:", updatedReports);
           setReports(updatedReports || []);

@@ -118,32 +118,85 @@ export const getAllReports = async () => {
 };
 
 export const getUserReportsByMonth = async (userId, month, year) => {
-  console.log(`getUserReportsByMonth: Caricamento segnalazioni per userId=${userId}, month=${month}, year=${year}`);
+  console.log(`getUserReportsByMonth: Avvio con userId=${userId}, month=${month}, year=${year}`);
   
   try {
     if (!userId) throw new Error("userId è obbligatorio");
     if (!month) throw new Error("month è obbligatorio");
     if (!year) throw new Error("year è obbligatorio");
     
-    // Assicurati che month sia una stringa con zero iniziale se necessario
-    if (month.length === 1) {
-      month = month.padStart(2, '0');
-    }
+    // Rimuovi eventuali prefissi (come "prev-") e zeri iniziali
+    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
     
-    console.log(`getUserReportsByMonth: Parametri normalizzati - userId=${userId}, month=${month}, year=${year}`);
+    // Se il mese è vuoto dopo la normalizzazione, usa il valore originale
+    if (!normalizedMonth) normalizedMonth = month;
+    
+    // Formato con zero iniziale per query alternative
+    let paddedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
+    
+    console.log(`getUserReportsByMonth: Parametri normalizzati - userId=${userId}, normalizedMonth=${normalizedMonth}, paddedMonth=${paddedMonth}, year=${year}`);
     
     const reportsCollection = collection(db, "reports");
     
-    // Crea la query
-    const q = query(
+    // Prima prova con il formato normalizzato
+    let q = query(
       reportsCollection, 
       where("userId", "==", userId),
-      where("month", "==", month),
+      where("month", "==", normalizedMonth),
       where("year", "==", year)
     );
     
-    console.log("getUserReportsByMonth: Esecuzione query...");
-    const querySnapshot = await getDocs(q);
+    console.log("getUserReportsByMonth: Esecuzione query con mese normalizzato...");
+    let querySnapshot = await getDocs(q);
+    
+    // Se non trova risultati, prova con il formato con zero iniziale
+    if (querySnapshot.empty && normalizedMonth !== paddedMonth) {
+      console.log(`getUserReportsByMonth: Nessun risultato trovato, tento con month=${paddedMonth}`);
+      
+      q = query(
+        reportsCollection, 
+        where("userId", "==", userId),
+        where("month", "==", paddedMonth),
+        where("year", "==", year)
+      );
+      
+      querySnapshot = await getDocs(q);
+    }
+    
+    // Se ancora non trova risultati, prova una query più generica
+    if (querySnapshot.empty) {
+      console.log("getUserReportsByMonth: Nessun risultato trovato con entrambi i formati, eseguo query generica");
+      
+      q = query(
+        reportsCollection, 
+        where("userId", "==", userId),
+        where("year", "==", year)
+      );
+      
+      querySnapshot = await getDocs(q);
+      
+      // Filtra manualmente i risultati per il mese
+      if (!querySnapshot.empty) {
+        const allResults = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            lastUpdate: data.lastUpdate?.toDate?.() || new Date()
+          };
+        });
+        
+        // Filtra i report che corrispondono al mese (sia formato con zero che senza zero)
+        const filteredResults = allResults.filter(report => {
+          const reportMonth = report.month.toString().replace(/^0+/, '');
+          return reportMonth === normalizedMonth;
+        });
+        
+        console.log(`getUserReportsByMonth: Query generica trovata, filtrati ${filteredResults.length} risultati per il mese ${normalizedMonth}`);
+        return filteredResults;
+      }
+    }
     
     console.log(`getUserReportsByMonth: Query completata, ${querySnapshot.size} risultati trovati`);
     
@@ -192,16 +245,22 @@ export const submitReport = async (reportData, userId) => {
       const dateParts = reportData.date.split("-");
       year = dateParts[0];
       month = dateParts[1];
+      
+      // Rimuovi eventuali zeri iniziali dal mese
+      month = month.replace(/^0+/, '');
     } else if (reportData.date.includes('/')) {
       // Se è nel formato DD/MM/YYYY
       const dateParts = reportData.date.split("/");
       year = dateParts[2];
       month = dateParts[1];
+      
+      // Rimuovi eventuali zeri iniziali dal mese
+      month = month.replace(/^0+/, '');
     } else {
       // Fallback: usa l'anno e il mese corrente
       const now = new Date();
       year = now.getFullYear().toString();
-      month = (now.getMonth() + 1).toString().padStart(2, '0');
+      month = (now.getMonth() + 1).toString();
     }
     
     console.log(`submitReport: Data parsata - anno: ${year}, mese: ${month}`);
@@ -282,6 +341,14 @@ export const saveWorkHours = async (userId, month, year, entries) => {
   if (!Array.isArray(entries)) throw new Error("entries deve essere un array");
   
   try {
+    // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    
+    // Se il mese è vuoto dopo la normalizzazione, usa il valore originale
+    if (!normalizedMonth) normalizedMonth = month;
+    
+    console.log(`saveWorkHours: Mese normalizzato=${normalizedMonth}`);
+    
     // Normalizza i dati per assicurarsi che siano nel formato corretto
     const normalizedEntries = entries.map(entry => ({
       date: entry.date,
@@ -291,7 +358,7 @@ export const saveWorkHours = async (userId, month, year, entries) => {
     }));
     
     // Crea un documento ID combinando utente, mese e anno
-    const docId = `${userId}_${month}_${year}`;
+    const docId = `${userId}_${normalizedMonth}_${year}`;
     console.log("saveWorkHours: ID documento", docId);
     
     const workHoursRef = doc(db, "workHours", docId);
@@ -299,7 +366,7 @@ export const saveWorkHours = async (userId, month, year, entries) => {
     // Dati da salvare
     const workHoursData = {
       userId,
-      month,
+      month: normalizedMonth,
       year,
       entries: normalizedEntries,
       lastUpdated: serverTimestamp()
@@ -307,7 +374,7 @@ export const saveWorkHours = async (userId, month, year, entries) => {
     
     console.log("saveWorkHours: dati da salvare", {
       userId, 
-      month, 
+      month: normalizedMonth, 
       year, 
       entriesCount: normalizedEntries.length
     });
@@ -333,44 +400,71 @@ export const saveWorkHours = async (userId, month, year, entries) => {
 
 export const getWorkHours = async (userId, month, year) => {
   try {
-    // Crea un documento ID combinando utente, mese e anno
-    const docId = `${userId}_${month}_${year}`;
-    const workHoursRef = doc(db, "workHours", docId);
+    // Normalizza il mese
+    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    if (!normalizedMonth) normalizedMonth = month;
     
+    // Crea un documento ID combinando utente, mese e anno
+    const docId = `${userId}_${normalizedMonth}_${year}`;
+    console.log(`getWorkHours: Tentativo di recuperare documento con ID=${docId}`);
+    
+    const workHoursRef = doc(db, "workHours", docId);
     const docSnap = await getDoc(workHoursRef);
     
     if (docSnap.exists()) {
+      console.log(`getWorkHours: Documento trovato con ID=${docId}`);
       return {
         id: docSnap.id,
         ...docSnap.data()
       };
     }
     
+    // Se non trova documento con il primo formato, prova con il mese con zero iniziale
+    const paddedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
+    if (paddedMonth !== normalizedMonth) {
+      const altDocId = `${userId}_${paddedMonth}_${year}`;
+      console.log(`getWorkHours: Tentativo alternativo con ID=${altDocId}`);
+      
+      const altWorkHoursRef = doc(db, "workHours", altDocId);
+      const altDocSnap = await getDoc(altWorkHoursRef);
+      
+      if (altDocSnap.exists()) {
+        console.log(`getWorkHours: Documento alternativo trovato con ID=${altDocId}`);
+        return {
+          id: altDocSnap.id,
+          ...altDocSnap.data()
+        };
+      }
+    }
+    
+    console.log("getWorkHours: Nessun documento trovato");
     return null;
   } catch (error) {
-    console.error("Errore nel recupero delle ore lavorative:", error);
+    console.error("getWorkHours: Errore nel recupero delle ore lavorative:", error);
     throw error;
   }
 };
 
 export const getUserWorkHoursByMonth = async (userId, month, year) => {
   try {
-    // Assicurati che month sia una stringa con zero iniziale se necessario
-    if (month.length === 1) {
-      month = month.padStart(2, '0');
-    }
+    // Normalizza il mese
+    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    if (!normalizedMonth) normalizedMonth = month;
     
-    console.log(`getUserWorkHoursByMonth: cercando documento per userId=${userId}, month=${month}, year=${year}`);
+    // Formato con zero iniziale
+    const paddedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
     
-    // Crea un documento ID combinando utente, mese e anno
-    const docId = `${userId}_${month}_${year}`;
-    console.log(`getUserWorkHoursByMonth: ID documento=${docId}`);
+    console.log(`getUserWorkHoursByMonth: cercando documento per userId=${userId}, normalizedMonth=${normalizedMonth}, paddedMonth=${paddedMonth}, year=${year}`);
+    
+    // Primo tentativo: crea un documento ID con il mese normalizzato
+    const docId = `${userId}_${normalizedMonth}_${year}`;
+    console.log(`getUserWorkHoursByMonth: Tentativo 1 - ID documento=${docId}`);
     
     const workHoursRef = doc(db, "workHours", docId);
     const docSnap = await getDoc(workHoursRef);
     
     if (docSnap.exists()) {
-      console.log("getUserWorkHoursByMonth: documento trovato");
+      console.log(`getUserWorkHoursByMonth: documento trovato con ID=${docId}`);
       const data = docSnap.data();
       return {
         id: docSnap.id,
@@ -378,10 +472,59 @@ export const getUserWorkHoursByMonth = async (userId, month, year) => {
       };
     }
     
-    console.log("getUserWorkHoursByMonth: nessun documento trovato");
+    // Secondo tentativo: prova con il mese con zero iniziale se diverso
+    if (paddedMonth !== normalizedMonth) {
+      const altDocId = `${userId}_${paddedMonth}_${year}`;
+      console.log(`getUserWorkHoursByMonth: Tentativo 2 - ID documento=${altDocId}`);
+      
+      const altWorkHoursRef = doc(db, "workHours", altDocId);
+      const altDocSnap = await getDoc(altWorkHoursRef);
+      
+      if (altDocSnap.exists()) {
+        console.log(`getUserWorkHoursByMonth: documento trovato con ID=${altDocId}`);
+        const altData = altDocSnap.data();
+        return {
+          id: altDocSnap.id,
+          ...altData
+        };
+      }
+    }
+    
+    // Terzo tentativo: esegui una query più generica
+    console.log("getUserWorkHoursByMonth: Tentativo 3 - Query generale");
+    const workHoursCollection = collection(db, "workHours");
+    const q = query(
+      workHoursCollection, 
+      where("userId", "==", userId),
+      where("year", "==", year)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    console.log(`getUserWorkHoursByMonth: Query generale ha trovato ${querySnapshot.size} documenti`);
+    
+    if (!querySnapshot.empty) {
+      // Cerca un documento che corrisponda al mese
+      for (const doc of querySnapshot.docs) {
+        const data = doc.data();
+        console.log(`Documento trovato con month=${data.month}, confronto con ${normalizedMonth}`);
+        
+        // Normalizza entrambi per il confronto
+        const docMonth = data.month.toString().replace(/^0+/, '');
+        
+        if (docMonth === normalizedMonth) {
+          console.log(`getUserWorkHoursByMonth: Corrispondenza trovata in query generale`);
+          return {
+            id: doc.id,
+            ...data
+          };
+        }
+      }
+    }
+    
+    console.log("getUserWorkHoursByMonth: nessun documento trovato in tutti i tentativi");
     return null;
   } catch (error) {
-    console.error("Errore nel recupero delle ore lavorative:", error);
+    console.error("getUserWorkHoursByMonth: Errore nel recupero delle ore lavorative:", error);
     throw error;
   }
 };

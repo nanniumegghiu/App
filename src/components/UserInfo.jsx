@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const UserInfo = ({ selectedMonth, setSelectedMonth }) => {
+const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }) => {
   const [availableMonths, setAvailableMonths] = useState([]);
 
   useEffect(() => {
@@ -21,22 +21,23 @@ const UserInfo = ({ selectedMonth, setSelectedMonth }) => {
     }
 
     // Determina quale mese dovrebbe essere visualizzato di default
-    const defaultMonth = currentDay >= 5 ? currentMonth.toString() : `prev-${previousMonth}`;
+    const defaultMonth = currentDay >= 5 ? currentMonth.toString() : previousMonth.toString();
+    const defaultYear = currentDay >= 5 ? currentYear.toString() : previousYear.toString();
 
     // Costruisci l'array dei mesi disponibili
     const months = [
-      { value: currentMonth.toString(), label: `${getMonthName(currentMonth)} ${currentYear}` },
-      { value: `prev-${previousMonth}`, label: `${getMonthName(previousMonth)} ${previousYear}` }
+      { value: currentMonth.toString(), label: `${getMonthName(currentMonth)} ${currentYear}`, year: currentYear.toString() },
+      { value: previousMonth.toString(), label: `${getMonthName(previousMonth)} ${previousYear}`, year: previousYear.toString() }
     ];
 
     setAvailableMonths(months);
 
     // Se il mese selezionato non è tra quelli disponibili, imposta il mese di default
-    const isValidSelection = months.some(month => month.value === selectedMonth);
-    if (!isValidSelection) {
+    if (!selectedMonth || !selectedYear) {
       setSelectedMonth(defaultMonth);
+      setSelectedYear(defaultYear);
     }
-  }, [setSelectedMonth, selectedMonth]);
+  }, [setSelectedMonth, setSelectedYear, selectedMonth, selectedYear]);
 
   // Funzione per ottenere il nome del mese in italiano
   const getMonthName = (monthNumber) => {
@@ -48,7 +49,11 @@ const UserInfo = ({ selectedMonth, setSelectedMonth }) => {
   };
 
   const handleMonthChange = (e) => {
-    setSelectedMonth(e.target.value);
+    const selectedOption = availableMonths.find(month => month.value === e.target.value);
+    if (selectedOption) {
+      setSelectedMonth(selectedOption.value);
+      setSelectedYear(selectedOption.year);
+    }
   };
 
   return (
@@ -64,7 +69,7 @@ const UserInfo = ({ selectedMonth, setSelectedMonth }) => {
           onChange={handleMonthChange}
         >
           {availableMonths.map((month) => (
-            <option key={month.value} value={month.value}>
+            <option key={`${month.value}-${month.year}`} value={month.value}>
               {month.label}
             </option>
           ))}
