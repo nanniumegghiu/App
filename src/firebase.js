@@ -1,0 +1,408 @@
+// src/firebase.js
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  Timestamp,
+  addDoc
+} from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDTCte23T93ucmDqdMUq0R16A08RhbAJXg",
+  authDomain: "app-ore-utenti.firebaseapp.com",
+  projectId: "app-ore-utenti",
+  storageBucket: "app-ore-utenti.firebasestorage.app",
+  messagingSenderId: "881014422624",
+  appId: "1:881014422624:web:514706d1c69b82feeb5705",
+  measurementId: "G-265PX55B0Y"
+};
+
+// Inizializza Firebase
+const app = initializeApp(firebaseConfig);
+
+// Esporta autenticazione e database
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// Funzioni per l'autenticazione
+export const loginWithEmail = (email, password) => {
+  return signInWithEmailAndPassword(auth, email, password);
+};
+
+export const registerWithEmail = async (email, password, userData) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+  
+  // Salva i dati utente nel database
+  await setDoc(doc(db, "users", user.uid), {
+    ...userData,
+    email: user.email,
+    createdAt: serverTimestamp(),
+    role: userData.role || "user" // Default a "user" se non specificato
+  });
+  
+  return userCredential;
+};
+
+export const logoutUser = () => {
+  return signOut(auth);
+};
+
+// Funzioni per gli utenti
+export const getUserData = async (userId) => {
+  const docRef = doc(db, "users", userId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  
+  return null;
+};
+
+export const getAllUsers = async () => {
+  const usersCollection = collection(db, "users");
+  const userSnapshot = await getDocs(usersCollection);
+  
+  return userSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const updateUserData = async (userId, userData) => {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, {
+    ...userData,
+    updatedAt: serverTimestamp()
+  });
+};
+
+// Funzioni per le segnalazioni
+export const addReport = async (reportData) => {
+  try {
+    const reportsCollection = collection(db, "reports");
+    const docRef = await addDoc(reportsCollection, {
+      ...reportData,
+      createdAt: serverTimestamp(),
+      lastUpdate: serverTimestamp()
+    });
+    return { id: docRef.id, ...reportData };
+  } catch (error) {
+    console.error("Errore nell'aggiunta della segnalazione:", error);
+    throw error;
+  }
+};
+
+export const getAllReports = async () => {
+  const reportsCollection = collection(db, "reports");
+  const q = query(reportsCollection, orderBy("createdAt", "desc"));
+  const reportSnapshot = await getDocs(q);
+  
+  return reportSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+    lastUpdate: doc.data().lastUpdate?.toDate?.() || new Date()
+  }));
+};
+
+export const getUserReportsByMonth = async (userId, month, year) => {
+  console.log(`getUserReportsByMonth: Caricamento segnalazioni per userId=${userId}, month=${month}, year=${year}`);
+  
+  try {
+    if (!userId) throw new Error("userId è obbligatorio");
+    if (!month) throw new Error("month è obbligatorio");
+    if (!year) throw new Error("year è obbligatorio");
+    
+    // Assicurati che month sia una stringa con zero iniziale se necessario
+    if (month.length === 1) {
+      month = month.padStart(2, '0');
+    }
+    
+    console.log(`getUserReportsByMonth: Parametri normalizzati - userId=${userId}, month=${month}, year=${year}`);
+    
+    const reportsCollection = collection(db, "reports");
+    
+    // Crea la query
+    const q = query(
+      reportsCollection, 
+      where("userId", "==", userId),
+      where("month", "==", month),
+      where("year", "==", year)
+    );
+    
+    console.log("getUserReportsByMonth: Esecuzione query...");
+    const querySnapshot = await getDocs(q);
+    
+    console.log(`getUserReportsByMonth: Query completata, ${querySnapshot.size} risultati trovati`);
+    
+    // Converti i dati dal formato Firestore
+    const reports = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        lastUpdate: data.lastUpdate?.toDate?.() || new Date()
+      };
+    });
+    
+    console.log("getUserReportsByMonth: Segnalazioni caricate:", reports);
+    return reports;
+  } catch (error) {
+    console.error("getUserReportsByMonth: Errore nel recupero delle segnalazioni:", error);
+    throw error;
+  }
+};
+
+export const submitReport = async (reportData, userId) => {
+  console.log("submitReport: Tentativo di inviare una segnalazione:", reportData);
+  console.log("submitReport: userId:", userId);
+  
+  if (!reportData) throw new Error("reportData è obbligatorio");
+  if (!userId) throw new Error("userId è obbligatorio");
+  if (!reportData.date) throw new Error("date è obbligatorio");
+  if (!reportData.description) throw new Error("description è obbligatorio");
+  
+  try {
+    // Ottieni i dati dell'utente
+    const user = await getUserData(userId);
+    console.log("submitReport: Dati utente ottenuti:", user);
+    
+    if (!user) {
+      throw new Error("Utente non trovato");
+    }
+    
+    // Estrai mese e anno dalla data della segnalazione
+    let year, month;
+    
+    if (reportData.date.includes('-')) {
+      // Se è nel formato YYYY-MM-DD
+      const dateParts = reportData.date.split("-");
+      year = dateParts[0];
+      month = dateParts[1];
+    } else if (reportData.date.includes('/')) {
+      // Se è nel formato DD/MM/YYYY
+      const dateParts = reportData.date.split("/");
+      year = dateParts[2];
+      month = dateParts[1];
+    } else {
+      // Fallback: usa l'anno e il mese corrente
+      const now = new Date();
+      year = now.getFullYear().toString();
+      month = (now.getMonth() + 1).toString().padStart(2, '0');
+    }
+    
+    console.log(`submitReport: Data parsata - anno: ${year}, mese: ${month}`);
+    
+    // Crea l'oggetto segnalazione
+    const reportObject = {
+      ...reportData,
+      userId,
+      userEmail: user.email || "",
+      userName: user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email,
+      month,
+      year,
+      status: "In attesa",
+      createdAt: serverTimestamp(),
+      lastUpdate: serverTimestamp()
+    };
+    
+    console.log("submitReport: Oggetto segnalazione completo:", reportObject);
+    
+    // Aggiungi la segnalazione alla collezione reports
+    const reportsCollection = collection(db, "reports");
+    const docRef = await addDoc(reportsCollection, reportObject);
+    
+    console.log("submitReport: Segnalazione inviata con successo, ID:", docRef.id);
+    
+    return {
+      id: docRef.id,
+      ...reportObject,
+      createdAt: new Date(),
+      lastUpdate: new Date()
+    };
+  } catch (error) {
+    console.error("submitReport: Errore nell'invio della segnalazione:", error);
+    throw error;
+  }
+};
+
+export const updateReportStatus = async (reportId, newStatus) => {
+  console.log(`updateReportStatus: Aggiornamento stato per reportId=${reportId} a ${newStatus}`);
+  
+  try {
+    if (!reportId) throw new Error("reportId è obbligatorio");
+    if (!newStatus) throw new Error("newStatus è obbligatorio");
+    
+    const reportRef = doc(db, "reports", reportId);
+    
+    // Controlla che il documento esista
+    const docSnap = await getDoc(reportRef);
+    if (!docSnap.exists()) {
+      throw new Error(`Segnalazione con ID ${reportId} non trovata`);
+    }
+    
+    await updateDoc(reportRef, {
+      status: newStatus,
+      lastUpdate: serverTimestamp()
+    });
+    
+    console.log(`updateReportStatus: Stato aggiornato con successo a ${newStatus}`);
+    return true;
+  } catch (error) {
+    console.error(`updateReportStatus: Errore nell'aggiornamento dello stato:`, error);
+    throw error;
+  }
+};
+
+// Funzione ottimizzata per salvare le ore lavorative
+export const saveWorkHours = async (userId, month, year, entries) => {
+  console.log("saveWorkHours: Tentativo di salvare le ore lavorative con i seguenti parametri:");
+  console.log("userId:", userId);
+  console.log("month:", month);
+  console.log("year:", year);
+  console.log("entries:", entries);
+  
+  // Validazione parametri
+  if (!userId) throw new Error("userId è obbligatorio");
+  if (!month) throw new Error("month è obbligatorio");
+  if (!year) throw new Error("year è obbligatorio");
+  if (!Array.isArray(entries)) throw new Error("entries deve essere un array");
+  
+  try {
+    // Normalizza i dati per assicurarsi che siano nel formato corretto
+    const normalizedEntries = entries.map(entry => ({
+      date: entry.date,
+      day: entry.day,
+      total: parseInt(entry.total) || 0,
+      notes: entry.notes || ""
+    }));
+    
+    // Crea un documento ID combinando utente, mese e anno
+    const docId = `${userId}_${month}_${year}`;
+    console.log("saveWorkHours: ID documento", docId);
+    
+    const workHoursRef = doc(db, "workHours", docId);
+    
+    // Dati da salvare
+    const workHoursData = {
+      userId,
+      month,
+      year,
+      entries: normalizedEntries,
+      lastUpdated: serverTimestamp()
+    };
+    
+    console.log("saveWorkHours: dati da salvare", {
+      userId, 
+      month, 
+      year, 
+      entriesCount: normalizedEntries.length
+    });
+    
+    // Controlla se il documento esiste già
+    const docSnap = await getDoc(workHoursRef);
+    
+    if (docSnap.exists()) {
+      console.log("saveWorkHours: Aggiornamento documento esistente");
+      await updateDoc(workHoursRef, workHoursData);
+    } else {
+      console.log("saveWorkHours: Creazione nuovo documento");
+      await setDoc(workHoursRef, workHoursData);
+    }
+    
+    console.log("saveWorkHours: Salvataggio completato con successo");
+    return true;
+  } catch (error) {
+    console.error("saveWorkHours: Errore durante il salvataggio", error);
+    throw error;
+  }
+};
+
+export const getWorkHours = async (userId, month, year) => {
+  try {
+    // Crea un documento ID combinando utente, mese e anno
+    const docId = `${userId}_${month}_${year}`;
+    const workHoursRef = doc(db, "workHours", docId);
+    
+    const docSnap = await getDoc(workHoursRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Errore nel recupero delle ore lavorative:", error);
+    throw error;
+  }
+};
+
+export const getUserWorkHoursByMonth = async (userId, month, year) => {
+  try {
+    // Assicurati che month sia una stringa con zero iniziale se necessario
+    if (month.length === 1) {
+      month = month.padStart(2, '0');
+    }
+    
+    console.log(`getUserWorkHoursByMonth: cercando documento per userId=${userId}, month=${month}, year=${year}`);
+    
+    // Crea un documento ID combinando utente, mese e anno
+    const docId = `${userId}_${month}_${year}`;
+    console.log(`getUserWorkHoursByMonth: ID documento=${docId}`);
+    
+    const workHoursRef = doc(db, "workHours", docId);
+    const docSnap = await getDoc(workHoursRef);
+    
+    if (docSnap.exists()) {
+      console.log("getUserWorkHoursByMonth: documento trovato");
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data
+      };
+    }
+    
+    console.log("getUserWorkHoursByMonth: nessun documento trovato");
+    return null;
+  } catch (error) {
+    console.error("Errore nel recupero delle ore lavorative:", error);
+    throw error;
+  }
+};
+
+export const getUserWorkHours = async (userId) => {
+  console.log(`getUserWorkHours: Caricamento di tutte le ore lavorative per userId=${userId}`);
+  
+  try {
+    // Ottieni tutte le ore lavorative di un utente
+    const workHoursRef = collection(db, "workHours");
+    const q = query(workHoursRef, where("userId", "==", userId));
+    
+    const querySnapshot = await getDocs(q);
+    console.log(`getUserWorkHours: ${querySnapshot.size} documenti trovati`);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("getUserWorkHours: Errore nel recupero delle ore lavorative:", error);
+    throw error;
+  }
+};
