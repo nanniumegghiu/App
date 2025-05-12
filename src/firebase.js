@@ -326,7 +326,7 @@ export const updateReportStatus = async (reportId, newStatus) => {
   }
 };
 
-// Funzione ottimizzata per salvare le ore lavorative
+// Funzione ottimizzata per salvare le ore lavorative con supporto per lettere speciali
 export const saveWorkHours = async (userId, month, year, entries) => {
   console.log("saveWorkHours: Tentativo di salvare le ore lavorative con i seguenti parametri:");
   console.log("userId:", userId);
@@ -350,12 +350,19 @@ export const saveWorkHours = async (userId, month, year, entries) => {
     console.log(`saveWorkHours: Mese normalizzato=${normalizedMonth}`);
     
     // Normalizza i dati per assicurarsi che siano nel formato corretto
-    const normalizedEntries = entries.map(entry => ({
-      date: entry.date,
-      day: entry.day,
-      total: parseInt(entry.total) || 0,
-      notes: entry.notes || ""
-    }));
+    const normalizedEntries = entries.map(entry => {
+      // Controlla se il valore è una delle lettere speciali (M, P, A)
+      const isSpecialLetter = ["M", "P", "A"].includes(entry.total);
+      
+      return {
+        date: entry.date,
+        day: entry.day,
+        // Se è una lettera speciale, conservala come stringa, altrimenti converti in intero
+        total: isSpecialLetter ? entry.total : (parseInt(entry.total) || 0),
+        notes: entry.notes || "",
+        isWeekend: entry.isWeekend || false
+      };
+    });
     
     // Crea un documento ID combinando utente, mese e anno
     const docId = `${userId}_${normalizedMonth}_${year}`;

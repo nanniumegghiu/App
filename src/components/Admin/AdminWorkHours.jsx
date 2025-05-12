@@ -119,12 +119,23 @@ const AdminWorkHours = () => {
     setSelectedYear(e.target.value);
   };
 
-  // Gestisce l'input delle ore totali
+  // Gestisce l'input delle ore totali o le lettere speciali (M, P, A)
   const handleTotalHoursChange = (index, value) => {
-    // Assicurati che sia un numero intero o stringa vuota
+    // Accetta solo numeri interi o le lettere speciali: M, P, A
+    const validValues = ["M", "P", "A", "m", "p", "a"];
+    
+    // Se è una delle lettere speciali, la salva in formato maiuscolo
+    if (validValues.includes(value.toUpperCase())) {
+      const updatedEntries = [...timeEntries];
+      updatedEntries[index].total = value.toUpperCase();
+      setTimeEntries(updatedEntries);
+      return;
+    }
+    
+    // Altrimenti tratta il valore come un numero
     let totalHours = value === "" ? 0 : parseInt(value);
     
-    // Controlli di validità
+    // Controlli di validità per i numeri
     if (isNaN(totalHours)) {
       totalHours = 0;
     }
@@ -135,6 +146,14 @@ const AdminWorkHours = () => {
     const updatedEntries = [...timeEntries];
     updatedEntries[index].total = totalHours;
     setTimeEntries(updatedEntries);
+  };
+
+  // Restituisce il colore del testo in base al valore
+  const getTotalValueColor = (total) => {
+    if (total === "M") return "#e74c3c"; // Rosso
+    if (total === "P") return "#2ecc71"; // Verde
+    if (total === "A") return "#000000"; // Nero
+    return ""; // Default (nessun colore speciale)
   };
 
   // Gestisce l'input delle note
@@ -156,20 +175,27 @@ const AdminWorkHours = () => {
     
     setIsSaving(true);
     try {
-      // Assicurati che tutte le ore totali siano numeri interi
-      const entriesWithIntegerHours = timeEntries.map(entry => ({
-        date: entry.date,
-        day: entry.day,
-        total: parseInt(entry.total) || 0, // Converti in intero, 0 se non valido
-        notes: entry.notes || "",
-        isWeekend: entry.isWeekend || false // Mantieni la proprietà isWeekend
-      }));
+      // Prepara le entries per il salvataggio
+      const entriesForSaving = timeEntries.map(entry => {
+        // Per i valori M, P, A mantieni la stringa, altrimenti converti in intero
+        const totalValue = ["M", "P", "A"].includes(entry.total) 
+          ? entry.total 
+          : (parseInt(entry.total) || 0);
+        
+        return {
+          date: entry.date,
+          day: entry.day,
+          total: totalValue,
+          notes: entry.notes || "",
+          isWeekend: entry.isWeekend || false
+        };
+      });
       
       // Utilizza la funzione saveWorkHours importata da firebase.js
-      await saveWorkHours(selectedEmployee, selectedMonth, selectedYear, entriesWithIntegerHours);
+      await saveWorkHours(selectedEmployee, selectedMonth, selectedYear, entriesForSaving);
       
-      // Aggiorna lo stato locale con i valori convertiti
-      setTimeEntries(entriesWithIntegerHours);
+      // Aggiorna lo stato locale
+      setTimeEntries(entriesForSaving);
       
       console.log("Ore lavorative salvate con successo");
       showNotification("Ore lavorative salvate con successo", "success");
@@ -272,12 +298,27 @@ const AdminWorkHours = () => {
         <>
           {(selectedEmployee && selectedMonth) ? (
             <div className="table-responsive">
+              <div className="legend-container" style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
+                <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Legenda lettere speciali:</h4>
+                <div className="legend-items" style={{ display: 'flex', gap: '20px' }}>
+                  <div className="legend-item">
+                    <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M</span> - Malattia
+                  </div>
+                  <div className="legend-item">
+                    <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P</span> - Permesso
+                  </div>
+                  <div className="legend-item">
+                    <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
+                  </div>
+                </div>
+              </div>
+            
               <table className="work-hours-table">
                 <thead>
                   <tr>
                     <th>Data</th>
                     <th>Giorno</th>
-                    <th>Ore Totali</th>
+                    <th>Ore Totali / Stato</th>
                     <th>Note</th>
                   </tr>
                 </thead>
@@ -311,12 +352,15 @@ const AdminWorkHours = () => {
                         </td>
                         <td>
                           <input 
-                            type="number" 
+                            type="text" 
                             value={entry.total} 
                             onChange={e => handleTotalHoursChange(index, e.target.value)}
-                            min="0"
-                            max="24"
+                            maxLength="3"
                             className="form-control"
+                            style={{ 
+                              color: getTotalValueColor(entry.total),
+                              fontWeight: ["M", "P", "A"].includes(entry.total) ? 'bold' : 'normal' 
+                            }}
                           />
                         </td>
                         <td>

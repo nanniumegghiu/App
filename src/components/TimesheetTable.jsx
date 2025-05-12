@@ -180,9 +180,62 @@ const TimesheetTable = ({
     return dateStr;
   };
 
-  // Calcola il totale delle ore
+  // Componente di legenda per le lettere speciali
+  const TimesheetLegend = () => {
+    return (
+      <div className="timesheet-legend" style={{ 
+        marginBottom: '15px',
+        padding: '10px',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '5px',
+        fontSize: '0.9rem'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Legenda:</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M</span> - Malattia
+          </div>
+          <div>
+            <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P</span> - Permesso
+          </div>
+          <div>
+            <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
+          </div>
+          <div>
+            <span>8</span> - Ore lavorate
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Funzione per formattare e colorare il valore delle ore o stato
+  const formatTotalValue = (total) => {
+    // Gestisci le lettere speciali
+    if (total === "M") {
+      return <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M (Malattia)</span>;
+    } else if (total === "P") {
+      return <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P (Permesso)</span>;
+    } else if (total === "A") {
+      return <span style={{ color: '#000000', fontWeight: 'bold' }}>A (Assenza)</span>;
+    } else if (total > 0) {
+      // Per i valori numerici positivi
+      return total;
+    } else {
+      // Per valori zero o non validi
+      return '-';
+    }
+  };
+
+  // Calcola il totale delle ore, escludendo le lettere speciali
   const calculateTotalHours = () => {
-    return data.reduce((total, entry) => total + (parseInt(entry.total) || 0), 0);
+    return data.reduce((total, entry) => {
+      // Se il valore è una lettera speciale, non sommare
+      if (["M", "P", "A"].includes(entry.total)) {
+        return total;
+      }
+      return total + (parseInt(entry.total) || 0);
+    }, 0);
   };
 
   // Controlla se è possibile segnalare errori (prima del giorno 5 del mese successivo)
@@ -261,13 +314,17 @@ const TimesheetTable = ({
                 </span>
               </div>
             )}
+            
+            {/* Aggiungi la legenda solo se ci sono dati */}
+            {data.length > 0 && <TimesheetLegend />}
+            
             <div className="table-responsive">
               <table id="timesheet-table">
                 <thead>
                   <tr>
                     <th>Data</th>
                     <th>Giorno</th>
-                    <th>Totale Ore</th>
+                    <th>Totale Ore / Stato</th>
                     <th>Note</th>
                     <th>Azioni</th>
                   </tr>
@@ -300,7 +357,7 @@ const TimesheetTable = ({
                             }}>Weekend</span>
                           )}
                         </td>
-                        <td>{entry.total > 0 ? entry.total : '-'}</td>
+                        <td>{formatTotalValue(entry.total)}</td>
                         <td>{entry.notes || '-'}</td>
                         <td>
                           <button 

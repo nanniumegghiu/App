@@ -142,8 +142,19 @@ const AdminReports = () => {
         return new Date(a.date) - new Date(b.date);
       });
       
-      // Calcola il totale delle ore
-      const totalHours = sortedEntries.reduce((sum, entry) => sum + (parseInt(entry.total) || 0), 0);
+      // Calcola il totale delle ore (solo per i valori numerici, escludendo M, P, A)
+      const totalHours = sortedEntries.reduce((sum, entry) => {
+        // Controlla se il valore total è una lettera speciale
+        if (["M", "P", "A"].includes(entry.total)) {
+          return sum; // Se è una lettera, non sommare
+        }
+        return sum + (parseInt(entry.total) || 0);
+      }, 0);
+      
+      // Conta i giorni con lettere speciali
+      const mCount = sortedEntries.filter(entry => entry.total === "M").length;
+      const pCount = sortedEntries.filter(entry => entry.total === "P").length;
+      const aCount = sortedEntries.filter(entry => entry.total === "A").length;
       
       // Crea la struttura del foglio Excel
       const worksheetData = [
@@ -153,15 +164,36 @@ const AdminReports = () => {
         [`Dipendente: ${userName}`],
         [],
         // Intestazioni colonne
-        ['Data', 'Giorno', 'Ore Totali', 'Note']
+        ['Data', 'Giorno', 'Ore/Stato', 'Note']
       ];
       
       // Aggiungi i dati delle ore
       sortedEntries.forEach(entry => {
+        // Verifica il tipo di valore in total
+        let totalValue = entry.total;
+        
+        // Formatta in base al tipo di valore
+        if (["M", "P", "A"].includes(entry.total)) {
+          switch(entry.total) {
+            case "M":
+              totalValue = "M (Malattia)";
+              break;
+            case "P":
+              totalValue = "P (Permesso)";
+              break;
+            case "A":
+              totalValue = "A (Assenza)";
+              break;
+          }
+        } else {
+          // Se è un numero, formatta come tale
+          totalValue = entry.total > 0 ? entry.total : 0;
+        }
+        
         worksheetData.push([
           formatDate(entry.date),
           entry.day,
-          entry.total > 0 ? entry.total : 0,
+          totalValue,
           entry.notes || ''
         ]);
       });
@@ -170,10 +202,20 @@ const AdminReports = () => {
       worksheetData.push([]);
       worksheetData.push(['TOTALE ORE', '', totalHours, '']);
       
+      // Aggiungi il conteggio dei giorni speciali se presenti
+      if (mCount > 0 || pCount > 0 || aCount > 0) {
+        worksheetData.push([]);
+        worksheetData.push(['RIEPILOGO GIORNI SPECIALI', '', '', '']);
+        if (mCount > 0) worksheetData.push(['Giorni di malattia (M)', '', mCount, '']);
+        if (pCount > 0) worksheetData.push(['Giorni di permesso (P)', '', pCount, '']);
+        if (aCount > 0) worksheetData.push(['Giorni di assenza (A)', '', aCount, '']);
+      }
+      
       return {
         name: userName,
         data: worksheetData,
-        totalHours
+        totalHours,
+        specialDays: { mCount, pCount, aCount }
       };
     } catch (error) {
       console.error(`Errore nella generazione del report per l'utente ${userId}:`, error);
@@ -265,7 +307,7 @@ const AdminReports = () => {
         const summaryData = [
           [`RIEPILOGO ORE LAVORATIVE - ${getMonthName(selectedMonth).toUpperCase()} ${selectedYear}`],
           [],
-          ['Dipendente', 'Totale Ore'],
+          ['Dipendente', 'Totale Ore', 'Giorni Malattia', 'Giorni Permesso', 'Giorni Assenza'],
           []
         ];
         
@@ -278,8 +320,19 @@ const AdminReports = () => {
           if (userReport) {
             totalUsersWithData++;
             
+            // Estrai i conteggi dei giorni speciali
+            const mCount = userReport.specialDays?.mCount || 0;
+            const pCount = userReport.specialDays?.pCount || 0;
+            const aCount = userReport.specialDays?.aCount || 0;
+            
             // Aggiungi al foglio riepilogativo
-            summaryData.push([userName, userReport.totalHours]);
+            summaryData.push([
+              userName, 
+              userReport.totalHours, 
+              mCount,
+              pCount,
+              aCount
+            ]);
             
             // Crea un foglio per l'utente
             const worksheet = XLSX.utils.aoa_to_sheet(userReport.data);
@@ -313,14 +366,27 @@ const AdminReports = () => {
           return;
         }
         
-        // Calcola il totale complessivo
+        // Calcola il totale complessivo delle ore
         const grandTotal = summaryData
           .slice(4) // Salta intestazioni
           .reduce((total, row) => total + (row[1] || 0), 0);
         
-        // Aggiungi il totale complessivo
+        // Calcola i totali dei giorni speciali
+        const totalMdays = summaryData
+          .slice(4)
+          .reduce((total, row) => total + (row[2] || 0), 0);
+          
+        const totalPdays = summaryData
+          .slice(4)
+          .reduce((total, row) => total + (row[3] || 0), 0);
+          
+        const totalAdays = summaryData
+          .slice(4)
+          .reduce((total, row) => total + (row[4] || 0), 0);
+        
+        // Aggiungi i totali complessivi
         summaryData.push([]);
-        summaryData.push(['TOTALE COMPLESSIVO', grandTotal]);
+        summaryData.push(['TOTALE COMPLESSIVO', grandTotal, totalMdays, totalPdays, totalAdays]);
         
         // Crea il foglio riepilogativo
         const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -328,14 +394,17 @@ const AdminReports = () => {
         // Imposta larghezza colonne per il riepilogo
         const sumCols = [
           {wch: 30}, // Dipendente
-          {wch: 15}  // Totale Ore
+          {wch: 15}, // Totale Ore
+          {wch: 15}, // Giorni Malattia
+          {wch: 15}, // Giorni Permesso
+          {wch: 15}  // Giorni Assenza
         ];
         summarySheet['!cols'] = sumCols;
         
         // Merge per l'intestazione del riepilogo
         if(!summarySheet['!merges']) summarySheet['!merges'] = [];
         summarySheet['!merges'].push(
-          {s: {r: 0, c: 0}, e: {r: 0, c: 1}} // Intestazione principale
+          {s: {r: 0, c: 0}, e: {r: 0, c: 4}} // Intestazione principale
         );
         
         // Aggiungi il foglio riepilogativo come primo foglio
@@ -469,6 +538,7 @@ const AdminReports = () => {
         <ul>
           <li>Dettaglio giornaliero delle ore lavorate</li>
           <li>Totale ore mensili per dipendente</li>
+          <li>Giorni di malattia (M), permesso (P) o assenza (A)</li>
           <li>Note associate a ciascun giorno</li>
         </ul>
         <p>Se selezioni "Tutti i dipendenti", verrà generato un report con un foglio riepilogativo e un foglio dettagliato per ogni dipendente.</p>
