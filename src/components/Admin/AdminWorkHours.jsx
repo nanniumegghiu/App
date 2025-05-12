@@ -62,7 +62,14 @@ const AdminWorkHours = () => {
         if (docSnap.exists()) {
           console.log("Documento trovato, caricamento entries");
           const data = docSnap.data();
-          setTimeEntries(data.entries || []);
+          
+          // Se le entries esistenti non hanno la proprietà overtime, aggiungila
+          const entriesWithOvertime = data.entries.map(entry => ({
+            ...entry,
+            overtime: entry.overtime !== undefined ? entry.overtime : 0
+          }));
+          
+          setTimeEntries(entriesWithOvertime);
         } else {
           console.log("Documento non trovato, generazione giorni completi del mese");
           // Genera date complete per il mese selezionato, inclusi weekend
@@ -96,6 +103,7 @@ const AdminWorkHours = () => {
         date: dateStr,
         day: dayNames[dayOfWeek],
         total: 0, // Ore totali come numero intero (inizialmente zero)
+        overtime: 0, // Ore di straordinario (inizialmente zero)
         notes: "",
         isWeekend: isWeekend // Aggiungiamo una proprietà per identificare il weekend
       });
@@ -140,11 +148,29 @@ const AdminWorkHours = () => {
       totalHours = 0;
     }
     
-    // Limita il valore a un range ragionevole (0-24 ore)
-    totalHours = Math.max(0, Math.min(24, totalHours));
+    // Limita il valore a un range ragionevole (0-8 ore)
+    totalHours = Math.max(0, Math.min(8, totalHours));
     
     const updatedEntries = [...timeEntries];
     updatedEntries[index].total = totalHours;
+    setTimeEntries(updatedEntries);
+  };
+
+  // Gestisce l'input delle ore di straordinario
+  const handleOvertimeChange = (index, value) => {
+    // Tratta il valore come un numero
+    let overtimeHours = value === "" ? 0 : parseInt(value);
+    
+    // Controlli di validità per i numeri
+    if (isNaN(overtimeHours)) {
+      overtimeHours = 0;
+    }
+    
+    // Limita il valore a un range ragionevole (0-12 ore di straordinario)
+    overtimeHours = Math.max(0, Math.min(12, overtimeHours));
+    
+    const updatedEntries = [...timeEntries];
+    updatedEntries[index].overtime = overtimeHours;
     setTimeEntries(updatedEntries);
   };
 
@@ -186,6 +212,7 @@ const AdminWorkHours = () => {
           date: entry.date,
           day: entry.day,
           total: totalValue,
+          overtime: parseInt(entry.overtime) || 0, // Assicurati che overtime sia un intero
           notes: entry.notes || "",
           isWeekend: entry.isWeekend || false
         };
@@ -311,6 +338,9 @@ const AdminWorkHours = () => {
                     <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
                   </div>
                 </div>
+                <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#666' }}>
+                  Le ore standard sono limitate a un massimo di 8. Le ore extra vanno inserite come straordinario.
+                </div>
               </div>
             
               <table className="work-hours-table">
@@ -318,14 +348,15 @@ const AdminWorkHours = () => {
                   <tr>
                     <th>Data</th>
                     <th>Giorno</th>
-                    <th>Ore Totali / Stato</th>
+                    <th>Ore Standard (0-8)</th>
+                    <th>Straordinario</th>
                     <th>Note</th>
                   </tr>
                 </thead>
                 <tbody>
                   {timeEntries.length === 0 ? (
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center' }}>
+                      <td colSpan="5" style={{ textAlign: 'center' }}>
                         Nessun giorno in questo mese
                       </td>
                     </tr>
@@ -359,8 +390,23 @@ const AdminWorkHours = () => {
                             className="form-control"
                             style={{ 
                               color: getTotalValueColor(entry.total),
-                              fontWeight: ["M", "P", "A"].includes(entry.total) ? 'bold' : 'normal' 
+                              fontWeight: ["M", "P", "A"].includes(entry.total) ? 'bold' : 'normal',
+                              width: '80px'
                             }}
+                            title="Inserisci un valore tra 0 e 8 o una lettera speciale (M, P, A)"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={entry.overtime || 0} 
+                            onChange={e => handleOvertimeChange(index, e.target.value)}
+                            min="0"
+                            max="12"
+                            className="form-control"
+                            style={{ width: '80px' }}
+                            disabled={["M", "P", "A"].includes(entry.total)}
+                            title="Inserisci le ore di straordinario (disponibile solo per giorni lavorati)"
                           />
                         </td>
                         <td>

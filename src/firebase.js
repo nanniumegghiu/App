@@ -326,7 +326,7 @@ export const updateReportStatus = async (reportId, newStatus) => {
   }
 };
 
-// Funzione ottimizzata per salvare le ore lavorative con supporto per lettere speciali
+// Funzione ottimizzata per salvare le ore lavorative con supporto per lettere speciali e straordinario
 export const saveWorkHours = async (userId, month, year, entries) => {
   console.log("saveWorkHours: Tentativo di salvare le ore lavorative con i seguenti parametri:");
   console.log("userId:", userId);
@@ -359,6 +359,8 @@ export const saveWorkHours = async (userId, month, year, entries) => {
         day: entry.day,
         // Se è una lettera speciale, conservala come stringa, altrimenti converti in intero
         total: isSpecialLetter ? entry.total : (parseInt(entry.total) || 0),
+        // Aggiungi il campo overtime (ore straordinarie)
+        overtime: isSpecialLetter ? 0 : (parseInt(entry.overtime) || 0), // Se è un giorno speciale, nessuno straordinario
         notes: entry.notes || "",
         isWeekend: entry.isWeekend || false
       };
@@ -473,6 +475,15 @@ export const getUserWorkHoursByMonth = async (userId, month, year) => {
     if (docSnap.exists()) {
       console.log(`getUserWorkHoursByMonth: documento trovato con ID=${docId}`);
       const data = docSnap.data();
+      
+      // Assicurati che tutte le entries abbiano il campo overtime
+      if (data.entries && Array.isArray(data.entries)) {
+        data.entries = data.entries.map(entry => ({
+          ...entry,
+          overtime: entry.overtime !== undefined ? entry.overtime : 0
+        }));
+      }
+      
       return {
         id: docSnap.id,
         ...data
@@ -490,6 +501,15 @@ export const getUserWorkHoursByMonth = async (userId, month, year) => {
       if (altDocSnap.exists()) {
         console.log(`getUserWorkHoursByMonth: documento trovato con ID=${altDocId}`);
         const altData = altDocSnap.data();
+        
+        // Assicurati che tutte le entries abbiano il campo overtime
+        if (altData.entries && Array.isArray(altData.entries)) {
+          altData.entries = altData.entries.map(entry => ({
+            ...entry,
+            overtime: entry.overtime !== undefined ? entry.overtime : 0
+          }));
+        }
+        
         return {
           id: altDocSnap.id,
           ...altData
@@ -520,6 +540,15 @@ export const getUserWorkHoursByMonth = async (userId, month, year) => {
         
         if (docMonth === normalizedMonth) {
           console.log(`getUserWorkHoursByMonth: Corrispondenza trovata in query generale`);
+          
+          // Assicurati che tutte le entries abbiano il campo overtime
+          if (data.entries && Array.isArray(data.entries)) {
+            data.entries = data.entries.map(entry => ({
+              ...entry,
+              overtime: entry.overtime !== undefined ? entry.overtime : 0
+            }));
+          }
+          
           return {
             id: doc.id,
             ...data

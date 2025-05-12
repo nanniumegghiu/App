@@ -102,10 +102,17 @@ const TimesheetTable = ({
         
         if (entriesData) {
           console.log(`TimesheetTable: Dati trovati - ${entriesData.length} entries`);
+          // Assicurati che ogni entry abbia il campo 'overtime'
+          const entriesWithOvertime = entriesData.map(entry => ({
+            ...entry,
+            overtime: entry.overtime !== undefined ? entry.overtime : 0
+          }));
+          
           // Ordina le entries per data
-          const sortedEntries = [...entriesData].sort((a, b) => {
+          const sortedEntries = [...entriesWithOvertime].sort((a, b) => {
             return new Date(a.date) - new Date(b.date);
           });
+          
           setData(sortedEntries);
         } else {
           console.log(`TimesheetTable: Nessun dato trovato, generando giorni completi (inclusi weekend)`);
@@ -147,6 +154,7 @@ const TimesheetTable = ({
         date: dateStr,
         day: dayNames[dayOfWeek],
         total: 0,
+        overtime: 0, // Aggiungi campo overtime
         notes: "",
         isWeekend: isWeekend // Aggiungiamo questa proprietà per identificare il weekend
       });
@@ -180,7 +188,7 @@ const TimesheetTable = ({
     return dateStr;
   };
 
-  // Componente di legenda per le lettere speciali
+  // Componente di legenda per le lettere speciali e le ore
   const TimesheetLegend = () => {
     return (
       <div className="timesheet-legend" style={{ 
@@ -202,7 +210,10 @@ const TimesheetTable = ({
             <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
           </div>
           <div>
-            <span>8</span> - Ore lavorate
+            <span>8</span> - Ore standard
+          </div>
+          <div>
+            <span style={{ color: '#3498db' }}>2</span> - Ore straordinario
           </div>
         </div>
       </div>
@@ -210,7 +221,7 @@ const TimesheetTable = ({
   };
 
   // Funzione per formattare e colorare il valore delle ore o stato
-  const formatTotalValue = (total) => {
+  const formatTotalWithOvertime = (total, overtime) => {
     // Gestisci le lettere speciali
     if (total === "M") {
       return <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M (Malattia)</span>;
@@ -218,24 +229,43 @@ const TimesheetTable = ({
       return <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P (Permesso)</span>;
     } else if (total === "A") {
       return <span style={{ color: '#000000', fontWeight: 'bold' }}>A (Assenza)</span>;
-    } else if (total > 0) {
-      // Per i valori numerici positivi
-      return total;
     } else {
-      // Per valori zero o non validi
-      return '-';
+      // Prepara una visualizzazione completa delle ore
+      const standardHours = total > 0 ? total : '-';
+      const overtimeHours = overtime > 0 ? overtime : '-';
+      
+      return (
+        <div>
+          <div>{standardHours}</div>
+          {overtime > 0 && (
+            <div style={{ color: '#3498db', fontWeight: 'bold', fontSize: '0.9em' }}>
+              +{overtimeHours} straord.
+            </div>
+          )}
+        </div>
+      );
     }
   };
 
-  // Calcola il totale delle ore, escludendo le lettere speciali
+  // Calcola il totale delle ore, incluse le ore di straordinario
   const calculateTotalHours = () => {
-    return data.reduce((total, entry) => {
+    const standardHours = data.reduce((total, entry) => {
       // Se il valore è una lettera speciale, non sommare
       if (["M", "P", "A"].includes(entry.total)) {
         return total;
       }
       return total + (parseInt(entry.total) || 0);
     }, 0);
+    
+    const overtimeHours = data.reduce((total, entry) => {
+      // Somma solo le ore di straordinario per i giorni lavorati
+      if (!["M", "P", "A"].includes(entry.total)) {
+        return total + (parseInt(entry.overtime) || 0);
+      }
+      return total;
+    }, 0);
+    
+    return { standardHours, overtimeHours, totalHours: standardHours + overtimeHours };
   };
 
   // Controlla se è possibile segnalare errori (prima del giorno 5 del mese successivo)
@@ -324,7 +354,7 @@ const TimesheetTable = ({
                   <tr>
                     <th>Data</th>
                     <th>Giorno</th>
-                    <th>Totale Ore / Stato</th>
+                    <th>Ore Lavorate / Stato</th>
                     <th>Note</th>
                     <th>Azioni</th>
                   </tr>
@@ -357,7 +387,7 @@ const TimesheetTable = ({
                             }}>Weekend</span>
                           )}
                         </td>
-                        <td>{formatTotalValue(entry.total)}</td>
+                        <td>{formatTotalWithOvertime(entry.total, entry.overtime)}</td>
                         <td>{entry.notes || '-'}</td>
                         <td>
                           <button 
@@ -388,8 +418,18 @@ const TimesheetTable = ({
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan="2" style={{ textAlign: 'right', fontWeight: 'bold' }}>Totale Ore:</td>
-                    <td style={{ fontWeight: 'bold' }}>{calculateTotalHours()}</td>
+                    <td colSpan="2" style={{ textAlign: 'right', fontWeight: 'bold' }}>Totale Ore Standard:</td>
+                    <td style={{ fontWeight: 'bold' }}>{calculateTotalHours().standardHours}</td>
+                    <td colSpan="2"></td>
+                  </tr>
+                  <tr>
+                    <td colSpan="2" style={{ textAlign: 'right', fontWeight: 'bold' }}>Totale Straordinario:</td>
+                    <td style={{ fontWeight: 'bold', color: '#3498db' }}>{calculateTotalHours().overtimeHours}</td>
+                    <td colSpan="2"></td>
+                  </tr>
+                  <tr>
+                    <td colSpan="2" style={{ textAlign: 'right', fontWeight: 'bold' }}>Totale Complessivo:</td>
+                    <td style={{ fontWeight: 'bold' }}>{calculateTotalHours().totalHours}</td>
                     <td colSpan="2"></td>
                   </tr>
                 </tfoot>

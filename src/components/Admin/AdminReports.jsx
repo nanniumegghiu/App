@@ -57,9 +57,19 @@ const AdminReports = () => {
       
       if (docSnap.exists()) {
         console.log(`Documento trovato: ${docId}`);
+        const data = docSnap.data();
+        
+        // Assicurati che tutte le entries abbiano il campo overtime
+        if (data.entries && Array.isArray(data.entries)) {
+          data.entries = data.entries.map(entry => ({
+            ...entry,
+            overtime: entry.overtime !== undefined ? entry.overtime : 0
+          }));
+        }
+        
         return {
           id: docSnap.id,
-          ...docSnap.data()
+          ...data
         };
       }
       
@@ -74,9 +84,19 @@ const AdminReports = () => {
         
         if (altDocSnap.exists()) {
           console.log(`Documento trovato (formato alternativo): ${altDocId}`);
+          const altData = altDocSnap.data();
+          
+          // Assicurati che tutte le entries abbiano il campo overtime
+          if (altData.entries && Array.isArray(altData.entries)) {
+            altData.entries = altData.entries.map(entry => ({
+              ...entry,
+              overtime: entry.overtime !== undefined ? entry.overtime : 0
+            }));
+          }
+          
           return {
             id: altDocSnap.id,
-            ...altDocSnap.data()
+            ...altData
           };
         }
       }
@@ -104,6 +124,15 @@ const AdminReports = () => {
         
         if (normalizedDataMonth === normalizedInputMonth) {
           console.log(`Corrispondenza trovata: ${normalizedDataMonth} === ${normalizedInputMonth}`);
+          
+          // Assicurati che tutte le entries abbiano il campo overtime
+          if (data.entries && Array.isArray(data.entries)) {
+            data.entries = data.entries.map(entry => ({
+              ...entry,
+              overtime: entry.overtime !== undefined ? entry.overtime : 0
+            }));
+          }
+          
           return {
             id: doc.id,
             ...data
@@ -142,14 +171,26 @@ const AdminReports = () => {
         return new Date(a.date) - new Date(b.date);
       });
       
-      // Calcola il totale delle ore (solo per i valori numerici, escludendo M, P, A)
-      const totalHours = sortedEntries.reduce((sum, entry) => {
+      // Calcola il totale delle ore standard (solo per i valori numerici, escludendo M, P, A)
+      const totalStandardHours = sortedEntries.reduce((sum, entry) => {
         // Controlla se il valore total è una lettera speciale
         if (["M", "P", "A"].includes(entry.total)) {
           return sum; // Se è una lettera, non sommare
         }
         return sum + (parseInt(entry.total) || 0);
       }, 0);
+      
+      // Calcola il totale delle ore di straordinario
+      const totalOvertimeHours = sortedEntries.reduce((sum, entry) => {
+        // Somma solo le ore di straordinario per i giorni lavorati (non per i giorni speciali)
+        if (!["M", "P", "A"].includes(entry.total)) {
+          return sum + (parseInt(entry.overtime) || 0);
+        }
+        return sum;
+      }, 0);
+      
+      // Calcola il totale complessivo (standard + straordinario)
+      const totalHours = totalStandardHours + totalOvertimeHours;
       
       // Conta i giorni con lettere speciali
       const mCount = sortedEntries.filter(entry => entry.total === "M").length;
@@ -164,57 +205,67 @@ const AdminReports = () => {
         [`Dipendente: ${userName}`],
         [],
         // Intestazioni colonne
-        ['Data', 'Giorno', 'Ore/Stato', 'Note']
+        ['Data', 'Giorno', 'Ore Standard', 'Ore Straordinario', 'Note']
       ];
       
       // Aggiungi i dati delle ore
       sortedEntries.forEach(entry => {
         // Verifica il tipo di valore in total
         let totalValue = entry.total;
+        let overtimeValue = entry.overtime || 0;
         
         // Formatta in base al tipo di valore
         if (["M", "P", "A"].includes(entry.total)) {
           switch(entry.total) {
             case "M":
               totalValue = "M (Malattia)";
+              overtimeValue = "-";
               break;
             case "P":
               totalValue = "P (Permesso)";
+              overtimeValue = "-";
               break;
             case "A":
               totalValue = "A (Assenza)";
+              overtimeValue = "-";
               break;
           }
         } else {
           // Se è un numero, formatta come tale
           totalValue = entry.total > 0 ? entry.total : 0;
+          overtimeValue = entry.overtime > 0 ? entry.overtime : 0;
         }
         
         worksheetData.push([
           formatDate(entry.date),
           entry.day,
           totalValue,
+          overtimeValue,
           entry.notes || ''
         ]);
       });
       
       // Aggiungi il totale in fondo
       worksheetData.push([]);
-      worksheetData.push(['TOTALE ORE', '', totalHours, '']);
+      worksheetData.push(['TOTALE ORE STANDARD', '', totalStandardHours, '', '']);
+      worksheetData.push(['TOTALE ORE STRAORDINARIO', '', '', totalOvertimeHours, '']);
+      worksheetData.push(['TOTALE COMPLESSIVO', '', totalHours, '', '']);
       
       // Aggiungi il conteggio dei giorni speciali se presenti
       if (mCount > 0 || pCount > 0 || aCount > 0) {
         worksheetData.push([]);
-        worksheetData.push(['RIEPILOGO GIORNI SPECIALI', '', '', '']);
-        if (mCount > 0) worksheetData.push(['Giorni di malattia (M)', '', mCount, '']);
-        if (pCount > 0) worksheetData.push(['Giorni di permesso (P)', '', pCount, '']);
-        if (aCount > 0) worksheetData.push(['Giorni di assenza (A)', '', aCount, '']);
+        worksheetData.push(['RIEPILOGO GIORNI SPECIALI', '', '', '', '']);
+        if (mCount > 0) worksheetData.push(['Giorni di malattia (M)', '', mCount, '', '']);
+        if (pCount > 0) worksheetData.push(['Giorni di permesso (P)', '', pCount, '', '']);
+        if (aCount > 0) worksheetData.push(['Giorni di assenza (A)', '', aCount, '', '']);
       }
       
       return {
         name: userName,
         data: worksheetData,
-        totalHours,
+        standardHours: totalStandardHours,
+        overtimeHours: totalOvertimeHours,
+        totalHours: totalHours,
         specialDays: { mCount, pCount, aCount }
       };
     } catch (error) {
@@ -264,7 +315,8 @@ const AdminReports = () => {
         const wscols = [
           {wch: 15}, // Data
           {wch: 15}, // Giorno
-          {wch: 12}, // Ore Totali
+          {wch: 15}, // Ore Standard
+          {wch: 15}, // Ore Straordinario
           {wch: 40}  // Note
         ];
         worksheet['!cols'] = wscols;
@@ -272,7 +324,7 @@ const AdminReports = () => {
         // Merge per l'intestazione
         if(!worksheet['!merges']) worksheet['!merges'] = [];
         worksheet['!merges'].push(
-          {s: {r: 0, c: 0}, e: {r: 0, c: 3}} // Intestazione principale
+          {s: {r: 0, c: 0}, e: {r: 0, c: 4}} // Intestazione principale
         );
         
         // Aggiungi il foglio alla workbook
@@ -307,7 +359,7 @@ const AdminReports = () => {
         const summaryData = [
           [`RIEPILOGO ORE LAVORATIVE - ${getMonthName(selectedMonth).toUpperCase()} ${selectedYear}`],
           [],
-          ['Dipendente', 'Totale Ore', 'Giorni Malattia', 'Giorni Permesso', 'Giorni Assenza'],
+          ['Dipendente', 'Ore Standard', 'Ore Straordinario', 'Totale Ore', 'Giorni M', 'Giorni P', 'Giorni A'],
           []
         ];
         
@@ -328,7 +380,9 @@ const AdminReports = () => {
             // Aggiungi al foglio riepilogativo
             summaryData.push([
               userName, 
-              userReport.totalHours, 
+              userReport.standardHours, 
+              userReport.overtimeHours,
+              userReport.totalHours,
               mCount,
               pCount,
               aCount
@@ -341,7 +395,8 @@ const AdminReports = () => {
             const wscols = [
               {wch: 15}, // Data
               {wch: 15}, // Giorno
-              {wch: 12}, // Ore Totali
+              {wch: 15}, // Ore Standard
+              {wch: 15}, // Ore Straordinario
               {wch: 40}  // Note
             ];
             worksheet['!cols'] = wscols;
@@ -349,7 +404,7 @@ const AdminReports = () => {
             // Merge per l'intestazione
             if(!worksheet['!merges']) worksheet['!merges'] = [];
             worksheet['!merges'].push(
-              {s: {r: 0, c: 0}, e: {r: 0, c: 3}} // Intestazione principale
+              {s: {r: 0, c: 0}, e: {r: 0, c: 4}} // Intestazione principale
             );
             
             // Aggiungi il foglio alla workbook
@@ -366,27 +421,41 @@ const AdminReports = () => {
           return;
         }
         
-        // Calcola il totale complessivo delle ore
-        const grandTotal = summaryData
+        // Calcola i totali complessivi
+        const grandTotalStandard = summaryData
           .slice(4) // Salta intestazioni
           .reduce((total, row) => total + (row[1] || 0), 0);
+          
+        const grandTotalOvertime = summaryData
+          .slice(4)
+          .reduce((total, row) => total + (row[2] || 0), 0);
+          
+        const grandTotal = grandTotalStandard + grandTotalOvertime;
         
         // Calcola i totali dei giorni speciali
         const totalMdays = summaryData
           .slice(4)
-          .reduce((total, row) => total + (row[2] || 0), 0);
+          .reduce((total, row) => total + (row[4] || 0), 0);
           
         const totalPdays = summaryData
           .slice(4)
-          .reduce((total, row) => total + (row[3] || 0), 0);
+          .reduce((total, row) => total + (row[5] || 0), 0);
           
         const totalAdays = summaryData
           .slice(4)
-          .reduce((total, row) => total + (row[4] || 0), 0);
+          .reduce((total, row) => total + (row[6] || 0), 0);
         
         // Aggiungi i totali complessivi
         summaryData.push([]);
-        summaryData.push(['TOTALE COMPLESSIVO', grandTotal, totalMdays, totalPdays, totalAdays]);
+        summaryData.push([
+          'TOTALE COMPLESSIVO', 
+          grandTotalStandard, 
+          grandTotalOvertime, 
+          grandTotal, 
+          totalMdays, 
+          totalPdays, 
+          totalAdays
+        ]);
         
         // Crea il foglio riepilogativo
         const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -394,17 +463,19 @@ const AdminReports = () => {
         // Imposta larghezza colonne per il riepilogo
         const sumCols = [
           {wch: 30}, // Dipendente
+          {wch: 15}, // Ore Standard
+          {wch: 15}, // Ore Straordinario
           {wch: 15}, // Totale Ore
-          {wch: 15}, // Giorni Malattia
-          {wch: 15}, // Giorni Permesso
-          {wch: 15}  // Giorni Assenza
+          {wch: 10}, // Giorni M
+          {wch: 10}, // Giorni P
+          {wch: 10}  // Giorni A
         ];
         summarySheet['!cols'] = sumCols;
         
         // Merge per l'intestazione del riepilogo
         if(!summarySheet['!merges']) summarySheet['!merges'] = [];
         summarySheet['!merges'].push(
-          {s: {r: 0, c: 0}, e: {r: 0, c: 4}} // Intestazione principale
+          {s: {r: 0, c: 0}, e: {r: 0, c: 6}} // Intestazione principale
         );
         
         // Aggiungi il foglio riepilogativo come primo foglio
@@ -536,8 +607,9 @@ const AdminReports = () => {
         <p>Seleziona un dipendente specifico o "Tutti i dipendenti" per generare un report delle ore lavorate.</p>
         <p>Il report includerà le seguenti informazioni:</p>
         <ul>
-          <li>Dettaglio giornaliero delle ore lavorate</li>
-          <li>Totale ore mensili per dipendente</li>
+          <li>Dettaglio giornaliero delle ore standard lavorate (max 8 ore)</li>
+          <li>Dettaglio delle ore di straordinario</li>
+          <li>Totale ore standard, straordinario e complessivo</li>
           <li>Giorni di malattia (M), permesso (P) o assenza (A)</li>
           <li>Note associate a ciascun giorno</li>
         </ul>
