@@ -1,4 +1,4 @@
-// src/components/Admin/AdminPanel.jsx
+// src/components/Admin/AdminPanel.jsx (updated)
 import React, { useState, useEffect } from 'react';
 import { getAllReports, updateReportStatus } from '../../firebase';
 import AdminReportsTable from './AdminReportsTable';
@@ -6,6 +6,7 @@ import AdminFilters from './AdminFilters';
 import UserManagement from './UserManagement';
 import AdminWorkHours from './AdminWorkHours';
 import AdminReports from './AdminReports';
+import AdminLeaveRequests from './AdminLeaveRequests';
 
 const AdminPanel = () => {
   const [reports, setReports] = useState([]);
@@ -18,7 +19,7 @@ const AdminPanel = () => {
     status: '',
     user: ''
   });
-  const [activeTab, setActiveTab] = useState('workHours'); // 'workHours', 'reports', 'users', 'download'
+  const [activeTab, setActiveTab] = useState('workHours'); // 'workHours', 'reports', 'users', 'download', 'leaveRequests'
 
   // Recupera tutte le segnalazioni al caricamento del componente
   useEffect(() => {
@@ -128,6 +129,12 @@ const AdminPanel = () => {
           Gestione Segnalazioni
         </button>
         <button 
+          className={`tab-button ${activeTab === 'leaveRequests' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('leaveRequests')}
+        >
+          Permessi e Ferie
+        </button>
+        <button 
           className={`tab-button ${activeTab === 'users' ? 'active' : ''}`} 
           onClick={() => setActiveTab('users')}
         >
@@ -166,6 +173,10 @@ const AdminPanel = () => {
             />
           )}
         </>
+      )}
+      
+      {!isLoading && activeTab === 'leaveRequests' && (
+        <AdminLeaveRequests />
       )}
       
       {!isLoading && activeTab === 'users' && (

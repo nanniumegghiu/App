@@ -3,6 +3,8 @@ import Header from './components/Header';
 import UserInfo from './components/UserInfo';
 import TimesheetTable from './components/TimesheetTable';
 import ReportsTable from './components/ReportsTable';
+import UserRequests from './components/UserRequests';
+import UserNavigation from './components/UserNavigation';
 import ReportForm from './components/ReportForm';
 import Notification from './components/Notification';
 import Login from './components/Login';
@@ -11,11 +13,15 @@ import { auth, db, getUserReportsByMonth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import './index.css';
+import './request.css';
+import './admin-requests.css';
+import './user-navigation.css';
 
 function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isAdminView, setIsAdminView] = useState(false);
+  const [activeTab, setActiveTab] = useState('hours'); // 'hours' o 'requests'
 
   // Stati applicazione (visibili solo se loggato)
   const [selectedMonth, setSelectedMonth] = useState('4');
@@ -98,10 +104,10 @@ function App() {
       }
     };
 
-    if (user && !isAdminView) {
+    if (user && !isAdminView && activeTab === 'hours') {
       loadUserReports();
     }
-  }, [user, selectedMonth, selectedYear, isAdminView]);
+  }, [user, selectedMonth, selectedYear, isAdminView, activeTab]);
 
   const handleReportError = (date) => {
     console.log(`App: Richiesta segnalazione errore per data ${date}`);
@@ -176,6 +182,11 @@ function App() {
     setIsAdminView(!isAdminView);
   };
 
+  // Funzione per cambiare tab nella dashboard utente
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
+
   if (!user) {
     // Mostra il login se non autenticato
     return <Login onLogin={(user) => setUser(user)} />;
@@ -201,28 +212,42 @@ function App() {
             onClose={() => setShowNotification(false)}
             type={notificationType}
           />
-
-          <UserInfo
-            selectedMonth={selectedMonth}
-            setSelectedMonth={setSelectedMonth}
-            selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
+          
+          {/* Barra di navigazione per la dashboard utente */}
+          <UserNavigation 
+            activeTab={activeTab} 
+            onTabChange={handleTabChange} 
           />
 
-          <TimesheetTable
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onReportError={handleReportError}
-            highlightedRow={highlightedRow}
-            rowRef={(date, el) => (tableRowsRef.current[date] = el)}
-          />
+          {activeTab === 'hours' ? (
+            // Contenuto del tab "Gestione Ore"
+            <>
+              <UserInfo
+                selectedMonth={selectedMonth}
+                setSelectedMonth={setSelectedMonth}
+                selectedYear={selectedYear}
+                setSelectedYear={setSelectedYear}
+              />
 
-          <ReportsTable 
-            reports={reports} 
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            isLoading={isLoadingReports}
-          />
+              <TimesheetTable
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                onReportError={handleReportError}
+                highlightedRow={highlightedRow}
+                rowRef={(date, el) => (tableRowsRef.current[date] = el)}
+              />
+
+              <ReportsTable 
+                reports={reports} 
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                isLoading={isLoadingReports}
+              />
+            </>
+          ) : (
+            // Contenuto del tab "Richieste Permessi/Ferie"
+            <UserRequests />
+          )}
         </div>
       )}
 

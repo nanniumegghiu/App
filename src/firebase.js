@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { 
   getFirestore, 
   collection, 
@@ -9,6 +9,7 @@ import {
   getDocs, 
   setDoc, 
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -16,6 +17,13 @@ import {
   Timestamp,
   addDoc
 } from "firebase/firestore";
+import { 
+  getStorage, 
+  ref as storageRef, 
+  uploadBytes as storageUploadBytes, 
+  getDownloadURL as storageGetDownloadURL, 
+  deleteObject as storageDeleteObject 
+} from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTCte23T93ucmDqdMUq0R16A08RhbAJXg",
@@ -30,9 +38,35 @@ const firebaseConfig = {
 // Inizializza Firebase
 const app = initializeApp(firebaseConfig);
 
-// Esporta autenticazione e database
+// Esporta autenticazione, database e storage
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const firebaseStorage = getStorage(app);
+
+// Esporta onAuthStateChanged da Firebase
+export { onAuthStateChanged } from "firebase/auth";
+
+// COSTANTI E UTILITY
+// Tipi di file consentiti per i certificati medici
+const ALLOWED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+// Dimensione massima del file (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Funzioni di utilità per la validazione dei file
+const isValidFileType = (file) => {
+  return ALLOWED_FILE_TYPES.includes(file.type);
+};
+
+const isValidFileSize = (file) => {
+  return file.size <= MAX_FILE_SIZE;
+};
+
+// Genera un nome di file unico basato sul timestamp
+const generateUniqueFileName = (originalFileName) => {
+  const timestamp = new Date().getTime();
+  const extension = originalFileName.split('.').pop().toLowerCase();
+  return `${timestamp}_${Math.random().toString(36).substring(2, 8)}.${extension}`;
+};
 
 // Funzioni per l'autenticazione
 export const loginWithEmail = (email, password) => {
@@ -88,7 +122,7 @@ export const updateUserData = async (userId, userData) => {
   });
 };
 
-// Funzioni per le segnalazioni
+// Funzioni per le segnalazioni (reports)
 export const addReport = async (reportData) => {
   try {
     const reportsCollection = collection(db, "reports");
@@ -583,5 +617,412 @@ export const getUserWorkHours = async (userId) => {
   } catch (error) {
     console.error("getUserWorkHours: Errore nel recupero delle ore lavorative:", error);
     throw error;
+  }
+};
+
+/**
+ * Invia una nuova richiesta di permesso/ferie/malattia con gestione migliorata dei certificati
+ * @param {Object} requestData - I dati della richiesta
+ * @param {File} certificateFile - Il file del certificato (solo per malattia)
+ * @returns {Promise<Object>} - I dati della richiesta inviata
+ */
+export const submitLeaveRequest = async (requestData, certificateFile = null) => {
+  try {
+    console.log("submitLeaveRequest: Tentativo di inviare una richiesta:", requestData);
+    
+    // Validazione dei dati
+    if (!requestData.type) throw new Error("Tipo di richiesta obbligatorio");
+    if (!requestData.userId) throw new Error("userId è obbligatorio");
+
+    // Validazione specifica per tipo di richiesta
+    if ((requestData.type === 'permission' || requestData.type === 'vacation') && !requestData.dateFrom) {
+      throw new Error("Data obbligatoria per permessi e ferie");
+    }
+    
+    if (requestData.type === 'vacation' && !requestData.dateTo) {
+      throw new Error("Data fine obbligatoria per ferie");
+    }
+    
+    // Validazione del file certificato per malattia
+    if (requestData.type === 'sickness' && certificateFile) {
+      // Verifica il tipo di file
+      if (!isValidFileType(certificateFile)) {
+        throw new Error(`Tipo di file non valido. Sono consentiti solo: ${ALLOWED_FILE_TYPES.join(', ')}`);
+      }
+      
+      // Verifica la dimensione del file
+      if (!isValidFileSize(certificateFile)) {
+        throw new Error(`File troppo grande. La dimensione massima consentita è ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+      }
+    } else if (requestData.type === 'sickness' && !certificateFile) {
+      throw new Error("Certificato obbligatorio per malattia");
+    }
+    
+    // Ottieni dati utente
+    const userDocRef = doc(db, "users", requestData.userId);
+    const userDoc = await getDoc(userDocRef);
+    
+    let userName = "";
+    let userEmail = "";
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      userEmail = userData.email || "";
+      if (userData.nome && userData.cognome) {
+        userName = `${userData.nome} ${userData.cognome}`;
+      } else {
+        userName = userEmail;
+      }
+    } else {
+      throw new Error("Utente non trovato");
+    }
+    
+    // Costruisci i dati completi della richiesta
+    const completeRequestData = {
+      ...requestData,
+      userEmail,
+      userName,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      lastUpdate: serverTimestamp(),
+      // Aggiungi metadati privacy per GDPR
+      dataPrivacyInfo: {
+        privacyNoticeAccepted: true,
+        retentionPeriod: "1 anno", // Periodo di conservazione
+        dataCategories: requestData.type === 'sickness' ? ["dati sanitari", "dati personali"] : ["dati personali"]
+      }
+    };
+    
+    // Gestisci upload file per malattia
+    let fileUrl = null;
+    let fileStoragePath = null;
+    
+    if (requestData.type === 'sickness' && certificateFile) {
+      // Genera un nome file univoco per evitare conflitti
+      const uniqueFileName = generateUniqueFileName(certificateFile.name);
+      
+      // Genera un percorso univoco per il file con struttura organizzata
+      const userId = requestData.userId;
+      const datePrefix = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const filePath = `certificates/${userId}/${datePrefix}_${uniqueFileName}`;
+      
+      console.log(`submitLeaveRequest: Tentativo di caricare file in: ${filePath}`);
+      
+      // Carica il file su Firebase Storage
+      const fileRef = storageRef(firebaseStorage, filePath);
+      await storageUploadBytes(fileRef, certificateFile);
+      
+      // Ottieni URL di download
+      fileUrl = await storageGetDownloadURL(fileRef);
+      fileStoragePath = filePath;
+      
+      console.log(`submitLeaveRequest: File caricato con successo, URL: ${fileUrl}`);
+      
+      // Aggiungi metadati dettagliati del file alla richiesta
+      completeRequestData.fileInfo = {
+        fileName: certificateFile.name,
+        fileType: certificateFile.type,
+        fileSize: certificateFile.size,
+        uploadDate: new Date().toISOString(),
+        fileUrl: fileUrl,
+        fileStoragePath: fileStoragePath
+      };
+    }
+    
+    console.log("submitLeaveRequest: Dati completi della richiesta:", completeRequestData);
+    
+    // Salva la richiesta nel database
+    const leaveRequestsRef = collection(db, "leaveRequests");
+    const docRef = await addDoc(leaveRequestsRef, completeRequestData);
+    
+    console.log(`submitLeaveRequest: Richiesta salvata con successo, ID: ${docRef.id}`);
+    
+    // Restituisci i dati completi della richiesta con l'ID del documento
+    return {
+      id: docRef.id,
+      ...completeRequestData,
+      createdAt: new Date(),
+      lastUpdate: new Date()
+    };
+  } catch (error) {
+    console.error("submitLeaveRequest: Errore nell'invio della richiesta:", error);
+    
+    // Gestione strutturata degli errori
+    let errorMessage = "Si è verificato un errore durante l'invio della richiesta";
+    
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    if (error.code === 'storage/unauthorized') {
+      errorMessage = "Non hai l'autorizzazione per caricare questo file. Verifica le regole di sicurezza.";
+    } else if (error.code === 'storage/quota-exceeded') {
+      errorMessage = "Quota di storage superata. Contatta l'amministratore.";
+    }
+    
+    // Propaga l'errore
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Recupera tutte le richieste di un utente
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Array>} - Array di richieste
+ */
+export const getUserLeaveRequests = async (userId) => {
+  try {
+    if (!userId) throw new Error("userId obbligatorio");
+    
+    const leaveRequestsRef = collection(db, "leaveRequests");
+    const q = query(
+      leaveRequestsRef,
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    // Converti i dati del documento in un array di oggetti
+    const requests = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+      lastUpdate: doc.data().lastUpdate?.toDate?.() || new Date()
+    }));
+    
+    return requests;
+  } catch (error) {
+    console.error("Errore nel recupero delle richieste:", error);
+    throw error;
+  }
+};
+
+/**
+ * Recupera tutte le richieste (per amministratori)
+ * @param {Object} filters - Filtri opzionali (status, type, dateFrom, dateTo)
+ * @returns {Promise<Array>} - Array di richieste
+ */
+export const getAllLeaveRequests = async (filters = {}) => {
+  try {
+    const leaveRequestsRef = collection(db, "leaveRequests");
+    
+    // Costruisci la query base
+    let queryConstraints = [orderBy("createdAt", "desc")];
+    
+    // Aggiungi filtri se presenti
+    if (filters.status) {
+      queryConstraints.push(where("status", "==", filters.status));
+    }
+    
+    if (filters.type) {
+      queryConstraints.push(where("type", "==", filters.type));
+    }
+    
+    // Nota: per i filtri di data, potrebbe essere necessario implementare un'elaborazione lato client
+    
+    const q = query(leaveRequestsRef, ...queryConstraints);
+    const querySnapshot = await getDocs(q);
+    
+    // Converti i dati del documento in un array di oggetti
+    let requests = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+      lastUpdate: doc.data().lastUpdate?.toDate?.() || new Date()
+    }));
+    
+    // Filtraggio per data (lato client)
+    if (filters.dateFrom) {
+      const dateFrom = new Date(filters.dateFrom);
+      requests = requests.filter(request => {
+        const requestDate = new Date(request.dateFrom);
+        return requestDate >= dateFrom;
+      });
+    }
+    
+    if (filters.dateTo) {
+      const dateTo = new Date(filters.dateTo);
+      requests = requests.filter(request => {
+        const requestDate = new Date(request.dateFrom);
+        return requestDate <= dateTo;
+      });
+    }
+    
+    return requests;
+  } catch (error) {
+    console.error("Errore nel recupero delle richieste:", error);
+    throw error;
+  }
+};
+
+/**
+ * Aggiorna lo stato di una richiesta
+ * @param {string} requestId - ID della richiesta
+ * @param {string} status - Nuovo stato ('pending', 'approved', 'rejected')
+ * @param {string} adminNotes - Note dell'amministratore (opzionale)
+ * @returns {Promise<Object>} - Dati aggiornati della richiesta
+ */
+export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '') => {
+  try {
+    if (!requestId) throw new Error("requestId obbligatorio");
+    if (!status) throw new Error("status obbligatorio");
+    
+    const requestRef = doc(db, "leaveRequests", requestId);
+    
+    // Verifica che la richiesta esista
+    const requestDoc = await getDoc(requestRef);
+    if (!requestDoc.exists()) {
+      throw new Error(`Richiesta con ID ${requestId} non trovata`);
+    }
+    
+    // Prepara i dati da aggiornare
+    const updateData = {
+      status,
+      lastUpdate: serverTimestamp()
+    };
+    
+    // Aggiungi note admin se presenti
+    if (adminNotes) {
+      updateData.adminNotes = adminNotes;
+    }
+    
+    // Aggiungi info sull'approvazione/rifiuto
+    if (status === 'approved' || status === 'rejected') {
+      updateData.statusUpdateInfo = {
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.uid : 'unknown',
+        previousStatus: requestDoc.data().status
+      };
+    }
+    
+    // Aggiorna lo stato della richiesta
+    await updateDoc(requestRef, updateData);
+    
+    // Restituisci i dati aggiornati
+    const updatedDoc = await getDoc(requestRef);
+    
+    return {
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+      lastUpdate: new Date()
+    };
+  } catch (error) {
+    console.error("Errore nell'aggiornamento dello stato della richiesta:", error);
+    throw error;
+  }
+};
+
+/**
+ * Elimina una richiesta e il relativo file (se presente)
+ * @param {string} requestId - ID della richiesta
+ * @returns {Promise<boolean>} - true se l'eliminazione è riuscita
+ */
+export const deleteLeaveRequest = async (requestId) => {
+  try {
+    if (!requestId) throw new Error("requestId obbligatorio");
+    
+    const requestRef = doc(db, "leaveRequests", requestId);
+    
+    // Verifica che la richiesta esista
+    const requestDoc = await getDoc(requestRef);
+    if (!requestDoc.exists()) {
+      throw new Error(`Richiesta con ID ${requestId} non trovata`);
+    }
+    
+    const requestData = requestDoc.data();
+    
+    // Se c'è un file associato, eliminalo dallo storage
+    if (requestData.fileInfo && requestData.fileInfo.fileStoragePath) {
+      try {
+        console.log(`deleteLeaveRequest: Tentativo di eliminare il file: ${requestData.fileInfo.fileStoragePath}`);
+        const fileRef = storageRef(firebaseStorage, requestData.fileInfo.fileStoragePath);
+        await storageDeleteObject(fileRef);
+        console.log("deleteLeaveRequest: File eliminato con successo");
+      } catch (fileError) {
+        console.error("Errore nell'eliminazione del file:", fileError);
+        // Continua comunque con l'eliminazione della richiesta,
+        // ma registra l'errore per la pulizia manuale in futuro
+        console.warn("File non eliminato, potrebbe richiedere pulizia manuale:", requestData.fileInfo.fileStoragePath);
+      }
+    }
+    
+    // Elimina la richiesta dal database
+    await deleteDoc(requestRef);
+    console.log(`deleteLeaveRequest: Richiesta ${requestId} eliminata con successo`);
+    
+    return true;
+  } catch (error) {
+    console.error("Errore nell'eliminazione della richiesta:", error);
+    throw error;
+  }
+};
+
+/**
+ * Verifica la connessione a Firebase Storage
+ * Utile per debug di problemi di connessione a Storage
+ * @returns {Promise<Object>} - Risultato del test
+ */
+export const testStorageConnection = async () => {
+  try {
+    console.log("Verifica della connessione a Firebase Storage...");
+    
+    // Crea un piccolo file di test
+    const testBlob = new Blob(['Test di connessione a Firebase Storage'], { type: 'text/plain' });
+    const testFile = new File([testBlob], 'test-connection.txt');
+    
+    // Verifica che l'utente sia autenticato
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("Utente non autenticato. Impossibile testare l'accesso a Firebase Storage.");
+    }
+    
+    // Crea un percorso univoco per il test
+    const testPath = `test/${user.uid}/connection-test-${Date.now()}.txt`;
+    
+    // Carica il file
+    console.log(`testStorageConnection: Tentativo di caricamento file di test in: ${testPath}`);
+    const testRef = storageRef(firebaseStorage, testPath);
+    await storageUploadBytes(testRef, testFile);
+    
+    // Ottieni l'URL del file
+    const downloadURL = await storageGetDownloadURL(testRef);
+    
+    // Elimina il file di test
+    await storageDeleteObject(testRef);
+    
+    console.log("testStorageConnection: Test completato con successo!");
+    return {
+      success: true,
+      message: "La connessione a Firebase Storage è funzionante",
+      userId: user.uid,
+      testPath,
+      downloadURL
+    };
+  } catch (error) {
+    console.error("testStorageConnection: Errore nel test di Firebase Storage:", error);
+    
+    // Genera un messaggio di errore dettagliato
+    let errorMessage = "Errore nella connessione a Firebase Storage";
+    
+    if (error.code === 'storage/unauthorized') {
+      errorMessage = "Non hai l'autorizzazione per accedere a Firebase Storage. Verifica le regole di sicurezza.";
+    } else if (error.code === 'storage/quota-exceeded') {
+      errorMessage = "Quota di storage superata. Contatta l'amministratore.";
+    } else if (error.code === 'storage/invalid-bucket') {
+      errorMessage = "Bucket di storage non valido. Verifica la configurazione di Firebase.";
+    } else if (error.message) {
+      errorMessage = `Errore: ${error.message}`;
+    }
+    
+    return {
+      success: false,
+      message: errorMessage,
+      error: {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      }
+    };
   }
 };
