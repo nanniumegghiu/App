@@ -108,10 +108,10 @@ const TimesheetTable = ({
           });
           setData(sortedEntries);
         } else {
-          console.log(`TimesheetTable: Nessun dato trovato, generando giorni vuoti`);
-          // Generare giorni vuoti
+          console.log(`TimesheetTable: Nessun dato trovato, generando giorni completi (inclusi weekend)`);
+          // Generare giorni completi, inclusi weekend
           const month = parseInt(normalizedMonth);
-          const emptyEntries = generateEmptyMonthDays(month, parseInt(selectedYear));
+          const emptyEntries = generateCompleteMonthDays(month, parseInt(selectedYear));
           setData(emptyEntries);
         }
         
@@ -121,7 +121,7 @@ const TimesheetTable = ({
         setError("Impossibile caricare le ore lavorative. Riprova più tardi.");
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         const month = parseInt(normalizedMonth);
-        const emptyEntries = generateEmptyMonthDays(month, parseInt(selectedYear));
+        const emptyEntries = generateCompleteMonthDays(month, parseInt(selectedYear));
         setData(emptyEntries);
       } finally {
         setIsLoading(false);
@@ -131,8 +131,8 @@ const TimesheetTable = ({
     fetchTimesheet();
   }, [selectedMonth, selectedYear]);
 
-  // Funzione per generare giorni lavorativi vuoti per un mese specifico
-  const generateEmptyMonthDays = (month, year) => {
+  // Funzione per generare tutti i giorni di un mese, inclusi weekend
+  const generateCompleteMonthDays = (month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const entries = [];
     const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
@@ -140,17 +140,16 @@ const TimesheetTable = ({
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
       const dayOfWeek = date.getDay(); // 0-6 (Domenica-Sabato)
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       
-      // Salta weekend (0 = Domenica, 6 = Sabato)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        entries.push({
-          date: dateStr,
-          day: dayNames[dayOfWeek],
-          total: 0,
-          notes: ""
-        });
-      }
+      const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      entries.push({
+        date: dateStr,
+        day: dayNames[dayOfWeek],
+        total: 0,
+        notes: "",
+        isWeekend: isWeekend // Aggiungiamo questa proprietà per identificare il weekend
+      });
     }
     
     return entries;
@@ -277,7 +276,7 @@ const TimesheetTable = ({
                   {data.length === 0 ? (
                     <tr>
                       <td colSpan="5" style={{ textAlign: 'center' }}>
-                        Nessun giorno lavorativo in questo mese
+                        Nessun giorno in questo mese
                       </td>
                     </tr>
                   ) : (
@@ -285,10 +284,22 @@ const TimesheetTable = ({
                       <tr 
                         key={entry.date}
                         ref={el => rowRef && rowRef(entry.date, el)}
-                        className={highlightedRow === entry.date ? 'error' : ''}
+                        className={`${highlightedRow === entry.date ? 'error' : ''} ${entry.isWeekend ? 'weekend-row' : ''}`}
                       >
                         <td>{formatDate(entry.date)}</td>
-                        <td>{entry.day}</td>
+                        <td>
+                          {entry.day}
+                          {entry.isWeekend && (
+                            <span className="badge badge-weekend" style={{
+                              backgroundColor: '#f8d7da',
+                              color: '#721c24',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              marginLeft: '6px'
+                            }}>Weekend</span>
+                          )}
+                        </td>
                         <td>{entry.total > 0 ? entry.total : '-'}</td>
                         <td>{entry.notes || '-'}</td>
                         <td>

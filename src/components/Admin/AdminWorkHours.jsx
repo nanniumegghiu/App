@@ -64,9 +64,9 @@ const AdminWorkHours = () => {
           const data = docSnap.data();
           setTimeEntries(data.entries || []);
         } else {
-          console.log("Documento non trovato, generazione giorni lavorativi");
-          // Genera date per il mese selezionato
-          const entries = generateMonthDays(parseInt(selectedMonth), parseInt(selectedYear));
+          console.log("Documento non trovato, generazione giorni completi del mese");
+          // Genera date complete per il mese selezionato, inclusi weekend
+          const entries = generateCompleteMonthDays(parseInt(selectedMonth), parseInt(selectedYear));
           setTimeEntries(entries);
         }
       } catch (error) {
@@ -80,8 +80,8 @@ const AdminWorkHours = () => {
     fetchTimeEntries();
   }, [selectedEmployee, selectedMonth, selectedYear]);
 
-  // Funzione per generare le date di un mese
-  const generateMonthDays = (month, year) => {
+  // Funzione per generare le date complete di un mese, inclusi weekend
+  const generateCompleteMonthDays = (month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const entries = [];
     const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
@@ -89,17 +89,16 @@ const AdminWorkHours = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
       const dayOfWeek = date.getDay(); // 0-6 (Domenica-Sabato)
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       
-      // Salta weekend (0 = Domenica, 6 = Sabato)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        entries.push({
-          date: dateStr,
-          day: dayNames[dayOfWeek],
-          total: 0, // Ore totali come numero intero (inizialmente zero)
-          notes: ""
-        });
-      }
+      const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      entries.push({
+        date: dateStr,
+        day: dayNames[dayOfWeek],
+        total: 0, // Ore totali come numero intero (inizialmente zero)
+        notes: "",
+        isWeekend: isWeekend // Aggiungiamo una proprietà per identificare il weekend
+      });
     }
     
     return entries;
@@ -162,7 +161,8 @@ const AdminWorkHours = () => {
         date: entry.date,
         day: entry.day,
         total: parseInt(entry.total) || 0, // Converti in intero, 0 se non valido
-        notes: entry.notes || ""
+        notes: entry.notes || "",
+        isWeekend: entry.isWeekend || false // Mantieni la proprietà isWeekend
       }));
       
       // Utilizza la funzione saveWorkHours importata da firebase.js
@@ -285,14 +285,30 @@ const AdminWorkHours = () => {
                   {timeEntries.length === 0 ? (
                     <tr>
                       <td colSpan="4" style={{ textAlign: 'center' }}>
-                        Nessun giorno lavorativo in questo mese
+                        Nessun giorno in questo mese
                       </td>
                     </tr>
                   ) : (
                     timeEntries.map((entry, index) => (
-                      <tr key={entry.date}>
+                      <tr 
+                        key={entry.date}
+                        className={entry.isWeekend ? 'weekend-row' : ''}
+                        style={entry.isWeekend ? { backgroundColor: '#f8f9fa' } : {}}
+                      >
                         <td>{entry.date.split('-').reverse().join('/')}</td>
-                        <td>{entry.day}</td>
+                        <td>
+                          {entry.day}
+                          {entry.isWeekend && (
+                            <span className="badge badge-weekend" style={{
+                              backgroundColor: '#f8d7da',
+                              color: '#721c24',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              marginLeft: '6px'
+                            }}>Weekend</span>
+                          )}
+                        </td>
                         <td>
                           <input 
                             type="number" 
