@@ -15,25 +15,34 @@ const UserRequests = () => {
     type: 'success'
   });
 
-  // Carica le richieste dell'utente
+  // Carica le richieste dell'utente all'avvio del componente e quando cambia l'utente
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!auth.currentUser) return;
+    const loadRequests = async () => {
+      // Verifica che l'utente sia autenticato
+      if (!auth.currentUser) {
+        console.log("UserRequests: Utente non autenticato");
+        setIsLoading(false);
+        return;
+      }
       
+      console.log(`UserRequests: Caricamento richieste per userId=${auth.currentUser.uid}`);
       setIsLoading(true);
+      
       try {
         const userRequests = await getUserLeaveRequests(auth.currentUser.uid);
+        console.log("UserRequests: Richieste caricate", userRequests);
         setRequests(userRequests);
         setError(null);
       } catch (err) {
-        console.error("Errore nel caricamento delle richieste:", err);
+        console.error("UserRequests: Errore nel caricamento delle richieste:", err);
         setError("Impossibile caricare le richieste. Riprova più tardi.");
+        setRequests([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRequests();
+    loadRequests();
   }, []);
 
   // Gestisce l'invio di una nuova richiesta
@@ -64,12 +73,6 @@ const UserRequests = () => {
       month: '2-digit',
       year: 'numeric'
     });
-  };
-
-  // Formatta l'orario in formato leggibile
-  const formatTime = (timeString) => {
-    if (!timeString) return '';
-    return timeString;
   };
 
   // Ottieni il nome del tipo di richiesta
@@ -169,15 +172,15 @@ const UserRequests = () => {
                       <td>
                         {request.type === 'permission' && request.permissionType === 'hourly' && (
                           <>
-                            {formatTime(request.timeFrom)} - {formatTime(request.timeTo)}
+                            {request.timeFrom} - {request.timeTo}
                           </>
                         )}
                         {request.type === 'permission' && request.permissionType === 'daily' && (
                           'Giornata intera'
                         )}
-                        {request.type === 'sickness' && request.fileName && (
+                        {request.type === 'sickness' && request.fileInfo && (
                           <span className="file-indicator">
-                            Certificato caricato: {request.fileName}
+                            Certificato caricato: {request.fileInfo.fileName || 'Certificato'}
                           </span>
                         )}
                       </td>
@@ -196,6 +199,7 @@ const UserRequests = () => {
         )}
       </div>
       
+      {/* Form per l'aggiunta di nuove richieste */}
       <RequestForm 
         isVisible={showRequestForm} 
         onClose={() => setShowRequestForm(false)}

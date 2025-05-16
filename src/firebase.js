@@ -621,6 +621,49 @@ export const getUserWorkHours = async (userId) => {
 };
 
 /**
+ * Recupera tutte le richieste di un utente
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Array>} - Array di richieste
+ */
+// Modifica alla funzione getUserLeaveRequests in firebase.js
+export const getUserLeaveRequests = async (userId) => {
+  try {
+    if (!userId) throw new Error("userId obbligatorio");
+    
+    console.log("Tentativo di recuperare richieste per l'utente:", userId);
+    
+    const leaveRequestsRef = collection(db, "leaveRequests");
+    const q = query(
+      leaveRequestsRef,
+      where("userId", "==", userId)
+    );
+    
+    // Aggiungi ordinamento solo se ci sono richieste
+    const querySnapshot = await getDocs(q);
+    console.log(`Trovate ${querySnapshot.size} richieste`);
+    
+    // Converti i dati del documento in un array di oggetti
+    const requests = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        lastUpdate: data.lastUpdate?.toDate?.() || new Date()
+      };
+    });
+    
+    // Ordina manualmente per data di creazione (più recenti prima)
+    requests.sort((a, b) => b.createdAt - a.createdAt);
+    
+    return requests;
+  } catch (error) {
+    console.error("Errore dettagliato nel recupero delle richieste:", error);
+    throw new Error("Impossibile recuperare le richieste: " + error.message);
+  }
+};
+
+/**
  * Invia una nuova richiesta di permesso/ferie/malattia con gestione migliorata dei certificati
  * @param {Object} requestData - I dati della richiesta
  * @param {File} certificateFile - Il file del certificato (solo per malattia)
@@ -766,45 +809,14 @@ export const submitLeaveRequest = async (requestData, certificateFile = null) =>
 };
 
 /**
- * Recupera tutte le richieste di un utente
- * @param {string} userId - ID dell'utente
- * @returns {Promise<Array>} - Array di richieste
- */
-export const getUserLeaveRequests = async (userId) => {
-  try {
-    if (!userId) throw new Error("userId obbligatorio");
-    
-    const leaveRequestsRef = collection(db, "leaveRequests");
-    const q = query(
-      leaveRequestsRef,
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
-    // Converti i dati del documento in un array di oggetti
-    const requests = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-      lastUpdate: doc.data().lastUpdate?.toDate?.() || new Date()
-    }));
-    
-    return requests;
-  } catch (error) {
-    console.error("Errore nel recupero delle richieste:", error);
-    throw error;
-  }
-};
-
-/**
  * Recupera tutte le richieste (per amministratori)
  * @param {Object} filters - Filtri opzionali (status, type, dateFrom, dateTo)
  * @returns {Promise<Array>} - Array di richieste
  */
 export const getAllLeaveRequests = async (filters = {}) => {
   try {
+    console.log("getAllLeaveRequests: Avvio con filtri:", filters);
+    
     const leaveRequestsRef = collection(db, "leaveRequests");
     
     // Costruisci la query base
@@ -822,15 +834,20 @@ export const getAllLeaveRequests = async (filters = {}) => {
     // Nota: per i filtri di data, potrebbe essere necessario implementare un'elaborazione lato client
     
     const q = query(leaveRequestsRef, ...queryConstraints);
+    console.log("getAllLeaveRequests: Esecuzione query...");
     const querySnapshot = await getDocs(q);
+    console.log(`getAllLeaveRequests: Trovate ${querySnapshot.size} richieste`);
     
     // Converti i dati del documento in un array di oggetti
-    let requests = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-      lastUpdate: doc.data().lastUpdate?.toDate?.() || new Date()
-    }));
+    let requests = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        lastUpdate: data.lastUpdate?.toDate?.() || new Date()
+      };
+    });
     
     // Filtraggio per data (lato client)
     if (filters.dateFrom) {
@@ -849,9 +866,10 @@ export const getAllLeaveRequests = async (filters = {}) => {
       });
     }
     
+    console.log("getAllLeaveRequests: Restituzione richieste filtrate:", requests.length);
     return requests;
   } catch (error) {
-    console.error("Errore nel recupero delle richieste:", error);
+    console.error("getAllLeaveRequests: Errore nel recupero delle richieste:", error);
     throw error;
   }
 };
@@ -865,6 +883,8 @@ export const getAllLeaveRequests = async (filters = {}) => {
  */
 export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '') => {
   try {
+    console.log(`updateLeaveRequestStatus: Aggiornamento requestId=${requestId} con status=${status}, notes=${adminNotes || 'nessuna'}`);
+    
     if (!requestId) throw new Error("requestId obbligatorio");
     if (!status) throw new Error("status obbligatorio");
     
@@ -898,6 +918,7 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
     
     // Aggiorna lo stato della richiesta
     await updateDoc(requestRef, updateData);
+    console.log(`updateLeaveRequestStatus: Status aggiornato con successo a ${status}`);
     
     // Restituisci i dati aggiornati
     const updatedDoc = await getDoc(requestRef);
@@ -908,7 +929,7 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
       lastUpdate: new Date()
     };
   } catch (error) {
-    console.error("Errore nell'aggiornamento dello stato della richiesta:", error);
+    console.error("updateLeaveRequestStatus: Errore nell'aggiornamento dello stato della richiesta:", error);
     throw error;
   }
 };
@@ -920,6 +941,8 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
  */
 export const deleteLeaveRequest = async (requestId) => {
   try {
+    console.log(`deleteLeaveRequest: Eliminazione requestId=${requestId}`);
+    
     if (!requestId) throw new Error("requestId obbligatorio");
     
     const requestRef = doc(db, "leaveRequests", requestId);
@@ -953,7 +976,7 @@ export const deleteLeaveRequest = async (requestId) => {
     
     return true;
   } catch (error) {
-    console.error("Errore nell'eliminazione della richiesta:", error);
+    console.error("deleteLeaveRequest: Errore nell'eliminazione della richiesta:", error);
     throw error;
   }
 };
