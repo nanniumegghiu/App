@@ -274,7 +274,7 @@ export default function Login({ onLogin }) {
                 />
               </svg>
             </div>
-            <h1>Gestione Ore</h1>
+            <h1>Iacuzzo Construction Group</h1>
           </div>
           
           <div className="login-header">
@@ -457,7 +457,7 @@ export default function Login({ onLogin }) {
         </div>
       </div>
       <div className="login-footer">
-        <p>© 2025 Gestione Ore Lavorative - Tutti i diritti riservati</p>
+        <p>© 2025 Iacuzzo Construction Group - Tutti i diritti riservati</p>
       </div>
     </div>
   );

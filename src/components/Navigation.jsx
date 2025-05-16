@@ -14,7 +14,7 @@ const Navigation = ({ isAdmin, userData }) => {
     <nav className="main-navigation">
       <div className="nav-container">
         <div className="nav-title">
-          <h1>Gestione Ore Lavorative</h1>
+          <h1>Iacuzzo Construction Group</h1>
         </div>
         
         <div className="nav-user">

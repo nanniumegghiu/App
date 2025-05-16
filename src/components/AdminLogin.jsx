@@ -98,7 +98,7 @@ export default function AdminLogin({ onLogin }) {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>Gestione Ore Lavorative</h1>
+          <h1>Gestionale Iacuzzo Construction Group</h1>
           <h2>Accesso Amministratore</h2>
         </div>
         

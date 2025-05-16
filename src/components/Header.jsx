@@ -56,7 +56,7 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
       justifyContent: "space-between",
       alignItems: "center"
     }}>
-      <h1>Gestione Ore Lavorative</h1>
+      <h1>Iacuzzo Construction Group App</h1>
 
       {auth.currentUser && (
         <div className="user-actions" style={{ 
