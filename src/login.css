@@ -1,5 +1,137 @@
 /* Aggiungi questo CSS al tuo file index.css o crea un nuovo file login.css */
 
+
+/* Stile per i campi di input con errore */
+input.error {
+  border-color: var(--danger) !important;
+  background-color: rgba(231, 76, 60, 0.05) !important;
+}
+
+/* Messaggi di errore per i singoli campi */
+.error-message-field {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+/* Animazione di comparsa per gli errori */
+.error-message-field {
+  animation: errorFadeIn 0.3s ease-in;
+}
+
+@keyframes errorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Miglioramenti per la struttura del form */
+.form-group {
+  margin-bottom: 20px;
+}
+
+/* Stile per la conferma dei campi */
+.input-confirm {
+  margin-top: 10px;
+}
+
+/* Stile avanzato per il pulsante di registrazione/login */
+.submit-button {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-button:after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.submit-button:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  20% {
+    transform: scale(25, 25);
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(40, 40);
+  }
+}
+
+/* Migliora l'aspetto dei placeholder */
+input::placeholder {
+  color: #bdc3c7;
+  opacity: 0.7;
+}
+
+/* Migliora l'aspetto del focus sui campi di input */
+input:focus {
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  transition: all 0.2s ease;
+}
+
+/* Stile migliorato per il checkbox "ricordami" */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 35px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.checkbox-container:hover {
+  color: var(--primary);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Migliora la responsività del form su dispositivi mobili */
+@media (max-width: 576px) {
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .login-card {
+    padding: 25px 15px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-row .form-group {
+    margin-bottom: 15px;
+  }
+}
+
 /* Base layout per la pagina di login */
 .login-page {
   min-height: 100vh;

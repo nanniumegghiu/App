@@ -1,4 +1,4 @@
-// src/components/Header.jsx
+// src/components/Header.jsx - Versione aggiornata
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -6,31 +6,50 @@ import { doc, getDoc } from 'firebase/firestore';
 
 const Header = ({ userRole, isAdminView, onToggleView }) => {
   const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Recupera nome e cognome dal database
   useEffect(() => {
     const fetchUserData = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserData(docSnap.data());
+      setLoading(true);
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setUserData(docSnap.data());
+          } else {
+            // Se il documento non esiste, usa almeno l'email dell'utente
+            setUserData({ email: user.email });
+          }
         }
+      } catch (error) {
+        console.error("Errore durante il recupero dei dati utente:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchUserData();
   }, []);
 
-  const handleLogout = () => {
-    signOut(auth).catch((error) => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log("Logout effettuato con successo");
+    } catch (error) {
       console.error("Errore durante il logout:", error);
-    });
+    }
   };
 
+  // Determina il nome da visualizzare
+  const displayName = userData ? 
+    (userData.nome && userData.cognome ? `${userData.nome} ${userData.cognome}` : userData.email) : 
+    'Utente';
+
   return (
-    <header style={{
+    <header className="header" style={{
       background: "#f0f0f0",
       padding: "10px 20px",
       display: "flex",
@@ -39,7 +58,7 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
     }}>
       <h1>Gestione Ore Lavorative</h1>
 
-      {userData && (
+      {auth.currentUser && (
         <div className="user-actions" style={{ 
           textAlign: "right", 
           display: "flex", 
@@ -66,7 +85,7 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
           
           <div style={{ marginLeft: '10px' }}>
             <p style={{ margin: 0 }}>
-              👤 {userData.nome} {userData.cognome}
+              👤 {displayName}
               {userRole === 'admin' && <span style={{ marginLeft: '5px', color: '#007bff' }}>(Admin)</span>}
             </p>
             <button 
