@@ -1,4 +1,4 @@
-/* src/components/dashboard.css (molto semplificato) */
+/* src/components/dashboard.css (updated with timekeeping styles) */
 .dashboard-container {
   max-width: 800px;
   margin: 0 auto;
@@ -25,13 +25,11 @@
   font-style: italic;
 }
 
-/* Versione semplificata della dashboard con solo QR code e informazioni utente */
-.dashboard-content.simplified {
+/* Main dashboard layout */
+.dashboard-content {
   display: flex;
   flex-direction: column;
   gap: 25px;
-  max-width: 600px;
-  margin: 0 auto;
 }
 
 .dashboard-main {
@@ -63,6 +61,75 @@
   padding-bottom: 10px;
 }
 
+/* Monthly Stats Card */
+.monthly-stats-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  transition: all 0.3s ease;
+}
+
+.monthly-stats-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.monthly-stats-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--dark);
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background-color: #f1f3f5;
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+}
+
+.stat-item.warning .stat-value {
+  color: var(--warning);
+}
+
+.stat-note {
+  font-size: 0.85rem;
+  color: #999;
+  text-align: center;
+  font-style: italic;
+  margin-top: 10px;
+}
+
 /* QR Code card */
 .qrcode-card {
   text-align: center;
@@ -73,6 +140,31 @@
   box-shadow: none;
   padding: 0;
   margin: 0;
+}
+
+.qrcode-instructions {
+  margin-top: 25px;
+  text-align: left;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.qrcode-instructions h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--dark);
+  font-size: 1.1rem;
+}
+
+.qrcode-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.qrcode-instructions li {
+  margin-bottom: 8px;
+  color: #555;
 }
 
 /* User info card */
@@ -111,6 +203,10 @@
     align-items: flex-start;
     gap: 10px;
   }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 576px) {
@@ -124,5 +220,9 @@
   
   .qrcode-card {
     padding: 20px 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 }

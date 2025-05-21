@@ -1,0 +1,266 @@
+/* src/components/timekeepingStatus.css */
+.timekeeping-status-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  border-left: 5px solid transparent;
+}
+
+.timekeeping-status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Status specific styling */
+.timekeeping-status-card.status-in-progress {
+  border-left-color: var(--primary);
+}
+
+.timekeeping-status-card.status-completed {
+  border-left-color: var(--success);
+}
+
+.timekeeping-status-card.status-auto-closed {
+  border-left-color: var(--warning);
+}
+
+.timekeeping-status-card.status-not-started {
+  border-left-color: #95a5a6;
+}
+
+.timekeeping-status-card.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 15px;
+}
+
+.timekeeping-status-card.error {
+  border-left-color: var(--danger);
+}
+
+.card-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.status-header h3 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.2rem;
+}
+
+.current-time {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.status-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 5px;
+}
+
+.status-in-progress .status-badge {
+  background-color: rgba(52, 152, 219, 0.2);
+  color: var(--primary);
+}
+
+.status-completed .status-badge {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: var(--success);
+}
+
+.status-auto-closed .status-badge {
+  background-color: rgba(243, 156, 18, 0.2);
+  color: var(--warning);
+}
+
+.status-not-started .status-badge {
+  background-color: rgba(149, 165, 166, 0.2);
+  color: #7f8c8d;
+}
+
+.status-date {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.time-details {
+  margin-top: 15px;
+}
+
+.time-entry {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.time-entry.highlighted {
+  background-color: rgba(52, 152, 219, 0.1);
+  font-weight: 600;
+}
+
+.status-completed .time-entry.highlighted,
+.status-auto-closed .time-entry.highlighted {
+  background-color: rgba(46, 204, 113, 0.1);
+}
+
+.time-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.time-value {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.hours-breakdown {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.breakdown-label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.breakdown-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.progress-bar-container {
+  height: 8px;
+  background-color: #eee;
+  border-radius: 4px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.auto-note {
+  margin-left: 5px;
+  font-size: 0.8rem;
+  color: var(--warning);
+  font-style: italic;
+}
+
+.not-started-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.hint {
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 10px;
+  color: #95a5a6;
+}
+
+.status-error {
+  padding: 20px;
+  text-align: center;
+  color: var(--danger);
+}
+
+.retry-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background-color: var(--secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .timekeeping-status-card {
+    padding: 15px;
+  }
+  
+  .status-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .current-time {
+    align-self: flex-end;
+  }
+  
+  .hours-breakdown {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .breakdown-item {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

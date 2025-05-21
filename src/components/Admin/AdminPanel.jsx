@@ -1,4 +1,4 @@
-// src/components/Admin/AdminPanel.jsx (aggiornato con gestione QR)
+// src/components/Admin/AdminPanel.jsx (Updated with Timekeeping)
 import React, { useState, useEffect } from 'react';
 import { getAllReports, updateReportStatus } from '../../firebase';
 import AdminReportsTable from './AdminReportsTable';
@@ -7,8 +7,10 @@ import UserManagement from './UserManagement';
 import AdminWorkHours from './AdminWorkHours';
 import AdminReports from './AdminReports';
 import AdminLeaveRequests from './AdminLeaveRequests';
-import AdminQRManagement from './AdminQRManagement'; // Nuovo componente importato
-import './adminQRManagement.css'; // Importa gli stili
+import AdminQRManagement from './AdminQRManagement';
+import DeviceRegistration from './DeviceRegistration';
+import TimekeepingScanner from '../TimekeepingScanner';
+import './adminQRManagement.css';
 
 const AdminPanel = () => {
   const [reports, setReports] = useState([]);
@@ -21,7 +23,8 @@ const AdminPanel = () => {
     status: '',
     user: ''
   });
-  const [activeTab, setActiveTab] = useState('workHours'); // 'workHours', 'reports', 'users', 'download', 'leaveRequests', 'qrManagement'
+  // Updated tabs to include new timekeeping features
+  const [activeTab, setActiveTab] = useState('workHours'); // 'workHours', 'reports', 'users', 'download', 'leaveRequests', 'qrManagement', 'timekeeping', 'devices'
 
   // Recupera tutte le segnalazioni al caricamento del componente
   useEffect(() => {
@@ -142,6 +145,20 @@ const AdminPanel = () => {
         >
           Gestione QR Code
         </button>
+        {/* New tab for QR scanner */}
+        <button 
+          className={`tab-button ${activeTab === 'timekeeping' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('timekeeping')}
+        >
+          Timbrature QR
+        </button>
+        {/* New tab for device management */}
+        <button 
+          className={`tab-button ${activeTab === 'devices' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('devices')}
+        >
+          Dispositivi
+        </button>
         <button 
           className={`tab-button ${activeTab === 'users' ? 'active' : ''}`} 
           onClick={() => setActiveTab('users')}
@@ -189,6 +206,20 @@ const AdminPanel = () => {
       
       {!isLoading && activeTab === 'qrManagement' && (
         <AdminQRManagement />
+      )}
+      
+      {!isLoading && activeTab === 'timekeeping' && (
+        <div className="admin-timekeeping-section">
+          <h3>Scansione QR per Timbrature</h3>
+          <p className="section-description">
+            Utilizza questo scanner per registrare le timbrature in entrata e uscita degli utenti. Seleziona il tipo di timbratura e scansiona il QR code personale dell'utente.
+          </p>
+          <TimekeepingScanner isAdmin={true} />
+        </div>
+      )}
+      
+      {!isLoading && activeTab === 'devices' && (
+        <DeviceRegistration />
       )}
       
       {!isLoading && activeTab === 'users' && (

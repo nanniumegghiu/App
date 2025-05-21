@@ -1,3 +1,4 @@
+// Updated App.jsx with OfflineManager
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import UserInfo from './components/UserInfo';
@@ -5,11 +6,12 @@ import TimesheetTable from './components/TimesheetTable';
 import ReportsTable from './components/ReportsTable';
 import UserRequests from './components/UserRequests';
 import UserNavigation from './components/UserNavigation';
-import UserDashboard from './components/UserDashboard'; // Nuovo componente dashboard
+import UserDashboard from './components/UserDashboard';
 import ReportForm from './components/ReportForm';
 import Notification from './components/Notification';
 import Login from './components/Login';
 import AdminPanel from './components/Admin/AdminPanel';
+import OfflineManager from './components/OfflineManager';
 import { auth, db, getUserReportsByMonth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -17,14 +19,15 @@ import './index.css';
 import './request.css';
 import './admin-requests.css';
 import './user-navigation.css';
-import './components/userQRCode.css'; // Importa lo stile del QR code
-import './components/dashboard.css'; // Importa lo stile della dashboard
+import './components/userQRCode.css';
+import './components/dashboard.css';
+import './components/timekeepingScanner.css';
 
 function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isAdminView, setIsAdminView] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard'); // Modificato da 'hours' a 'dashboard'
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Stati applicazione (visibili solo se loggato)
   const [selectedMonth, setSelectedMonth] = useState('4');
@@ -267,6 +270,9 @@ function App() {
         onSubmit={handleSubmitReport}
         onClose={handleCloseReportForm}
       />
+      
+      {/* Add the OfflineManager component for app-wide offline support */}
+      <OfflineManager />
     </div>
   );
 }
