@@ -21,6 +21,7 @@ const DeviceRegistration = () => {
     deviceType: 'tablet',
     location: ''
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
   // Load existing devices
   useEffect(() => {
@@ -136,12 +137,13 @@ const DeviceRegistration = () => {
     }
   };
 
+  // Show delete confirmation
+  const confirmDelete = (deviceId) => {
+    setShowDeleteConfirm(deviceId);
+  };
+
   // Delete a device
   const deleteDevice = async (deviceId) => {
-    if (!confirm("Are you sure you want to delete this device? This action cannot be undone.")) {
-      return;
-    }
-    
     try {
       const deviceRef = doc(db, "scanDevices", deviceId);
       await deleteDoc(deviceRef);
@@ -150,9 +152,11 @@ const DeviceRegistration = () => {
       setDevices(prevDevices => prevDevices.filter(device => device.id !== deviceId));
       
       showNotification("Device deleted successfully", "success");
+      setShowDeleteConfirm(null);
     } catch (err) {
       console.error("Error deleting device:", err);
       showNotification("Error deleting device", "error");
+      setShowDeleteConfirm(null);
     }
   };
 
@@ -306,6 +310,34 @@ const DeviceRegistration = () => {
         </div>
       )}
       
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4>Confirm Deletion</h4>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this device? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-danger" 
+                onClick={() => deleteDevice(showDeleteConfirm)}
+              >
+                Delete
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {isLoading ? (
         <div className="loading-message">Loading registered devices...</div>
       ) : error ? (
@@ -373,7 +405,7 @@ const DeviceRegistration = () => {
                     
                     <button 
                       className="btn btn-danger btn-sm"
-                      onClick={() => deleteDevice(device.id)}
+                      onClick={() => confirmDelete(device.id)}
                     >
                       Delete
                     </button>
