@@ -1,5 +1,5 @@
-// src/services/timekeepingService.js
-import { db, auth, firebaseStorage } from '../firebase';
+// src/services/timekeepingService.js - With improved error handling
+import { db, auth } from '../firebase';
 import { 
   collection, 
   doc, 
@@ -11,13 +11,14 @@ import {
   query, 
   where, 
   serverTimestamp, 
-  Timestamp 
+  Timestamp, 
+  limit
 } from 'firebase/firestore';
 
 /**
  * Service for handling time clock functionality
  */
-export const timekeepingService = {
+const timekeepingService = {
   /**
    * Records a clock in event for a user
    * @param {string} userId - The user's ID
@@ -237,7 +238,8 @@ export const timekeepingService = {
       const q = query(
         timekeepingRef,
         where("userId", "==", userId),
-        where("status", "==", "in-progress")
+        where("status", "==", "in-progress"),
+        limit(50) // Add limit to avoid processing too many at once
       );
       
       const querySnapshot = await getDocs(q);
@@ -245,42 +247,59 @@ export const timekeepingService = {
       
       // Loop through all open sessions
       for (const docSnap of querySnapshot.docs) {
-        const session = docSnap.data();
-        const sessionDate = new Date(`${session.date}T00:00:00`);
-        
-        // If the session is from a previous day
-        if (sessionDate < today) {
-          const docRef = doc(db, "timekeeping", docSnap.id);
+        try {
+          const session = docSnap.data();
           
-          // Auto-close with 8 standard hours
-          const updateData = {
-            clockOutTime: "23:59",
-            clockOutTimestamp: Timestamp.fromDate(new Date(session.date + 'T23:59:00')),
-            totalHours: 8,
-            standardHours: 8,
-            overtimeHours: 0,
-            status: "auto-closed",
-            autoClosedReason: "Missing clock-out",
-            updatedAt: serverTimestamp()
-          };
+          if (!session.date) {
+            console.error("Session missing date field:", docSnap.id);
+            continue; // Skip invalid sessions
+          }
           
-          await updateDoc(docRef, updateData);
+          const sessionDate = new Date(`${session.date}T00:00:00`);
           
-          // Sync to workHours
-          await this.syncToWorkHours(userId, session.date, 8, 0);
-          
-          closedSessions.push({
-            id: docSnap.id,
-            ...session,
-            ...updateData
-          });
+          // If the session is from a previous day
+          if (sessionDate < today) {
+            const docRef = doc(db, "timekeeping", docSnap.id);
+            
+            // Auto-close with 8 standard hours
+            const updateData = {
+              clockOutTime: "23:59",
+              clockOutTimestamp: Timestamp.fromDate(new Date(session.date + 'T23:59:00')),
+              totalHours: 8,
+              standardHours: 8,
+              overtimeHours: 0,
+              status: "auto-closed",
+              autoClosedReason: "Missing clock-out",
+              updatedAt: serverTimestamp()
+            };
+            
+            await updateDoc(docRef, updateData);
+            
+            // Sync to workHours
+            try {
+              await this.syncToWorkHours(userId, session.date, 8, 0);
+            } catch (syncError) {
+              console.error("Error syncing auto-closed session to workHours:", syncError);
+              // Continue even if sync fails
+            }
+            
+            closedSessions.push({
+              id: docSnap.id,
+              ...session,
+              ...updateData
+            });
+          }
+        } catch (sessionError) {
+          console.error("Error processing session:", sessionError, docSnap.id);
+          // Continue with next session
         }
       }
       
       return closedSessions;
     } catch (error) {
       console.error("Error during auto-closing sessions:", error);
-      throw error;
+      // Return empty array instead of throwing - don't block the dashboard
+      return [];
     }
   },
   
@@ -308,6 +327,14 @@ export const timekeepingService = {
       
       const querySnapshot = await getDocs(q);
       
+      // Try to auto-close sessions regardless of today's status
+      try {
+        await this.autoCloseOpenSessions(userId);
+      } catch (closeError) {
+        console.error("Error auto-closing sessions:", closeError);
+        // Don't block the rest of the function
+      }
+      
       if (querySnapshot.empty) {
         return {
           status: "not-started",
@@ -318,9 +345,6 @@ export const timekeepingService = {
       }
       
       const record = querySnapshot.docs[0].data();
-      
-      // Auto-close any open sessions from previous days
-      await this.autoCloseOpenSessions(userId);
       
       // Return formatted status
       return {
@@ -354,8 +378,18 @@ export const timekeepingService = {
    */
   async syncToWorkHours(userId, date, standardHours, overtimeHours) {
     try {
+      if (!date || !userId) {
+        console.error("Missing required params in syncToWorkHours:", { userId, date });
+        return false;
+      }
+      
       // Parse date information
       const [year, month, day] = date.split('-');
+      
+      if (!year || !month || !day) {
+        console.error("Invalid date format in syncToWorkHours:", date);
+        return false;
+      }
       
       // Try to find existing workHours document
       const normalizedMonth = month.replace(/^0+/, ''); // Remove leading zeros
@@ -363,97 +397,102 @@ export const timekeepingService = {
       const workHoursId = `${userId}_${normalizedMonth}_${year}`;
       const workHoursRef = doc(db, "workHours", workHoursId);
       
-      const workHoursSnap = await getDoc(workHoursRef);
-      
-      if (workHoursSnap.exists()) {
-        // Document exists, check if there's a manual entry for this date
-        const workHoursData = workHoursSnap.data();
-        const entries = workHoursData.entries || [];
+      try {
+        const workHoursSnap = await getDoc(workHoursRef);
         
-        // Find entry for this date
-        const entryIndex = entries.findIndex(entry => entry.date === date);
-        
-        if (entryIndex >= 0) {
-          // Entry exists - only update if it doesn't have a manual value set
-          // Special values (M, P, A) are considered manual entries
-          const existingEntry = entries[entryIndex];
+        if (workHoursSnap.exists()) {
+          // Document exists, check if there's a manual entry for this date
+          const workHoursData = workHoursSnap.data();
+          const entries = workHoursData.entries || [];
           
-          // Special letters are considered manual entries - don't overwrite
-          if (typeof existingEntry.total === 'string' && ["M", "P", "A"].includes(existingEntry.total)) {
-            // Do not modify manual entries with special codes
-            return false;
+          // Find entry for this date
+          const entryIndex = entries.findIndex(entry => entry.date === date);
+          
+          if (entryIndex >= 0) {
+            // Entry exists - only update if it doesn't have a manual value set
+            // Special values (M, P, A) are considered manual entries
+            const existingEntry = entries[entryIndex];
+            
+            // Special letters are considered manual entries - don't overwrite
+            if (typeof existingEntry.total === 'string' && ["M", "P", "A"].includes(existingEntry.total)) {
+              // Do not modify manual entries with special codes
+              return false;
+            }
+            
+            // Check if current entry appears to be a manual entry
+            // If overtime is already set or hours don't match timekeeping defaults, 
+            // consider it a manual entry and don't update
+            const hasManualEntry = existingEntry.notes?.includes("Manual entry") || 
+                                existingEntry.notes?.includes("Inserted by admin");
+            
+            if (hasManualEntry) {
+              return false;
+            }
+            
+            // Update the entry with clock data
+            entries[entryIndex] = {
+              ...existingEntry,
+              total: standardHours,
+              overtime: overtimeHours,
+              notes: existingEntry.notes || "Updated from timekeeping system"
+            };
+            
+            // Update the document
+            await updateDoc(workHoursRef, {
+              entries,
+              lastUpdated: serverTimestamp()
+            });
+          } else {
+            // Entry doesn't exist for this date, add it
+            const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+            const isWeekend = [0, 6].includes(new Date(date).getDay()); // 0 = Sunday, 6 = Saturday
+            
+            const newEntry = {
+              date,
+              day: dayOfWeek,
+              total: standardHours,
+              overtime: overtimeHours,
+              notes: "Added from timekeeping system",
+              isWeekend
+            };
+            
+            // Add the new entry
+            await updateDoc(workHoursRef, {
+              entries: [...entries, newEntry],
+              lastUpdated: serverTimestamp()
+            });
           }
-          
-          // Check if current entry appears to be a manual entry
-          // If overtime is already set or hours don't match timekeeping defaults, 
-          // consider it a manual entry and don't update
-          const hasManualEntry = existingEntry.notes?.includes("Manual entry") || 
-                               existingEntry.notes?.includes("Inserted by admin");
-          
-          if (hasManualEntry) {
-            return false;
-          }
-          
-          // Update the entry with clock data
-          entries[entryIndex] = {
-            ...existingEntry,
-            total: standardHours,
-            overtime: overtimeHours,
-            notes: existingEntry.notes || "Updated from timekeeping system"
-          };
-          
-          // Update the document
-          await updateDoc(workHoursRef, {
-            entries,
-            lastUpdated: serverTimestamp()
-          });
         } else {
-          // Entry doesn't exist for this date, add it
+          // Document doesn't exist, create it
           const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
           const isWeekend = [0, 6].includes(new Date(date).getDay()); // 0 = Sunday, 6 = Saturday
           
-          const newEntry = {
+          const entry = {
             date,
             day: dayOfWeek,
             total: standardHours,
             overtime: overtimeHours,
-            notes: "Added from timekeeping system",
+            notes: "Created from timekeeping system",
             isWeekend
           };
           
-          // Add the new entry
-          await updateDoc(workHoursRef, {
-            entries: [...entries, newEntry],
+          await setDoc(workHoursRef, {
+            userId,
+            month: normalizedMonth,
+            year,
+            entries: [entry],
             lastUpdated: serverTimestamp()
           });
         }
-      } else {
-        // Document doesn't exist, create it
-        const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
-        const isWeekend = [0, 6].includes(new Date(date).getDay()); // 0 = Sunday, 6 = Saturday
-        
-        const entry = {
-          date,
-          day: dayOfWeek,
-          total: standardHours,
-          overtime: overtimeHours,
-          notes: "Created from timekeeping system",
-          isWeekend
-        };
-        
-        await setDoc(workHoursRef, {
-          userId,
-          month: normalizedMonth,
-          year,
-          entries: [entry],
-          lastUpdated: serverTimestamp()
-        });
+      } catch (docError) {
+        console.error(`Error working with document ${workHoursId}:`, docError);
+        return false;
       }
       
       return true;
     } catch (error) {
       console.error("Error syncing to workHours:", error);
-      throw error;
+      return false; // Return false instead of throwing - don't block timekeeping process
     }
   },
   
@@ -463,6 +502,15 @@ export const timekeepingService = {
    * @returns {Promise<Object>} - Results of the sync operation
    */
   async syncOfflineRecords(offlineRecords) {
+    if (!Array.isArray(offlineRecords) || offlineRecords.length === 0) {
+      return {
+        total: 0,
+        success: 0,
+        failed: 0,
+        errors: []
+      };
+    }
+    
     const results = {
       total: offlineRecords.length,
       success: 0,
@@ -472,6 +520,10 @@ export const timekeepingService = {
     
     for (const record of offlineRecords) {
       try {
+        if (!record.userId) {
+          throw new Error("Missing userId in offline record");
+        }
+        
         if (record.type === 'clockIn') {
           await this.clockIn(record.userId, {
             ...record.scanInfo,
@@ -484,6 +536,8 @@ export const timekeepingService = {
             offline: true,
             originalTimestamp: record.timestamp
           });
+        } else {
+          throw new Error(`Unknown record type: ${record.type}`);
         }
         
         results.success++;
@@ -507,6 +561,11 @@ export const timekeepingService = {
    */
   async getUserTimekeepingHistory(userId, options = {}) {
     try {
+      if (!userId) {
+        console.error("Missing userId in getUserTimekeepingHistory");
+        return [];
+      }
+      
       const { month, year, status } = options;
       
       let q = query(
@@ -535,7 +594,7 @@ export const timekeepingService = {
       }));
     } catch (error) {
       console.error("Error getting timekeeping history:", error);
-      throw error;
+      return []; // Return empty array instead of throwing
     }
   },
   

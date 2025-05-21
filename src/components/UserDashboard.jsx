@@ -1,4 +1,4 @@
-// src/components/UserDashboard.jsx
+// src/components/UserDashboard.jsx - Fixed version with better error handling
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -39,17 +39,34 @@ const UserDashboard = () => {
             ...userDoc.data()
           });
         } else {
+          // Crea un oggetto utente minimale anche se il documento non esiste
           setUserData({
             id: currentUser.uid,
             email: currentUser.email
           });
+          console.warn("Documento utente non trovato in Firestore");
         }
         
-        // Auto-close any open sessions from previous days
-        await timekeepingService.autoCloseOpenSessions(currentUser.uid);
+        setError(null);
+        
+        // Auto-close any open sessions from previous days - wrapped in try/catch
+        try {
+          await timekeepingService.autoCloseOpenSessions(currentUser.uid);
+        } catch (sessionError) {
+          console.error("Errore nella chiusura automatica delle sessioni:", sessionError);
+          // Non bloccare l'interfaccia se questa operazione fallisce
+        }
       } catch (err) {
         console.error("Errore nel recupero dei dati utente:", err);
         setError("Impossibile caricare i dati. Riprova più tardi.");
+        
+        // Anche in caso di errore, imposta dati utente minimi se disponibili
+        if (auth.currentUser) {
+          setUserData({
+            id: auth.currentUser.uid,
+            email: auth.currentUser.email
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -61,7 +78,7 @@ const UserDashboard = () => {
   // Load monthly timekeeping statistics
   useEffect(() => {
     const fetchMonthlyStats = async () => {
-      if (!userData) return;
+      if (!userData?.id) return;
       
       setIsLoadingStats(true);
       try {
@@ -140,11 +157,75 @@ const UserDashboard = () => {
   };
 
   if (isLoading) {
-    return <div className="loading">Caricamento dashboard...</div>;
+    return (
+      <div className="loading">
+        <div className="loading-container">
+          <div className="loading">Caricamento dashboard...</div>
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
-    return <div className="error-message">{error}</div>;
+  // Se c'è un errore ma userData è disponibile, mostra comunque alcuni elementi della dashboard
+  if (error && userData) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h2>Dashboard</h2>
+          <p className="current-date">{getCurrentDate()}</p>
+        </div>
+        
+        <div className="error-message" style={{ marginBottom: '20px' }}>
+          {error}
+        </div>
+
+        <div className="dashboard-content">
+          <div className="dashboard-main">
+            {/* Display QR code regardless of other errors */}
+            <div className="dashboard-card qrcode-card">
+              <UserQRCode />
+              <div className="qrcode-instructions">
+                <h4>Come utilizzare il tuo QR code:</h4>
+                <ol>
+                  <li>Mostra questo QR code al dispositivo di scansione all'inizio del turno per timbrare l'entrata.</li>
+                  <li>Alla fine del turno, mostra nuovamente il QR code per timbrare l'uscita.</li>
+                  <li>Le ore verranno calcolate automaticamente, inclusi eventuali straordinari oltre le 8 ore.</li>
+                  <li>In caso di mancata timbratura di uscita, il sistema chiuderà automaticamente la giornata con 8 ore standard.</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Card Informazioni utente */}
+            <div className="dashboard-card user-info-card">
+              <h3>Informazioni Utente</h3>
+              <div className="user-info-content">
+                <p><strong>Nome:</strong> {userData?.nome || 'N/D'}</p>
+                <p><strong>Cognome:</strong> {userData?.cognome || 'N/D'}</p>
+                <p><strong>Email:</strong> {userData?.email || 'N/D'}</p>
+                <p><strong>Ruolo:</strong> {userData?.role === 'admin' ? 'Amministratore' : 'Dipendente'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se c'è un errore e userData non è disponibile, mostra solo il messaggio di errore
+  if (error && !userData) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h2>Dashboard</h2>
+          <p className="current-date">{getCurrentDate()}</p>
+        </div>
+        
+        <div className="error-message">
+          {error}
+          <p>Ricarica la pagina per riprovare.</p>
+        </div>
+      </div>
+    );
   }
 
   return (

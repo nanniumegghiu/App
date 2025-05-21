@@ -1,4 +1,4 @@
-// src/components/TimekeepingStatus.jsx
+// src/components/TimekeepingStatus.jsx - With improved error handling
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import timekeepingService from '../services/timekeepingService';
@@ -39,6 +39,20 @@ const TimekeepingStatus = () => {
       } catch (err) {
         console.error('Error loading timekeeping status:', err);
         setError('Could not load timekeeping status');
+        
+        // Set default status when error occurs
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        
+        setStatus({
+          status: "not-started",
+          message: "Unable to retrieve status",
+          date: dateString,
+          timestamp: now.toISOString()
+        });
       } finally {
         setLoading(false);
       }
@@ -72,26 +86,35 @@ const TimekeepingStatus = () => {
       return null;
     }
     
-    // Parse clock-in time
-    const today = new Date();
-    const [clockInHours, clockInMinutes] = status.clockInTime.split(':').map(Number);
-    
-    // Create Date objects for comparison
-    const clockInDate = new Date(today);
-    clockInDate.setHours(clockInHours, clockInMinutes, 0, 0);
-    
-    // Calculate difference in minutes
-    const diffMs = today - clockInDate;
-    const diffMinutes = Math.floor(diffMs / 60000);
-    
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    
-    return {
-      hours,
-      minutes,
-      totalMinutes: diffMinutes
-    };
+    try {
+      // Parse clock-in time
+      const today = new Date();
+      const [clockInHours, clockInMinutes] = status.clockInTime.split(':').map(Number);
+      
+      // Create Date objects for comparison
+      const clockInDate = new Date(today);
+      clockInDate.setHours(clockInHours, clockInMinutes, 0, 0);
+      
+      // Calculate difference in minutes
+      const diffMs = today - clockInDate;
+      const diffMinutes = Math.floor(diffMs / 60000);
+      
+      const hours = Math.floor(diffMinutes / 60);
+      const minutes = diffMinutes % 60;
+      
+      return {
+        hours,
+        minutes,
+        totalMinutes: diffMinutes
+      };
+    } catch (err) {
+      console.error('Error calculating elapsed time:', err);
+      return {
+        hours: 0,
+        minutes: 0,
+        totalMinutes: 0
+      };
+    }
   };
   
   // Get the elapsed time display
@@ -141,13 +164,18 @@ const TimekeepingStatus = () => {
   
   // Format time as HH:MM AM/PM
   const formatTimeAMPM = (date) => {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    
-    // Add leading zero if needed
-    minutes = minutes < 10 ? '0' + minutes : minutes;
-    
-    return `${hours}:${minutes}`;
+    try {
+      let hours = date.getHours();
+      let minutes = date.getMinutes();
+      
+      // Add leading zero if needed
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      
+      return `${hours}:${minutes}`;
+    } catch (err) {
+      console.error('Error formatting time:', err);
+      return '--:--';
+    }
   };
   
   if (loading) {
@@ -159,7 +187,7 @@ const TimekeepingStatus = () => {
     );
   }
   
-  if (error) {
+  if (error && !status) {
     return (
       <div className="timekeeping-status-card error">
         <h3>Timekeeping Status</h3>
@@ -179,6 +207,19 @@ const TimekeepingStatus = () => {
         <h3>Time Clock Status</h3>
         <div className="current-time">{formatTimeAMPM(currentTime)}</div>
       </div>
+      
+      {error && (
+        <div className="status-warning" style={{
+          padding: '8px 12px',
+          marginBottom: '10px',
+          backgroundColor: 'rgba(243, 156, 18, 0.1)',
+          borderLeft: '3px solid #f39c12',
+          color: '#f39c12',
+          fontSize: '0.9rem'
+        }}>
+          {error} (Using cached data)
+        </div>
+      )}
       
       <div className="status-content">
         <div className="status-indicator">
