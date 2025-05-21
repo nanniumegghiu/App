@@ -1,4 +1,4 @@
-// Updated App.jsx with OfflineManager
+// Updated App.jsx with modified Dashboard and Hours Management sections
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import UserInfo from './components/UserInfo';
@@ -61,9 +61,7 @@ function App() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-
-
-  // Stati applicazione (visibili solo se loggato)
+  // App states (visible only when logged in)
   const [selectedMonth, setSelectedMonth] = useState(defaultSelection.month);
   const [selectedYear, setSelectedYear] = useState(defaultSelection.year);
   const [reports, setReports] = useState([]);
@@ -77,15 +75,15 @@ function App() {
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const tableRowsRef = useRef({});
 
-  // Verifica se l'utente è loggato all'avvio e ottieni il ruolo
+  // Check if user is logged in on startup and get role
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("App: Stato autenticazione cambiato:", currentUser?.uid);
+      console.log("App: Authentication state changed:", currentUser?.uid);
       setUser(currentUser);
       
       if (currentUser) {
         try {
-          // Ottieni il ruolo dell'utente dal database
+          // Get user role from database
           const userDocRef = doc(db, "users", currentUser.uid);
           const userDoc = await getDoc(userDocRef);
           
@@ -93,13 +91,13 @@ function App() {
             const userData = userDoc.data();
             setUserRole(userData.role || 'user');
             
-            // Imposta la vista admin automaticamente se l'utente è un admin
+            // Set admin view automatically if user is admin
             if (userData.role === 'admin') {
               setIsAdminView(true);
             }
           }
         } catch (error) {
-          console.error("App: Errore nel recupero dei dati utente:", error);
+          console.error("App: Error getting user data:", error);
         }
       } else {
         setUserRole(null);
@@ -110,35 +108,35 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Carica le segnalazioni dell'utente dal database
+  // Load user reports from database
   useEffect(() => {
     const loadUserReports = async () => {
       if (!user || isAdminView) return;
       
-      // Carica le segnalazioni solo nella tab delle ore
+      // Only load reports in the hours tab
       if (activeTab !== 'hours') return;
       
       setIsLoadingReports(true);
       try {
-        console.log(`App: Caricamento segnalazioni per userId=${user.uid}, month=${selectedMonth}, year=${selectedYear}`);
+        console.log(`App: Loading reports for userId=${user.uid}, month=${selectedMonth}, year=${selectedYear}`);
         
-        // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+        // Normalize month (remove any prefixes and leading zeros)
         let normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         
-        // Se il mese è vuoto dopo la normalizzazione, usa il valore originale
+        // If month is empty after normalization, use the original value
         if (!normalizedMonth) normalizedMonth = selectedMonth;
         
-        // Formato con zero iniziale per la consistenza
+        // Format with leading zero for consistency
         const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
         
-        console.log(`App: Mese normalizzato=${normalizedMonth}, formattedMonth=${formattedMonth}`);
+        console.log(`App: Normalized month=${normalizedMonth}, formattedMonth=${formattedMonth}`);
         
         const userReports = await getUserReportsByMonth(user.uid, formattedMonth, selectedYear);
-        console.log("App: Segnalazioni caricate:", userReports);
+        console.log("App: Reports loaded:", userReports);
         setReports(userReports || []);
       } catch (error) {
-        console.error("App: Errore nel caricamento delle segnalazioni:", error);
-        setNotificationMessage("Si è verificato un errore nel caricamento delle segnalazioni");
+        console.error("App: Error loading reports:", error);
+        setNotificationMessage("An error occurred while loading reports");
         setNotificationType("error");
         setShowNotification(true);
         setReports([]);
@@ -153,7 +151,7 @@ function App() {
   }, [user, selectedMonth, selectedYear, isAdminView, activeTab]);
 
   const handleReportError = (date) => {
-    console.log(`App: Richiesta segnalazione errore per data ${date}`);
+    console.log(`App: Error report request for date ${date}`);
     setSelectedDate(date);
     setIsReportFormVisible(true);
     setHighlightedRow(date);
@@ -170,68 +168,68 @@ function App() {
   };
 
   const handleCloseReportForm = () => {
-    console.log("App: Chiusura form segnalazione");
+    console.log("App: Closing report form");
     setIsReportFormVisible(false);
     setHighlightedRow(null);
   };
 
   const handleSubmitReport = async (date, message) => {
-    console.log(`App: Segnalazione inviata per data ${date} con messaggio: ${message}`);
+    console.log(`App: Report submitted for date ${date} with message: ${message}`);
     
     try {
-      // La segnalazione viene gestita internamente dal componente ReportForm
-      // che si occupa di salvare la segnalazione nel database
+      // The report is handled internally by the ReportForm component
+      // which saves the report to the database
       
-      // Chiudi il form
+      // Close the form
       setIsReportFormVisible(false);
       setHighlightedRow(null);
       
-      // Mostra notifica di successo
-      setNotificationMessage("La tua segnalazione è stata inviata con successo!");
+      // Show success notification
+      setNotificationMessage("Your report has been sent successfully!");
       setNotificationType("success");
       setShowNotification(true);
       
-      // Ricarica le segnalazioni dell'utente dopo un breve ritardo
-      // per dare tempo al database di aggiornarsi
+      // Reload user reports after a short delay
+      // to give the database time to update
       setTimeout(async () => {
         try {
-          console.log("App: Ricaricamento segnalazioni dopo invio...");
+          console.log("App: Reloading reports after submission...");
           
-          // Normalizza il mese
+          // Normalize the month
           let normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
           if (!normalizedMonth) normalizedMonth = selectedMonth;
           
-          // Formato con zero iniziale per la consistenza
+          // Format with leading zero for consistency
           const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
           
           const updatedReports = await getUserReportsByMonth(user.uid, formattedMonth, selectedYear);
-          console.log("App: Segnalazioni ricaricate:", updatedReports);
+          console.log("App: Reports reloaded:", updatedReports);
           setReports(updatedReports || []);
         } catch (error) {
-          console.error("App: Errore nel ricaricamento delle segnalazioni:", error);
+          console.error("App: Error reloading reports:", error);
         }
       }, 1000);
     } catch (error) {
-      console.error("App: Errore nella gestione della segnalazione:", error);
-      setNotificationMessage("Si è verificato un errore. Riprova più tardi.");
+      console.error("App: Error handling report:", error);
+      setNotificationMessage("An error occurred. Please try again later.");
       setNotificationType("error");
       setShowNotification(true);
     }
   };
 
-  // Funzione per cambiare tra vista utente e admin
+  // Function to toggle between user and admin view
   const toggleAdminView = () => {
-    console.log("App: Cambio vista", isAdminView ? "admin -> utente" : "utente -> admin");
+    console.log("App: View change", isAdminView ? "admin -> user" : "user -> admin");
     setIsAdminView(!isAdminView);
   };
 
-  // Funzione per cambiare tab nella dashboard utente
+  // Function to change tab in user dashboard
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
 
   if (!user) {
-    // Mostra il login se non autenticato
+    // Show login if not authenticated
     return <Login onLogin={(user) => setUser(user)} />;
   }
 
@@ -244,10 +242,10 @@ function App() {
       />
 
       {isAdminView && userRole === 'admin' ? (
-        // Mostra il pannello admin
+        // Show admin panel
         <AdminPanel />
       ) : (
-        // Mostra la vista utente
+        // Show user view
         <div className="container">
           <Notification
             message={notificationMessage}
@@ -256,17 +254,17 @@ function App() {
             type={notificationType}
           />
           
-          {/* Barra di navigazione per la dashboard utente */}
+          {/* Navigation bar for user dashboard */}
           <UserNavigation 
             activeTab={activeTab} 
             onTabChange={handleTabChange} 
           />
 
           {activeTab === 'dashboard' ? (
-            // Contenuto del tab "Dashboard" - NUOVO
+            // Dashboard tab content - SIMPLIFIED VERSION
             <UserDashboard />
           ) : activeTab === 'hours' ? (
-            // Contenuto del tab "Gestione Ore"
+            // Hours Management tab content - WITH MONTHLY STATS ADDED
             <>
               <UserInfo
                 selectedMonth={selectedMonth}
@@ -291,7 +289,7 @@ function App() {
               />
             </>
           ) : (
-            // Contenuto del tab "Richieste Permessi/Ferie"
+            // Leave/Time Off Requests tab content
             <UserRequests />
           )}
         </div>

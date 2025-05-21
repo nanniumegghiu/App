@@ -1,11 +1,17 @@
 // src/components/UserInfo.jsx
 import React, { useEffect, useState } from 'react';
-import UserQRCode from './UserQRCode'; // Importa il componente QRCode
-import './userQRCode.css'; // Importa gli stili del QRCode
+import { auth, db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import UserQRCode from './UserQRCode';
+import './userQRCode.css';
+import './dashboard.css';
 
 const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }) => {
   const [availableMonths, setAvailableMonths] = useState([]);
-  const [showQRCode, setShowQRCode] = useState(false); // Stato per mostrare/nascondere il QR code
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     // Ottieni la data corrente
@@ -44,6 +50,130 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
     }
   }, [setSelectedMonth, setSelectedYear, selectedMonth, selectedYear]);
 
+  // Carica i dati utente
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        const userDocRef = doc(db, "users", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          setUserData({
+            id: currentUser.uid,
+            email: currentUser.email,
+            ...userDoc.data()
+          });
+        } else {
+          setUserData({
+            id: currentUser.uid,
+            email: currentUser.email
+          });
+        }
+      } catch (err) {
+        console.error("Errore nel recupero dei dati utente:", err);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Carica le statistiche mensili basate sugli stessi dati della tabella
+  useEffect(() => {
+    const fetchMonthlyStats = async () => {
+      if (!selectedMonth || !selectedYear || !userData?.id) return;
+      
+      setIsLoadingStats(true);
+      try {
+        // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+        let normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+        if (!normalizedMonth) normalizedMonth = selectedMonth;
+        
+        // Utilizza la stessa funzione che viene usata per caricare i dati nella tabella
+        const { getUserWorkHoursByMonth } = await import('../firebase');
+        const workHoursData = await getUserWorkHoursByMonth(userData.id, normalizedMonth, selectedYear);
+        
+        if (workHoursData && workHoursData.entries && workHoursData.entries.length > 0) {
+          const entries = workHoursData.entries;
+          
+          // Calcola i giorni lavorati (escludendo lettere speciali M, P, A)
+          const completedDays = entries.filter(entry => 
+            entry.total !== "M" && entry.total !== "P" && entry.total !== "A" && 
+            (parseFloat(entry.total) > 0 || parseFloat(entry.overtime || 0) > 0)
+          ).length;
+          
+          // Calcola il totale delle ore standard
+          const totalStandardHours = entries.reduce((sum, entry) => {
+            if (["M", "P", "A"].includes(entry.total)) {
+              return sum;
+            }
+            return sum + (parseFloat(entry.total) || 0);
+          }, 0);
+          
+          // Calcola il totale delle ore di straordinario
+          const totalOvertimeHours = entries.reduce((sum, entry) => {
+            return sum + (parseFloat(entry.overtime || 0) || 0);
+          }, 0);
+          
+          // Conta i giorni "speciali"
+          const malattiaCount = entries.filter(entry => entry.total === "M").length;
+          const permessoCount = entries.filter(entry => entry.total === "P").length;
+          const assenzaCount = entries.filter(entry => entry.total === "A").length;
+          
+          setMonthlyStats({
+            month: selectedMonth,
+            year: selectedYear,
+            totalDays: entries.length,
+            completedDays,
+            totalStandardHours,
+            totalOvertimeHours,
+            totalHours: totalStandardHours + totalOvertimeHours,
+            malattiaCount,
+            permessoCount,
+            assenzaCount
+          });
+        } else {
+          // Se non ci sono dati, imposta statistiche a zero
+          setMonthlyStats({
+            month: selectedMonth,
+            year: selectedYear,
+            totalDays: 0,
+            completedDays: 0,
+            totalStandardHours: 0,
+            totalOvertimeHours: 0,
+            totalHours: 0,
+            malattiaCount: 0,
+            permessoCount: 0,
+            assenzaCount: 0
+          });
+        }
+      } catch (err) {
+        console.error("Errore caricamento statistiche mensili:", err);
+        // Non impostare errore - questa è una funzionalità non critica
+        
+        // Imposta statistiche a zero in caso di errore
+        setMonthlyStats({
+          month: selectedMonth,
+          year: selectedYear,
+          totalDays: 0,
+          completedDays: 0,
+          totalStandardHours: 0,
+          totalOvertimeHours: 0,
+          totalHours: 0,
+          malattiaCount: 0,
+          permessoCount: 0,
+          assenzaCount: 0
+        });
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    
+    fetchMonthlyStats();
+  }, [userData, selectedMonth, selectedYear]);
+
   // Funzione per ottenere il nome del mese in italiano
   const getMonthName = (monthNumber) => {
     const monthNames = [
@@ -53,6 +183,7 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
     return monthNames[monthNumber - 1]; // L'array inizia da 0, i mesi da 1
   };
 
+  // Gestisce il cambio del mese selezionato
   const handleMonthChange = (e) => {
     const selectedOption = availableMonths.find(month => month.value === e.target.value);
     if (selectedOption) {
@@ -104,6 +235,55 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
       {showQRCode && (
         <div className="qrcode-container">
           <UserQRCode />
+        </div>
+      )}
+      
+      {/* Monthly Statistics Card - Now using the same data source as the timesheet table */}
+      {monthlyStats && !isLoadingStats && (
+        <div className="monthly-stats-card">
+          <h3>Statistiche di {getMonthName(monthlyStats.month)} {monthlyStats.year}</h3>
+          
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="stat-value">{monthlyStats.completedDays}</div>
+              <div className="stat-label">Giorni Lavorati</div>
+            </div>
+            
+            <div className="stat-item">
+              <div className="stat-value">{monthlyStats.totalHours}</div>
+              <div className="stat-label">Ore Totali</div>
+            </div>
+            
+            <div className="stat-item">
+              <div className="stat-value">{monthlyStats.totalOvertimeHours}</div>
+              <div className="stat-label">Ore Straordinario</div>
+            </div>
+            
+            {monthlyStats.malattiaCount > 0 && (
+              <div className="stat-item">
+                <div className="stat-value">{monthlyStats.malattiaCount}</div>
+                <div className="stat-label">Giorni Malattia</div>
+              </div>
+            )}
+            
+            {monthlyStats.permessoCount > 0 && (
+              <div className="stat-item">
+                <div className="stat-value">{monthlyStats.permessoCount}</div>
+                <div className="stat-label">Giorni Permesso</div>
+              </div>
+            )}
+            
+            {monthlyStats.assenzaCount > 0 && (
+              <div className="stat-item">
+                <div className="stat-value">{monthlyStats.assenzaCount}</div>
+                <div className="stat-label">Giorni Assenza</div>
+              </div>
+            )}
+          </div>
+          
+          <div className="stat-note">
+            Riepilogo calcolato dai dati della tabella. Mostra ore effettive registrate e giorni speciali (M=Malattia, P=Permesso, A=Assenza).
+          </div>
         </div>
       )}
     </div>
