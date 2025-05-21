@@ -356,7 +356,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   return (
     <div className="timekeeping-scanner">
       <div className="scanner-header">
-        <h2>QR Code Time Clock</h2>
+        <h2>Scanner Timbrature</h2>
         <div className="scanner-status">
           {!isOnline && (
             <div className="offline-badge">
@@ -376,13 +376,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           className={`scan-type-btn ${scanType === 'in' ? 'active' : ''}`}
           onClick={() => handleScanTypeChange('in')}
         >
-          Clock In
+          Ingresso
         </button>
         <button
           className={`scan-type-btn ${scanType === 'out' ? 'active' : ''}`}
           onClick={() => handleScanTypeChange('out')}
         >
-          Clock Out
+          Uscita
         </button>
       </div>
       

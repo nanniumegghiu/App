@@ -472,7 +472,7 @@ const timekeepingService = {
             day: dayOfWeek,
             total: standardHours,
             overtime: overtimeHours,
-            notes: "Created from timekeeping system",
+            notes: "Tramite Timbratura",
             isWeekend
           };
           

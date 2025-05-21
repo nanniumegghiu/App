@@ -23,15 +23,49 @@ import './components/userQRCode.css';
 import './components/dashboard.css';
 import './components/timekeepingScanner.css';
 
+  // Function to determine the default month and year to show
+  const getDefaultMonthAndYear = () => {
+    const currentDate = new Date();
+    const currentDay = currentDate.getDate();
+    const currentMonth = currentDate.getMonth() + 1; // getMonth returns 0-11
+    const currentYear = currentDate.getFullYear();
+  
+    // If we're in the first 5 days of the month, show previous month
+    if (currentDay <= 5) {
+      // Calculate previous month (handling January case)
+      let previousMonth = currentMonth - 1;
+      let previousYear = currentYear;
+      
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+      
+      return {
+        month: previousMonth.toString(),
+        year: previousYear.toString()
+      };
+    }
+    
+    // Otherwise show current month
+    return {
+      month: currentMonth.toString(),
+      year: currentYear.toString()
+    };
+  };
+
 function App() {
+  const defaultSelection = getDefaultMonthAndYear();
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isAdminView, setIsAdminView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+
+
   // Stati applicazione (visibili solo se loggato)
-  const [selectedMonth, setSelectedMonth] = useState('4');
-  const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedMonth, setSelectedMonth] = useState(defaultSelection.month);
+  const [selectedYear, setSelectedYear] = useState(defaultSelection.year);
   const [reports, setReports] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isReportFormVisible, setIsReportFormVisible] = useState(false);

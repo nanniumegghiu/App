@@ -1,4 +1,4 @@
-// src/components/UserInfo.jsx (modificato)
+// src/components/UserInfo.jsx
 import React, { useEffect, useState } from 'react';
 import UserQRCode from './UserQRCode'; // Importa il componente QRCode
 import './userQRCode.css'; // Importa gli stili del QRCode
@@ -25,8 +25,9 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
     }
 
     // Determina quale mese dovrebbe essere visualizzato di default
-    const defaultMonth = currentDay >= 5 ? currentMonth.toString() : previousMonth.toString();
-    const defaultYear = currentDay >= 5 ? currentYear.toString() : previousYear.toString();
+    // Se siamo nei primi 5 giorni del mese, mostra il mese precedente
+    const defaultMonth = currentDay <= 5 ? previousMonth.toString() : currentMonth.toString();
+    const defaultYear = currentDay <= 5 && currentMonth === 1 ? previousYear.toString() : currentYear.toString();
 
     // Costruisci l'array dei mesi disponibili
     const months = [
@@ -70,6 +71,10 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
       <div className="user-info">
         <div>
           <h2>Verifica le tue ore e segnala eventuali errori</h2>
+          <p className="selection-description">
+            {selectedMonth && selectedYear && 
+              `Stai visualizzando ${getMonthName(selectedMonth)} ${selectedYear}`}
+          </p>
         </div>
         <div className="user-actions">
           <div className="month-selector">
