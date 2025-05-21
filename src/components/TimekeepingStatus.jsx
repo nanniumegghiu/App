@@ -150,13 +150,13 @@ const TimekeepingStatus = () => {
     
     switch (status.status) {
       case 'in-progress':
-        return 'Currently Clocked In';
+        return 'In Corso';
       case 'completed':
-        return 'Clocked Out';
+        return 'Giornata Conclusa';
       case 'auto-closed':
-        return 'Auto-Closed';
+        return 'Auto-Chiusa per Mancata Uscita';
       case 'not-started':
-        return 'Not Clocked In Today';
+        return 'Nessun Ingresso Registrato';
       default:
         return status.status;
     }
@@ -204,7 +204,7 @@ const TimekeepingStatus = () => {
   return (
     <div className={`timekeeping-status-card ${getStatusClass()}`}>
       <div className="status-header">
-        <h3>Time Clock Status</h3>
+        <h3>Ore Lavorative Odierne</h3>
         <div className="current-time">{formatTimeAMPM(currentTime)}</div>
       </div>
       
@@ -235,7 +235,7 @@ const TimekeepingStatus = () => {
           {status?.status === 'in-progress' && (
             <>
               <div className="time-entry">
-                <div className="time-label">Clock In:</div>
+                <div className="time-label">Ingresso:</div>
                 <div className="time-value">{formatTime(status.clockInTime)}</div>
               </div>
               
@@ -260,17 +260,17 @@ const TimekeepingStatus = () => {
           {(status?.status === 'completed' || status?.status === 'auto-closed') && (
             <>
               <div className="time-entry">
-                <div className="time-label">Clock In:</div>
+                <div className="time-label">Ingresso:</div>
                 <div className="time-value">{formatTime(status.clockInTime)}</div>
               </div>
               
               <div className="time-entry">
-                <div className="time-label">Clock Out:</div>
+                <div className="time-label">Uscita:</div>
                 <div className="time-value">{formatTime(status.clockOutTime)}</div>
               </div>
               
               <div className="time-entry highlighted">
-                <div className="time-label">Total Hours:</div>
+                <div className="time-label">Totale:</div>
                 <div className="time-value">
                   {status.totalHours} 
                   {status.status === 'auto-closed' && <span className="auto-note">(Auto)</span>}
@@ -284,7 +284,7 @@ const TimekeepingStatus = () => {
                 </div>
                 
                 <div className="breakdown-item">
-                  <span className="breakdown-label">Overtime:</span>
+                  <span className="breakdown-label">Straordinario:</span>
                   <span className="breakdown-value">{status.overtimeHours}</span>
                 </div>
               </div>
@@ -293,8 +293,8 @@ const TimekeepingStatus = () => {
           
           {status?.status === 'not-started' && (
             <div className="not-started-message">
-              <p>You have not clocked in today.</p>
-              <p className="hint">Use your QR code to clock in.</p>
+              <p>Non hai timbrato oggi.</p>
+              <p className="hint">Usa il tuo QRCode per timbrare.</p>
             </div>
           )}
         </div>
