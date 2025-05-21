@@ -1,7 +1,11 @@
+// src/components/UserInfo.jsx (modificato)
 import React, { useEffect, useState } from 'react';
+import UserQRCode from './UserQRCode'; // Importa il componente QRCode
+import './userQRCode.css'; // Importa gli stili del QRCode
 
 const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }) => {
   const [availableMonths, setAvailableMonths] = useState([]);
+  const [showQRCode, setShowQRCode] = useState(false); // Stato per mostrare/nascondere il QR code
 
   useEffect(() => {
     // Ottieni la data corrente
@@ -56,25 +60,47 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
     }
   };
 
+  // Toggle per mostrare/nascondere il QR code
+  const toggleQRCode = () => {
+    setShowQRCode(!showQRCode);
+  };
+
   return (
-    <div className="user-info">
-      <div>
-        <h2>Verifica le tue ore e segnala eventuali errori</h2>
+    <div className="user-info-container">
+      <div className="user-info">
+        <div>
+          <h2>Verifica le tue ore e segnala eventuali errori</h2>
+        </div>
+        <div className="user-actions">
+          <div className="month-selector">
+            <label htmlFor="month-select">Seleziona Mese: </label>
+            <select 
+              id="month-select" 
+              value={selectedMonth} 
+              onChange={handleMonthChange}
+            >
+              {availableMonths.map((month) => (
+                <option key={`${month.value}-${month.year}`} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button 
+            className="btn btn-primary qrcode-toggle-btn"
+            onClick={toggleQRCode}
+          >
+            {showQRCode ? "Nascondi QR Code" : "Mostra QR Code"}
+          </button>
+        </div>
       </div>
-      <div>
-        <label htmlFor="month-select">Seleziona Mese: </label>
-        <select 
-          id="month-select" 
-          value={selectedMonth} 
-          onChange={handleMonthChange}
-        >
-          {availableMonths.map((month) => (
-            <option key={`${month.value}-${month.year}`} value={month.value}>
-              {month.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      
+      {/* QR Code container */}
+      {showQRCode && (
+        <div className="qrcode-container">
+          <UserQRCode />
+        </div>
+      )}
     </div>
   );
 };

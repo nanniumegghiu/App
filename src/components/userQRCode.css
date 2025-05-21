@@ -1,0 +1,225 @@
+/* src/components/userQRCode.css (con stato disabilitato) */
+.user-qrcode-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  text-align: center;
+  max-width: 380px;
+  margin: 0 auto 25px;
+  transition: all 0.3s ease;
+}
+
+/* Stato QR disabilitato */
+.user-qrcode-container.qr-disabled {
+  background-color: #f8f8f8;
+  border: 1px dashed #ddd;
+  opacity: 0.9;
+}
+
+.user-qrcode-container:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.qrcode-header {
+  margin-bottom: 15px;
+}
+
+.qrcode-header h3 {
+  margin: 0 0 10px 0;
+  color: var(--dark);
+  font-size: 1.4rem;
+}
+
+.qrcode-description {
+  color: #666;
+  margin: 0 0 15px 0;
+  font-size: 0.95rem;
+}
+
+.qrcode-wrapper {
+  background-color: white;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 0 auto 20px;
+  display: inline-block;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.qrcode-wrapper:hover {
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Overlay per QR disabilitato */
+.qrcode-disabled-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.7);
+  z-index: 10;
+}
+
+.disabled-text {
+  background-color: rgba(231, 76, 60, 0.9);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 1rem;
+  transform: rotate(-15deg);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Badge di stato del QR */
+.qr-status-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  z-index: 5;
+}
+
+.qr-status-badge.active {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #27ae60;
+}
+
+.qr-status-badge.inactive {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
+.qrcode-wrapper canvas {
+  display: block;
+}
+
+.user-details {
+  margin: 15px 0;
+}
+
+.user-details p {
+  margin: 5px 0;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+/* Messaggio per QR disabilitato */
+.qrcode-disabled-message {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #c0392b;
+  padding: 10px 15px;
+  border-radius: 5px;
+  margin: 15px 0;
+  font-size: 0.9rem;
+  border-left: 3px solid #e74c3c;
+}
+
+.qrcode-disabled-message p {
+  margin: 5px 0;
+}
+
+/* Azioni QR code - un solo pulsante centrato */
+.qrcode-actions {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.download-qr-btn {
+  padding: 12px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.download-qr-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.download-qr-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #95a5a6;
+  border-color: #95a5a6;
+}
+
+.download-icon {
+  font-size: 1.2rem;
+}
+
+/* Animazione del pulsante per attirare l'attenzione */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+  }
+}
+
+.download-qr-btn:not(:disabled) {
+  animation: pulse 2s infinite;
+}
+
+.qrcode-note {
+  font-size: 0.85rem;
+  color: #777;
+  font-style: italic;
+  margin-top: 15px;
+}
+
+.qrcode-loading,
+.qrcode-error {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.qrcode-error {
+  color: var(--danger);
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .user-qrcode-container {
+    padding: 15px;
+    max-width: 100%;
+  }
+  
+  .qrcode-wrapper {
+    padding: 10px;
+  }
+  
+  .qrcode-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .download-qr-btn {
+    width: 100%;
+    max-width: 250px;
+  }
+}

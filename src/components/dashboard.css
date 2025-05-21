@@ -1,0 +1,128 @@
+/* src/components/dashboard.css (molto semplificato) */
+.dashboard-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.8rem;
+}
+
+.current-date {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Versione semplificata della dashboard con solo QR code e informazioni utente */
+.dashboard-content.simplified {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+/* Card generico */
+.dashboard-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--dark);
+  font-size: 1.3rem;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* QR Code card */
+.qrcode-card {
+  text-align: center;
+  padding: 30px;
+}
+
+.qrcode-card .user-qrcode-container {
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* User info card */
+.user-info-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.user-info-content p {
+  margin: 5px 0;
+  color: #444;
+}
+
+/* Effetto di evidenziazione per il QR code */
+@keyframes gentle-highlight {
+  0% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(52, 152, 219, 0.25);
+  }
+  100% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.qrcode-card {
+  animation: gentle-highlight 3s infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .user-info-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-card {
+    padding: 15px;
+  }
+  
+  .qrcode-card {
+    padding: 20px 15px;
+  }
+}

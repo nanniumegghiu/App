@@ -5,6 +5,7 @@ import TimesheetTable from './components/TimesheetTable';
 import ReportsTable from './components/ReportsTable';
 import UserRequests from './components/UserRequests';
 import UserNavigation from './components/UserNavigation';
+import UserDashboard from './components/UserDashboard'; // Nuovo componente dashboard
 import ReportForm from './components/ReportForm';
 import Notification from './components/Notification';
 import Login from './components/Login';
@@ -16,12 +17,14 @@ import './index.css';
 import './request.css';
 import './admin-requests.css';
 import './user-navigation.css';
+import './components/userQRCode.css'; // Importa lo stile del QR code
+import './components/dashboard.css'; // Importa lo stile della dashboard
 
 function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [isAdminView, setIsAdminView] = useState(false);
-  const [activeTab, setActiveTab] = useState('hours'); // 'hours' o 'requests'
+  const [activeTab, setActiveTab] = useState('dashboard'); // Modificato da 'hours' a 'dashboard'
 
   // Stati applicazione (visibili solo se loggato)
   const [selectedMonth, setSelectedMonth] = useState('4');
@@ -75,6 +78,9 @@ function App() {
     const loadUserReports = async () => {
       if (!user || isAdminView) return;
       
+      // Carica le segnalazioni solo nella tab delle ore
+      if (activeTab !== 'hours') return;
+      
       setIsLoadingReports(true);
       try {
         console.log(`App: Caricamento segnalazioni per userId=${user.uid}, month=${selectedMonth}, year=${selectedYear}`);
@@ -104,7 +110,7 @@ function App() {
       }
     };
 
-    if (user && !isAdminView && activeTab === 'hours') {
+    if (user && !isAdminView) {
       loadUserReports();
     }
   }, [user, selectedMonth, selectedYear, isAdminView, activeTab]);
@@ -219,7 +225,10 @@ function App() {
             onTabChange={handleTabChange} 
           />
 
-          {activeTab === 'hours' ? (
+          {activeTab === 'dashboard' ? (
+            // Contenuto del tab "Dashboard" - NUOVO
+            <UserDashboard />
+          ) : activeTab === 'hours' ? (
             // Contenuto del tab "Gestione Ore"
             <>
               <UserInfo

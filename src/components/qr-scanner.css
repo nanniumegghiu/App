@@ -1,0 +1,123 @@
+/* src/components/qrScanner.css */
+.qr-scanner-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.qr-reader {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Personalizzazione dello scanner HTML5QRCode */
+.qr-reader video {
+  border-radius: 8px;
+  max-width: 100%;
+  height: auto !important;
+}
+
+.qr-reader select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.qr-reader button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin: 5px 0;
+}
+
+.qr-reader button:hover {
+  background-color: var(--secondary);
+}
+
+/* Risultati della scansione */
+.qr-result {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.qr-result.success {
+  background-color: rgba(46, 204, 113, 0.1);
+  border-left: 4px solid var(--success);
+}
+
+.qr-result.error {
+  background-color: rgba(231, 76, 60, 0.1);
+  border-left: 4px solid var(--danger);
+}
+
+.qr-result h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.qr-result-text {
+  font-family: monospace;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+.qr-error-text {
+  color: var(--danger);
+  margin: 0;
+}
+
+/* Scanner attivo/inattivo */
+.qr-scanner-active {
+  border: 2px solid var(--success);
+}
+
+.qr-scanner-inactive {
+  opacity: 0.7;
+  filter: grayscale(50%);
+}
+
+/* Animazione del bordo durante la scansione */
+@keyframes scanningPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+  }
+}
+
+.qr-reader video {
+  animation: scanningPulse 2s infinite;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .qr-scanner-container {
+    padding: 15px;
+  }
+  
+  .qr-reader {
+    max-width: 100%;
+  }
+}
