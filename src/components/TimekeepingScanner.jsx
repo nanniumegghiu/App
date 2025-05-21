@@ -1,6 +1,6 @@
 // src/components/TimekeepingScanner.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
 import Notification from './Notification';
 import './timekeepingScanner.css';
@@ -14,6 +14,8 @@ import './timekeepingScanner.css';
  */
 const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [cameras, setCameras] = useState([]);
+  const [selectedCamera, setSelectedCamera] = useState('');
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
@@ -21,97 +23,137 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   const [lastScannedUser, setLastScannedUser] = useState(null);
   const [offlineStorage, setOfflineStorage] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [initializing, setInitializing] = useState(false);
   const scannerRef = useRef(null);
-  const scannerInstanceRef = useRef(null);
+  const html5QrCode = useRef(null);
 
-  // Initialize QR code scanner
+  // Fetch available cameras
+  const fetchCameras = async () => {
+    try {
+      showNotification("Requesting camera permission...", "info");
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length) {
+        setCameras(devices);
+        setSelectedCamera(devices[0].id);
+        setError(null);
+        showNotification("Camera permission granted.", "success");
+      } else {
+        setError("No cameras found. Please ensure your device has a camera and it's not being used by another application.");
+        showNotification("No cameras found on your device.", "error");
+      }
+    } catch (err) {
+      console.error("Error getting cameras:", err);
+      setError(`Camera permission error: ${err.message || "Please allow camera access."}`);
+      showNotification("Camera permission denied. Please allow camera access in your browser settings.", "error");
+    }
+  };
+
+  // Initialize scanner on first mount to request camera permissions
   useEffect(() => {
-    if (!isScanning) return;
+    fetchCameras();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Configuration for the scanner
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      rememberLastUsedCamera: true,
-      aspectRatio: 1.0,
-      formatsToSupport: [Html5QrcodeScanner.FORMATS.QR_CODE],
+  // Start/stop scanning based on isScanning state
+  useEffect(() => {
+    // Initialize scanner and start scanning
+    const startScanner = async () => {
+      if (!selectedCamera) {
+        showNotification("No camera selected. Please select a camera.", "error");
+        setIsScanning(false);
+        return;
+      }
+
+      setInitializing(true);
+      try {
+        // Initialize scanner
+        if (!html5QrCode.current) {
+          html5QrCode.current = new Html5Qrcode("qr-reader");
+        }
+
+        // Start scanning
+        await html5QrCode.current.start(
+          selectedCamera,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          async (decodedText, decodedResult) => {
+            console.log(`QR Code scanned: ${decodedText}`, decodedResult);
+            
+            try {
+              // Expected format: iacuzzo:user:[userId]:[timestamp]
+              const parts = decodedText.split(':');
+              
+              if (parts.length < 3 || parts[0] !== 'iacuzzo' || parts[1] !== 'user') {
+                throw new Error("Invalid QR code format");
+              }
+              
+              const userId = parts[2];
+              
+              // Pause scanning to prevent multiple scans
+              await html5QrCode.current.pause();
+              
+              // Process the scan based on scan type (in/out)
+              await processTimekeepingScan(userId, scanType);
+              
+              // Show success state
+              setScanResult({
+                userId,
+                timestamp: new Date().toISOString(),
+                success: true,
+                type: scanType
+              });
+              
+            } catch (err) {
+              console.error("Error processing scan:", err);
+              setError(err.message || "Error processing scan");
+              showNotification(err.message || "Error processing scan", "error");
+            }
+          },
+          (errorMessage) => {
+            // This is for QR detection errors, which we can ignore
+            // console.log(`QR Code scanning error: ${errorMessage}`);
+          }
+        );
+        
+        setError(null);
+        setInitializing(false);
+        showNotification("Scanner started successfully.", "success");
+      } catch (err) {
+        console.error("Error starting scanner:", err);
+        setError(`Failed to start scanner: ${err.message}`);
+        showNotification(`Scanner error: ${err.message}. Try refreshing the page.`, "error");
+        setIsScanning(false);
+        setInitializing(false);
+      }
     };
 
-    try {
-      // Create a new instance of the scanner
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        config,
-        /* verbose= */ false
-      );
-
-      // Callback for successful scan
-      const onScanSuccess = async (decodedText, decodedResult) => {
-        console.log(`QR Code scanned: ${decodedText}`, decodedResult);
-        
-        // Pause scanning to prevent multiple scans
-        if (scannerInstanceRef.current) {
-          scannerInstanceRef.current.pause();
-        }
-
-        // Process the QR code data
+    // Stop scanning and clean up scanner
+    const stopScanner = async () => {
+      if (html5QrCode.current) {
         try {
-          // Expected format: iacuzzo:user:[userId]:[timestamp]
-          const parts = decodedText.split(':');
-          
-          if (parts.length < 3 || parts[0] !== 'iacuzzo' || parts[1] !== 'user') {
-            throw new Error("Invalid QR code format");
+          if (html5QrCode.current.isScanning) {
+            await html5QrCode.current.stop();
+            console.log("Scanner stopped successfully");
           }
-          
-          const userId = parts[2];
-          
-          // Process the scan based on scan type (in/out)
-          await processTimekeepingScan(userId, scanType);
-          
-          // Show notification
-          setScanResult({
-            userId,
-            timestamp: new Date().toISOString(),
-            success: true,
-            type: scanType
-          });
         } catch (err) {
-          console.error("Error processing scan:", err);
-          setError(err.message || "Error processing scan");
-          
-          // Show notification
-          showNotification(err.message || "Error processing scan", "error");
+          console.error("Error stopping scanner:", err);
         }
-      };
+      }
+    };
 
-      // Callback for scan error
-      const onScanError = (errorMessage) => {
-        // We don't need to show errors for normal scanning issues
-        console.log(`Scan error: ${errorMessage}`);
-      };
-
-      // Render the scanner
-      scanner.render(onScanSuccess, onScanError);
-      
-      // Store the scanner instance for later use
-      scannerInstanceRef.current = scanner.getState() ? scanner : null;
-    } catch (err) {
-      console.error("Error initializing scanner:", err);
-      setError("Could not initialize camera. Please check permissions.");
+    if (isScanning) {
+      startScanner();
+    } else {
+      stopScanner();
     }
 
     // Cleanup function
     return () => {
-      if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.pause();
-      }
-      // Clear the HTML
-      const scannerElement = document.getElementById("qr-reader");
-      if (scannerElement) {
-        scannerElement.innerHTML = '';
-      }
+      stopScanner();
     };
-  }, [isScanning, scanType]);
+  }, [isScanning, selectedCamera, scanType]);
 
   // Handle online/offline status
   useEffect(() => {
@@ -259,17 +301,29 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   };
 
   // Resume scanning
-  const resumeScanning = () => {
+  const resumeScanning = async () => {
     setScanResult(null);
     setError(null);
     
-    if (scannerInstanceRef.current) {
-      scannerInstanceRef.current.resume();
+    if (html5QrCode.current && html5QrCode.current.isScanning) {
+      try {
+        await html5QrCode.current.resume();
+      } catch (error) {
+        console.error("Error resuming scanner:", error);
+        // If resume fails, restart the scanner
+        setIsScanning(false);
+        setTimeout(() => setIsScanning(true), 300);
+      }
+    } else {
+      // If scanner isn't running, restart
+      setIsScanning(false);
+      setTimeout(() => setIsScanning(true), 300);
     }
   };
 
   // Toggle scanning on/off
   const toggleScanning = () => {
+    if (initializing) return; // Prevent toggling while initializing
     setIsScanning(!isScanning);
     setScanResult(null);
     setError(null);
@@ -280,6 +334,23 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
     setScanType(type);
     setScanResult(null);
     setError(null);
+  };
+
+  // Handle camera selection change
+  const handleCameraChange = (e) => {
+    const cameraId = e.target.value;
+    setSelectedCamera(cameraId);
+    
+    // If already scanning, restart with new camera
+    if (isScanning) {
+      setIsScanning(false);
+      setTimeout(() => setIsScanning(true), 300);
+    }
+  };
+
+  // Retry camera detection
+  const handleRetryCamera = () => {
+    fetchCameras();
   };
 
   return (
@@ -323,54 +394,81 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           type={notification.type}
         />
       )}
+
+      {cameras.length > 0 && (
+        <div className="camera-selector">
+          <label htmlFor="camera-select">Select Camera:</label>
+          <select 
+            id="camera-select" 
+            value={selectedCamera}
+            onChange={handleCameraChange}
+            disabled={isScanning || initializing}
+          >
+            {cameras.map((camera) => (
+              <option key={camera.id} value={camera.id}>
+                {camera.label || `Camera ${camera.id}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       
       <div className="scanner-toggle">
         <button 
           className={`toggle-btn ${isScanning ? 'active' : ''}`} 
           onClick={toggleScanning}
+          disabled={initializing || cameras.length === 0}
         >
-          {isScanning ? 'Stop Scanner' : 'Start Scanner'}
+          {initializing ? 'Starting Scanner...' : isScanning ? 'Stop Scanner' : 'Start Scanner'}
         </button>
+        
+        {cameras.length === 0 && (
+          <button 
+            className="retry-btn" 
+            onClick={handleRetryCamera}
+            disabled={initializing}
+          >
+            Retry Camera Detection
+          </button>
+        )}
       </div>
       
-      {isScanning && (
-        <div className="scanner-container" ref={scannerRef}>
-          <div id="qr-reader" className="qr-reader"></div>
-          
-          {scanResult && (
-            <div className="scan-result success">
-              <h4>User {scanType === 'in' ? 'Clocked In' : 'Clocked Out'} Successfully!</h4>
-              {lastScannedUser && (
-                <div className="user-scan-info">
-                  <p><strong>User:</strong> {lastScannedUser.userName || lastScannedUser.userId}</p>
-                  <p><strong>Time:</strong> {new Date(lastScannedUser.timestamp).toLocaleTimeString()}</p>
-                  {lastScannedUser.offlineMode && (
-                    <p className="offline-note">Saved offline. Will sync when connection is restored.</p>
-                  )}
-                  {lastScannedUser.result && lastScannedUser.type === 'out' && (
-                    <p><strong>Hours:</strong> {lastScannedUser.result.totalHours} ({lastScannedUser.result.standardHours} standard + {lastScannedUser.result.overtimeHours} overtime)</p>
-                  )}
-                </div>
-              )}
-              <button className="continue-btn" onClick={resumeScanning}>
-                Continue Scanning
-              </button>
-            </div>
-          )}
-          
-          {error && (
-            <div className="scan-result error">
-              <h4>Error</h4>
-              <p className="error-text">{error}</p>
-              <button className="continue-btn" onClick={resumeScanning}>
-                Try Again
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <div className="scanner-container" ref={scannerRef}>
+        <div id="qr-reader" className="qr-reader"></div>
+        
+        {scanResult && (
+          <div className="scan-result success">
+            <h4>User {scanType === 'in' ? 'Clocked In' : 'Clocked Out'} Successfully!</h4>
+            {lastScannedUser && (
+              <div className="user-scan-info">
+                <p><strong>User:</strong> {lastScannedUser.userName || lastScannedUser.userId}</p>
+                <p><strong>Time:</strong> {new Date(lastScannedUser.timestamp).toLocaleTimeString()}</p>
+                {lastScannedUser.offlineMode && (
+                  <p className="offline-note">Saved offline. Will sync when connection is restored.</p>
+                )}
+                {lastScannedUser.result && lastScannedUser.type === 'out' && (
+                  <p><strong>Hours:</strong> {lastScannedUser.result.totalHours} ({lastScannedUser.result.standardHours} standard + {lastScannedUser.result.overtimeHours} overtime)</p>
+                )}
+              </div>
+            )}
+            <button className="continue-btn" onClick={resumeScanning}>
+              Continue Scanning
+            </button>
+          </div>
+        )}
+        
+        {error && !initializing && (
+          <div className="scan-result error">
+            <h4>Error</h4>
+            <p className="error-text">{error}</p>
+            <button className="continue-btn" onClick={resumeScanning}>
+              Try Again
+            </button>
+          </div>
+        )}
+      </div>
       
-      {!isScanning && (
+      {!isScanning && !error && cameras.length > 0 && (
         <div className="scanner-placeholder">
           <div className="placeholder-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -385,6 +483,19 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
             </svg>
           </div>
           <p>Click "Start Scanner" to begin scanning QR codes</p>
+        </div>
+      )}
+
+      {cameras.length === 0 && !initializing && (
+        <div className="camera-issue">
+          <h3>Camera Access Required</h3>
+          <p>We couldn't detect any cameras on your device. Please check:</p>
+          <ul>
+            <li>Your device has a working camera</li>
+            <li>You've granted camera permission to this website</li>
+            <li>No other application is currently using your camera</li>
+          </ul>
+          <p>Check your browser's address bar for a camera icon to manage permissions.</p>
         </div>
       )}
       

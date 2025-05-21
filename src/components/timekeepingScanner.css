@@ -77,10 +77,31 @@
   background-color: var(--secondary);
 }
 
+.camera-selector {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.camera-selector label {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.camera-selector select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: white;
+  flex: 1;
+}
+
 .scanner-toggle {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+  gap: 10px;
 }
 
 .toggle-btn {
@@ -92,15 +113,43 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-width: 200px;
 }
 
-.toggle-btn:hover {
+.toggle-btn:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-2px);
 }
 
 .toggle-btn.active {
   background-color: var(--danger);
+}
+
+.toggle-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.retry-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--warning);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.retry-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .scanner-container {
@@ -111,11 +160,52 @@
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
+  min-height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Camera issue section */
+.camera-issue {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.camera-issue h3 {
+  color: var(--danger);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.camera-issue ul {
+  margin-bottom: 15px;
+  padding-left: 20px;
+}
+
+.camera-issue li {
+  margin-bottom: 8px;
 }
 
 /* Customizing the scanner UI */
+#qr-reader__dashboard {
+  background-color: #f8f9fa !important;
+  padding: 10px !important;
+}
+
+#qr-reader__status_span {
+  color: #333 !important;
+  font-size: 0.9rem !important;
+}
+
 #qr-reader video {
   border-radius: 8px;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: cover;
 }
 
 #qr-reader select {
@@ -128,18 +218,19 @@
 }
 
 #qr-reader button {
-  background-color: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 10px 15px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  background-color: var(--primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 10px 15px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  margin: 5px 0 !important;
 }
 
 #qr-reader button:hover {
-  background-color: var(--secondary);
+  background-color: var(--secondary) !important;
 }
 
 .scanner-placeholder {
@@ -152,6 +243,7 @@
   border-radius: 8px;
   color: #777;
   text-align: center;
+  margin-bottom: 20px;
 }
 
 .placeholder-icon {
@@ -297,6 +389,23 @@
   
   .scan-type-btn {
     max-width: 100%;
+  }
+  
+  .camera-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .camera-selector select {
+    width: 100%;
+  }
+  
+  .scanner-toggle {
+    flex-direction: column;
+  }
+  
+  .toggle-btn, .retry-btn {
+    width: 100%;
   }
   
   #qr-reader {
