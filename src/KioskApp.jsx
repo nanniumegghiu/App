@@ -1,8 +1,10 @@
-// src/KioskApp.jsx - Modalità kiosk dedicata per dispositivi Android
+// src/KioskApp.jsx - Modalità kiosk dedicata per dispositivi Android con logout di emergenza
 import React, { useState, useEffect } from 'react';
 import TimekeepingScanner from './components/TimekeepingScanner';
 import Notification from './components/Notification';
 import timekeepingService from './services/timekeepingService';
+import { auth } from './firebase';
+import { signOut } from 'firebase/auth';
 import './kioskMode.css';
 
 /**
@@ -19,12 +21,16 @@ const KioskApp = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('online');
+  const [emergencyCode, setEmergencyCode] = useState('');
+  const [showEmergencyInput, setShowEmergencyInput] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const [tapTimer, setTapTimer] = useState(null);
 
   // Inizializzazione dell'app kiosk
   useEffect(() => {
-    // Controlla se siamo in modalità kiosk (parametro URL)
+    // Controlla se siamo in modalità kiosk (parametro URL o localStorage)
     const urlParams = new URLSearchParams(window.location.search);
-    const kioskMode = urlParams.get('kiosk');
+    const kioskMode = urlParams.get('kiosk') || localStorage.getItem('kiosk_mode');
     
     if (kioskMode === 'true') {
       initializeKioskMode();
@@ -48,9 +54,26 @@ const KioskApp = () => {
       });
     }
     
+    // Event listener per il codice di emergenza
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // Attiva il campo di input per il codice di emergenza
+        setShowEmergencyInput(true);
+        e.preventDefault();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('keydown', handleKeyDown);
+      
+      // Pulisci il timer se esiste
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+      }
     };
   }, []);
 
@@ -66,8 +89,7 @@ const KioskApp = () => {
       });
     }
     
-    // Entra in modalità fullscreen
-    requestFullscreen();
+    // NON richiedere fullscreen automaticamente - aspetta interazione utente
     
     // Previeni zoom e scroll
     document.addEventListener('touchmove', preventDefault, { passive: false });
@@ -85,21 +107,30 @@ const KioskApp = () => {
     }
   };
 
-  // Entra in modalità fullscreen
+  // Entra in modalità fullscreen (solo quando richiesto dall'utente)
   const requestFullscreen = () => {
     const element = document.documentElement;
     
     if (element.requestFullscreen) {
-      element.requestFullscreen();
+      element.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+        showNotification('Modalità fullscreen attivata', 'success');
+      }).catch(err => {
+        console.log('Fullscreen request denied:', err);
+        showNotification('Fullscreen non disponibile - continua in modalità normale', 'warning');
+      });
     } else if (element.webkitRequestFullscreen) {
       element.webkitRequestFullscreen();
+      setIsFullscreen(true);
     } else if (element.mozRequestFullScreen) {
       element.mozRequestFullScreen();
+      setIsFullscreen(true);
     } else if (element.msRequestFullscreen) {
       element.msRequestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      showNotification('Fullscreen non supportato su questo browser', 'warning');
     }
-    
-    setIsFullscreen(true);
   };
 
   // Previeni azioni indesiderate
@@ -108,13 +139,131 @@ const KioskApp = () => {
   };
 
   const preventKeyboard = (e) => {
-    // Blocca F12, Ctrl+Shift+I, Ctrl+U, etc.
+    // Blocca F12, Ctrl+Shift+I, Ctrl+U, etc. ma permetti Escape
+    if (e.key === 'Escape') {
+      return; // Permetti Escape per il logout di emergenza
+    }
+    
     if (e.key === 'F12' || 
         (e.ctrlKey && e.shiftKey && e.key === 'I') ||
         (e.ctrlKey && e.key === 'u') ||
         e.key === 'F5' ||
         (e.ctrlKey && e.key === 'r')) {
       e.preventDefault();
+    }
+  };
+
+  // Gestisce i tap nell'angolo alto sinistro per l'emergenza
+  const handleEmergencyTap = (e) => {
+    // Controlla se il tap è nell'angolo alto sinistro (100x100 pixel)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const y = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    
+    // Area di emergenza: angolo alto sinistro 100x100 pixel
+    if (x <= 100 && y <= 100) {
+      const newTapCount = tapCount + 1;
+      setTapCount(newTapCount);
+      
+      // Pulisci il timer precedente
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+      }
+      
+      // Se raggiunge 5 tap, attiva l'emergenza
+      if (newTapCount >= 5) {
+        setShowEmergencyInput(true);
+        setTapCount(0);
+        setTapTimer(null);
+        
+        // Feedback visivo/tattile
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 200]); // Vibrazione di emergenza
+        }
+        
+        showNotification('🚨 Modalità emergenza attivata!', 'warning');
+        return;
+      }
+      
+      // Imposta timer per reset automatico dopo 3 secondi
+      const timer = setTimeout(() => {
+        setTapCount(0);
+        setTapTimer(null);
+      }, 3000);
+      
+      setTapTimer(timer);
+      
+      // Feedback visivo per i tap
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // Vibrazione breve per feedback
+      }
+      
+      // Mostra indicatore visivo temporaneo
+      const indicator = document.createElement('div');
+      indicator.className = 'tap-indicator';
+      indicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        width: 60px;
+        height: 60px;
+        background: rgba(231, 76, 60, 0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+        z-index: 9999;
+        animation: tap-pulse 0.5s ease-out;
+        pointer-events: none;
+      `;
+      indicator.textContent = newTapCount;
+      document.body.appendChild(indicator);
+      
+      // Rimuovi l'indicatore dopo l'animazione
+      setTimeout(() => {
+        if (document.body.contains(indicator)) {
+          document.body.removeChild(indicator);
+        }
+      }, 500);
+    }
+  };
+  const handleEmergencyLogout = async () => {
+    if (emergencyCode === 'EXITSCANNER') {
+      try {
+        // Logout dall'autenticazione
+        if (auth.currentUser) {
+          await signOut(auth);
+        }
+        
+        // Rimuovi modalità kiosk
+        localStorage.removeItem('kiosk_mode');
+        localStorage.removeItem('kiosk_device_id');
+        localStorage.removeItem('kiosk_device_name');
+        localStorage.removeItem('kiosk_auth_time');
+        
+        // Esci da fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+        
+        // Reindirizza alla pagina normale
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Errore durante il logout di emergenza:', error);
+        showNotification('Errore durante il logout di emergenza', 'error');
+      }
+    } else {
+      showNotification('Codice di emergenza non valido', 'error');
+      setEmergencyCode('');
     }
   };
 
@@ -148,6 +297,11 @@ const KioskApp = () => {
       
       setIsAuthenticated(true);
       showNotification('Dispositivo autenticato con successo', 'success');
+      
+      // Prova ad attivare fullscreen ora che abbiamo un'interazione utente
+      setTimeout(() => {
+        requestFullscreen();
+      }, 500);
       
     } catch (error) {
       console.error('Errore autenticazione:', error);
@@ -194,7 +348,11 @@ const KioskApp = () => {
   // Se non autenticato, mostra schermata di setup
   if (!isAuthenticated) {
     return (
-      <div className="kiosk-setup">
+      <div 
+        className="kiosk-setup"
+        onClick={handleEmergencyTap}
+        onTouchStart={handleEmergencyTap}
+      >
         <div className="setup-container">
           <div className="setup-header">
             <h1>🔒 Configurazione Dispositivo Kiosk</h1>
@@ -255,12 +413,72 @@ const KioskApp = () => {
             />
           )}
         </div>
+        
+        {/* Input di emergenza per il logout */}
+        {showEmergencyInput && (
+          <div className="emergency-overlay">
+            <div className="emergency-form">
+              <h3>🚨 Logout di Emergenza</h3>
+              <p>Inserisci il codice di emergenza per uscire dalla modalità kiosk:</p>
+              <input
+                type="password"
+                value={emergencyCode}
+                onChange={(e) => setEmergencyCode(e.target.value)}
+                placeholder="Inserisci codice di emergenza"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleEmergencyLogout();
+                  }
+                }}
+              />
+              <div className="emergency-buttons">
+                <button onClick={handleEmergencyLogout} className="emergency-confirm">
+                  Conferma Logout
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowEmergencyInput(false);
+                    setEmergencyCode('');
+                    setTapCount(0); // Reset tap count quando si chiude
+                    if (tapTimer) {
+                      clearTimeout(tapTimer);
+                      setTapTimer(null);
+                    }
+                  }} 
+                  className="emergency-cancel"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Indicatore visivo area tap di emergenza (solo durante i tap) */}
+        {tapCount > 0 && (
+          <div className="emergency-tap-zone">
+            <div className="tap-progress">
+              <div className="tap-counter">{tapCount}/5</div>
+              <div className="tap-progress-bar">
+                <div 
+                  className="tap-progress-fill" 
+                  style={{ width: `${(tapCount / 5) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="kiosk-app">
+    <div 
+      className="kiosk-app" 
+      onClick={handleEmergencyTap}
+      onTouchStart={handleEmergencyTap}
+    >
       {/* Header con info dispositivo */}
       <div className="kiosk-header">
         <div className="device-info">
@@ -317,6 +535,10 @@ const KioskApp = () => {
             <div className="icon">✅</div>
             <div className="text">Attendi la conferma della timbratura</div>
           </div>
+          <div className="instruction-item">
+            <div className="icon">🚨</div>
+            <div className="text">Utilizza i metodi di emergenza per uscire dalla modalità Kiosk</div>
+          </div>
         </div>
       </div>
 
@@ -329,6 +551,42 @@ const KioskApp = () => {
             onClose={() => setNotification(prev => ({ ...prev, show: false }))}
             type={notification.type}
           />
+        </div>
+      )}
+      
+      {/* Input di emergenza per il logout */}
+      {showEmergencyInput && (
+        <div className="emergency-overlay">
+          <div className="emergency-form">
+            <h3>🚨 Logout di Emergenza</h3>
+            <p>Inserisci il codice di emergenza per uscire dalla modalità kiosk:</p>
+            <input
+              type="password"
+              value={emergencyCode}
+              onChange={(e) => setEmergencyCode(e.target.value)}
+              placeholder="Inserisci codice di emergenza"
+              autoFocus
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleEmergencyLogout();
+                }
+              }}
+            />
+            <div className="emergency-buttons">
+              <button onClick={handleEmergencyLogout} className="emergency-confirm">
+                Conferma Logout
+              </button>
+              <button 
+                onClick={() => {
+                  setShowEmergencyInput(false);
+                  setEmergencyCode('');
+                }} 
+                className="emergency-cancel"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
         </div>
       )}
       

@@ -1,4 +1,4 @@
-// src/components/Header.jsx - Versione aggiornata
+// src/components/Header.jsx - Versione aggiornata con Kiosk Mode
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -43,6 +43,15 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
     }
   };
 
+  // Funzione per attivare la modalità kiosk
+  const handleKioskMode = () => {
+    // Salva lo stato kiosk nel localStorage
+    localStorage.setItem('kiosk_mode', 'true');
+    
+    // Ricarica la pagina per attivare la modalità kiosk
+    window.location.reload();
+  };
+
   // Determina il nome da visualizzare
   const displayName = userData ? 
     (userData.nome && userData.cognome ? `${userData.nome} ${userData.cognome}` : userData.email) : 
@@ -65,22 +74,56 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
           alignItems: "center", 
           gap: "10px" 
         }}>
-          {/* Pulsante per passare alla vista admin/utente, visibile solo per gli admin */}
-          {userRole === 'admin' && onToggleView && (
-            <button 
-              className="btn btn-secondary" 
-              onClick={onToggleView}
-              style={{
-                backgroundColor: '#6c757d',
-                color: 'white',
-                borderRadius: '4px',
-                padding: '8px 16px',
-                cursor: 'pointer',
-                border: 'none'
-              }}
-            >
-              {isAdminView ? 'Passa a Vista Utente' : 'Passa a Vista Admin'}
-            </button>
+          {/* Pulsanti per gli admin */}
+          {userRole === 'admin' && (
+            <div className="admin-buttons" style={{
+              display: "flex",
+              gap: "10px"
+            }}>
+              {/* Pulsante per passare alla vista admin/utente */}
+              {onToggleView && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onToggleView}
+                  style={{
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {isAdminView ? 'Passa a Vista Utente' : 'Passa a Vista Admin'}
+                </button>
+              )}
+              
+              {/* Pulsante per modalità kiosk */}
+              <button 
+                className="btn btn-kiosk" 
+                onClick={handleKioskMode}
+                style={{
+                  backgroundColor: '#9b59b6',
+                  color: 'white',
+                  borderRadius: '4px',
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  border: 'none',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#8e44ad';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#9b59b6';
+                }}
+                title="Attiva modalità kiosk per timbrature"
+              >
+                🖥️ Modalità Kiosk
+              </button>
+            </div>
           )}
           
           <div style={{ marginLeft: '10px' }}>

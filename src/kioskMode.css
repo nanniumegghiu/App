@@ -1,4 +1,4 @@
-/* src/kioskMode.css - Stili per modalità kiosk */
+/* src/kioskMode.css - Stili per modalità kiosk con logout di emergenza */
 
 /* Reset per modalità kiosk */
 .kiosk-app {
@@ -59,6 +59,34 @@
   gap: 15px;
   font-size: 0.9rem;
   color: #555;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.fullscreen-btn {
+  background: rgba(52, 152, 219, 0.9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(52, 152, 219, 0.3);
+}
+
+.fullscreen-btn:hover {
+  background: rgba(52, 152, 219, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+}
+
+.fullscreen-btn:active {
+  transform: translateY(0);
 }
 
 .time {
@@ -183,7 +211,7 @@
   display: flex;
   justify-content: center;
   gap: 40px;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
 }
 
@@ -241,6 +269,132 @@
   height: 100%;
   pointer-events: none;
   z-index: 50;
+}
+
+/* Overlay di emergenza per logout */
+.emergency-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+  animation: emergency-overlay-appear 0.3s ease-out;
+}
+
+@keyframes emergency-overlay-appear {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.emergency-form {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: emergency-form-appear 0.4s ease-out;
+}
+
+@keyframes emergency-form-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.emergency-form h3 {
+  font-size: 2rem;
+  margin: 0 0 20px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.emergency-form p {
+  font-size: 1.1rem;
+  margin: 0 0 20px 0;
+  opacity: 0.9;
+}
+
+.emergency-form input {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.emergency-form input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  background: white;
+}
+
+.emergency-form input::placeholder {
+  color: #7f8c8d;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+.emergency-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.emergency-confirm,
+.emergency-cancel {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.emergency-confirm {
+  background: rgba(255, 255, 255, 0.95);
+  color: #e74c3c;
+}
+
+.emergency-confirm:hover {
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+}
+
+.emergency-cancel {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.emergency-cancel:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
 }
 
 /* Schermata di setup */
@@ -363,6 +517,15 @@
     font-size: 1rem;
   }
   
+  .header-controls {
+    gap: 10px;
+  }
+  
+  .fullscreen-btn {
+    padding: 6px 10px;
+    font-size: 1.1rem;
+  }
+  
   .instructions {
     flex-direction: column;
     gap: 20px;
@@ -380,6 +543,25 @@
   
   .setup-header h1 {
     font-size: 1.6rem;
+  }
+  
+  .emergency-form {
+    padding: 30px 20px;
+    margin: 20px;
+  }
+  
+  .emergency-form h3 {
+    font-size: 1.6rem;
+  }
+  
+  .emergency-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .emergency-confirm,
+  .emergency-cancel {
+    width: 100%;
   }
 }
 
@@ -409,6 +591,11 @@
     padding: 12px 25px;
     font-size: 1.1rem;
   }
+  
+  .emergency-form input {
+    padding: 12px;
+    font-size: 1.1rem;
+  }
 }
 
 /* Modalità landscape per tablet */
@@ -423,6 +610,11 @@
   
   .instruction-item .text {
     font-size: 0.9rem;
+  }
+  
+  .emergency-form {
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }
 
@@ -471,4 +663,175 @@
 .kiosk-app {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Animazione di pulsazione per l'istruzione di emergenza */
+.instruction-item:last-child {
+  animation: emergency-pulse 3s infinite;
+}
+
+@keyframes emergency-pulse {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Indicatori per i tap di emergenza */
+.emergency-tap-zone {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(231, 76, 60, 0.9);
+  border-radius: 15px;
+  padding: 15px;
+  color: white;
+  z-index: 1500;
+  animation: tap-zone-appear 0.3s ease-out;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+}
+
+@keyframes tap-zone-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tap-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 100px;
+}
+
+.tap-counter {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tap-progress-bar {
+  width: 80px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tap-progress-fill {
+  height: 100%;
+  background: white;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Animazione per gli indicatori di tap */
+@keyframes tap-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Area invisibile per i tap di emergenza (angolo alto sinistro) */
+.kiosk-app::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  z-index: 10;
+  pointer-events: none;
+  /* Debug: decommenta per vedere l'area
+  background: rgba(231, 76, 60, 0.1);
+  border: 2px dashed rgba(231, 76, 60, 0.3);
+  */
+}
+
+/* Stile per gli indicatori di tap temporanei */
+.tap-indicator {
+  animation: tap-pulse 0.5s ease-out !important;
+}
+
+/* Aggiunta di feedback visivo per l'area di tap */
+.kiosk-app.tap-active::before {
+  background: rgba(231, 76, 60, 0.2);
+  border: 2px solid rgba(231, 76, 60, 0.5);
+  border-radius: 10px;
+  animation: tap-area-highlight 0.3s ease-out;
+}
+
+@keyframes tap-area-highlight {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive per indicatori tap */
+@media (max-width: 768px) {
+  .emergency-tap-zone {
+    top: 15px;
+    left: 15px;
+    padding: 12px;
+  }
+  
+  .tap-counter {
+    font-size: 1.3rem;
+  }
+  
+  .tap-progress-bar {
+    width: 60px;
+    height: 6px;
+  }
+  
+  .tap-progress {
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .emergency-tap-zone {
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+  }
+  
+  .tap-counter {
+    font-size: 1.2rem;
+  }
+  
+  .tap-progress-bar {
+    width: 50px;
+    height: 5px;
+  }
+  
+  .tap-progress {
+    min-width: 70px;
+    gap: 8px;
+  }
 }
