@@ -25,6 +25,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const [scanStats, setScanStats] = useState({ total: 0, today: 0 });
   const [resumeCountdown, setResumeCountdown] = useState(0);
   
+  // Nuovi stati per gestire il loop infinito
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+  const [autoResumeEnabled, setAutoResumeEnabled] = useState(true);
+  const [manualControl, setManualControl] = useState(false);
+  const [lastErrorTime, setLastErrorTime] = useState(null);
+  
   const scannerRef = useRef(null);
   const html5QrCode = useRef(null);
   const isInitialized = useRef(false);
@@ -32,6 +38,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
   // Auto-resume scanning after successful scan (ridotto per modalità kiosk)
   const AUTO_RESUME_DELAY = kioskMode ? 3000 : 8000; // 3 secondi in modalità kiosk, 8 in modalità normale
+  const MAX_CONSECUTIVE_ERRORS = 3; // Massimo errori consecutivi prima di fermare l'auto-resume
+  const ERROR_RESET_TIME = 30000; // 30 secondi per resettare il contatore errori
 
   // Fetch available cameras
   const fetchCameras = async () => {
@@ -53,20 +61,25 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           );
           setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
           
-          // Avvia automaticamente lo scanner in modalità kiosk
-          setTimeout(() => setIsScanning(true), 500);
+          // Avvia automaticamente lo scanner in modalità kiosk solo se non siamo in controllo manuale
+          if (!manualControl) {
+            setTimeout(() => setIsScanning(true), 500);
+          }
         } else {
           setSelectedCamera(devices[0].id);
           showNotification("Permessi camera concessi.", "success");
         }
         
         setError(null);
+        // Reset errori consecutivi quando le camere vengono caricate con successo
+        setConsecutiveErrors(0);
       } else {
         const errorMsg = "Nessuna camera trovata. Assicurati che il dispositivo abbia una camera funzionante.";
         setError(errorMsg);
         if (!kioskMode) {
           showNotification(errorMsg, "error");
         }
+        handleError("Camera not found");
       }
     } catch (err) {
       console.error("Error getting cameras:", err);
@@ -74,6 +87,62 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       setError(errorMsg);
       if (!kioskMode) {
         showNotification(errorMsg, "error");
+      }
+      handleError("Camera permission error");
+    }
+  };
+
+  // Gestisce gli errori consecutivi
+  const handleError = (errorType) => {
+    const now = Date.now();
+    
+    // Se l'ultimo errore è stato più di ERROR_RESET_TIME fa, resetta il contatore
+    if (lastErrorTime && (now - lastErrorTime) > ERROR_RESET_TIME) {
+      setConsecutiveErrors(0);
+    }
+    
+    setLastErrorTime(now);
+    setConsecutiveErrors(prev => {
+      const newCount = prev + 1;
+      
+      // Se raggiungiamo il limite di errori consecutivi, disabilita l'auto-resume
+      if (newCount >= MAX_CONSECUTIVE_ERRORS) {
+        setAutoResumeEnabled(false);
+        setManualControl(true);
+        
+        if (kioskMode) {
+          showNotification(
+            `Rilevati ${newCount} errori consecutivi. Scanner fermato. Usa i controlli manuali.`, 
+            "warning"
+          );
+        }
+        
+        // Ferma qualsiasi timer di auto-resume attivo
+        if (autoResumeTimer) {
+          clearTimeout(autoResumeTimer);
+          setAutoResumeTimer(null);
+        }
+        
+        if (countdownTimer.current) {
+          clearInterval(countdownTimer.current);
+          setResumeCountdown(0);
+        }
+      }
+      
+      return newCount;
+    });
+  };
+
+  // Reset del contatore errori dopo un successo
+  const handleSuccess = () => {
+    setConsecutiveErrors(0);
+    setLastErrorTime(null);
+    
+    // Riabilita l'auto-resume se era stato disabilitato
+    if (!autoResumeEnabled) {
+      setAutoResumeEnabled(true);
+      if (kioskMode) {
+        showNotification("Scanner stabilizzato. Auto-resume riattivato.", "success");
       }
     }
   };
@@ -180,6 +249,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
   // Start countdown for auto-resume
   const startAutoResumeCountdown = () => {
+    // Non avviare il countdown se l'auto-resume è disabilitato
+    if (!autoResumeEnabled) {
+      return;
+    }
+    
     setResumeCountdown(Math.ceil(AUTO_RESUME_DELAY / 1000));
     
     const timer = setInterval(() => {
@@ -205,6 +279,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         }
         setError(errorMsg);
         setIsScanning(false);
+        handleError("No camera selected");
         return;
       }
 
@@ -267,24 +342,32 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               // Aggiorna statistiche
               updateScanStats();
               
-              // Avvia il timer per il riavvio automatico
-              const resumeTimer = setTimeout(() => {
-                console.log("Auto-resuming scanner after successful scan");
-                resumeScanning();
-              }, AUTO_RESUME_DELAY);
+              // Gestisci il successo (reset errori consecutivi)
+              handleSuccess();
               
-              setAutoResumeTimer(resumeTimer);
-              
-              // Avvia il countdown visuale
-              startAutoResumeCountdown();
+              // Avvia il timer per il riavvio automatico solo se abilitato
+              if (autoResumeEnabled && !manualControl) {
+                const resumeTimer = setTimeout(() => {
+                  console.log("Auto-resuming scanner after successful scan");
+                  resumeScanning();
+                }, AUTO_RESUME_DELAY);
+                
+                setAutoResumeTimer(resumeTimer);
+                
+                // Avvia il countdown visuale
+                startAutoResumeCountdown();
+              }
               
             } catch (err) {
               console.error("Error processing scan:", err);
               setError(err.message || "Errore durante la scansione");
               showNotification(err.message || "Errore durante la scansione", "error");
               
-              // In modalità kiosk, riprendi automaticamente anche in caso di errore
-              if (kioskMode) {
+              // Gestisci l'errore
+              handleError("Scan processing error");
+              
+              // In modalità kiosk, riprendi automaticamente solo se abilitato
+              if (kioskMode && autoResumeEnabled && !manualControl) {
                 const errorResumeTimer = setTimeout(() => {
                   console.log("Auto-resuming scanner after error");
                   resumeScanning();
@@ -317,6 +400,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         
         // Reset scanner reference on error
         html5QrCode.current = null;
+        
+        // Gestisci l'errore
+        handleError("Scanner start error");
       }
     };
 
@@ -335,7 +421,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         clearInterval(countdownTimer.current);
       }
     };
-  }, [isScanning, selectedCamera]);
+  }, [isScanning, selectedCamera, autoResumeEnabled, manualControl]);
 
   // Handle scan type change without restarting scanner
   useEffect(() => {
@@ -531,10 +617,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         }
       } catch (error) {
         console.error("Error resuming scanner:", error);
-        // Force restart on resume error
-        console.log("Force restarting scanner due to resume error");
-        setIsScanning(false);
-        setTimeout(() => setIsScanning(true), 500);
+        handleError("Resume error");
+        // Force restart on resume error only if not in manual control
+        if (!manualControl) {
+          console.log("Force restarting scanner due to resume error");
+          setIsScanning(false);
+          setTimeout(() => setIsScanning(true), 500);
+        }
       }
     } else {
       console.log("No scanner instance, restarting...");
@@ -559,10 +648,23 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       countdownTimer.current = null;
     }
     
+    // Attiva il controllo manuale
+    setManualControl(true);
+    
     setIsScanning(!isScanning);
     setScanResult(null);
     setError(null);
     setResumeCountdown(0);
+  };
+
+  // Reset error counter and re-enable auto-resume
+  const resetErrorState = () => {
+    setConsecutiveErrors(0);
+    setLastErrorTime(null);
+    setAutoResumeEnabled(true);
+    setManualControl(false);
+    setError(null);
+    showNotification("Stato errori resettato. Auto-resume riabilitato.", "success");
   };
 
   // Change scan type (in/out)
@@ -601,6 +703,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           <div className="scanner-stats">
             <span>Oggi: {scanStats.today}</span>
             <span>Totale: {scanStats.total}</span>
+            {!autoResumeEnabled && (
+              <span className="error-indicator">⚠️ Auto-resume disabilitato</span>
+            )}
           </div>
         </div>
 
@@ -617,6 +722,26 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           >
             🔴 USCITA
           </button>
+        </div>
+
+        {/* Controlli manuali per modalità kiosk */}
+        <div className="kiosk-manual-controls">
+          <button
+            className={`manual-control-btn ${isScanning ? 'stop' : 'start'}`}
+            onClick={toggleScanning}
+            disabled={initializing}
+          >
+            {initializing ? '⏳ Inizializzazione...' : isScanning ? '⏹️ Ferma Scanner' : '▶️ Avvia Scanner'}
+          </button>
+          
+          {(!autoResumeEnabled || consecutiveErrors > 0) && (
+            <button
+              className="reset-error-btn"
+              onClick={resetErrorState}
+            >
+              🔄 Reset Errori ({consecutiveErrors})
+            </button>
+          )}
         </div>
         
         {notification.show && (
@@ -648,7 +773,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 </div>
               )}
               
-              {resumeCountdown > 0 && (
+              {resumeCountdown > 0 && autoResumeEnabled && !manualControl && (
                 <div className="auto-resume-info">
                   <div className="countdown-display">
                     Scanner si riavvierà automaticamente in <strong>{resumeCountdown}</strong> secondi...
@@ -661,6 +786,18 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                   </button>
                 </div>
               )}
+              
+              {(!autoResumeEnabled || manualControl) && (
+                <div className="manual-resume-info">
+                  <p>Auto-resume disabilitato. Usa i controlli manuali.</p>
+                  <button 
+                    className="manual-resume-btn"
+                    onClick={resumeScanning}
+                  >
+                    Riavvia Scanner
+                  </button>
+                </div>
+              )}
             </div>
           )}
           
@@ -668,9 +805,19 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             <div className="scan-result error">
               <h4>❌ Errore</h4>
               <p className="error-text">{error}</p>
-              <button className="continue-btn" onClick={resumeScanning}>
-                Riprova
-              </button>
+              {consecutiveErrors > 0 && (
+                <p className="error-count">Errori consecutivi: {consecutiveErrors}/{MAX_CONSECUTIVE_ERRORS}</p>
+              )}
+              <div className="error-actions">
+                <button className="continue-btn" onClick={resumeScanning}>
+                  Riprova
+                </button>
+                {consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && (
+                  <button className="reset-btn" onClick={resetErrorState}>
+                    Reset Errori
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -678,7 +825,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         {!isScanning && !error && cameras.length > 0 && (
           <div className="scanner-placeholder">
             <div className="placeholder-icon">📱</div>
-            <p>Scanner in attesa...</p>
+            <p>Scanner fermato</p>
             <button className="start-scan-btn" onClick={() => setIsScanning(true)}>
               Avvia Scanner
             </button>
@@ -718,6 +865,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           )}
           {offlineStorage.length > 0 && (
             <div className="pending-badge">{offlineStorage.length} pending</div>
+          )}
+          {!autoResumeEnabled && (
+            <div className="error-badge">Auto-resume OFF</div>
           )}
         </div>
       </div>
@@ -782,6 +932,15 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             Rileva Camera
           </button>
         )}
+        
+        {(!autoResumeEnabled || consecutiveErrors > 0) && (
+          <button 
+            className="reset-error-btn" 
+            onClick={resetErrorState}
+          >
+            Reset Errori ({consecutiveErrors})
+          </button>
+        )}
       </div>
       
       <div className="scanner-container" ref={scannerRef}>
@@ -812,9 +971,19 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           <div className="scan-result error">
             <h4>Errore</h4>
             <p className="error-text">{error}</p>
-            <button className="continue-btn" onClick={resumeScanning}>
-              Riprova
-            </button>
+            {consecutiveErrors > 0 && (
+              <p className="error-count">Errori consecutivi: {consecutiveErrors}/{MAX_CONSECUTIVE_ERRORS}</p>
+            )}
+            <div className="error-actions">
+              <button className="continue-btn" onClick={resumeScanning}>
+                Riprova
+              </button>
+              {consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && (
+                <button className="reset-btn" onClick={resetErrorState}>
+                  Reset Errori
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
