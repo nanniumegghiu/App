@@ -1,4 +1,4 @@
-// src/components/TimekeepingScanner.jsx
+// src/components/TimekeepingScanner.jsx - Migliorato per modalità kiosk
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
@@ -7,97 +7,177 @@ import './timekeepingScanner.css';
 
 /**
  * Component for scanning QR codes for clock-in/out operations
- * @param {Object} props
- * @param {boolean} props.isAdmin - Whether the current user is an admin
- * @param {string} props.deviceId - The device ID for authorized devices
- * @returns {JSX.Element}
+ * Enhanced with kiosk mode support
  */
-const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
+const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState('');
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-  const [scanType, setScanType] = useState('in'); // 'in' or 'out'
+  const [scanType, setScanType] = useState('in');
   const [lastScannedUser, setLastScannedUser] = useState(null);
   const [offlineStorage, setOfflineStorage] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [initializing, setInitializing] = useState(false);
+  const [autoResumeTimer, setAutoResumeTimer] = useState(null);
+  const [scanStats, setScanStats] = useState({ total: 0, today: 0 });
+  
   const scannerRef = useRef(null);
   const html5QrCode = useRef(null);
+
+  // Auto-resume scanning after successful scan (per modalità kiosk)
+  const AUTO_RESUME_DELAY = kioskMode ? 5000 : 10000; // 5 secondi in modalità kiosk
 
   // Fetch available cameras
   const fetchCameras = async () => {
     try {
-      showNotification("Requesting camera permission...", "info");
+      if (!kioskMode) {
+        showNotification("Richiesta permessi camera...", "info");
+      }
+      
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length) {
         setCameras(devices);
-        setSelectedCamera(devices[0].id);
+        
+        // In modalità kiosk, seleziona automaticamente la camera posteriore se disponibile
+        if (kioskMode) {
+          const backCamera = devices.find(device => 
+            device.label.toLowerCase().includes('back') || 
+            device.label.toLowerCase().includes('rear') ||
+            device.label.toLowerCase().includes('environment')
+          );
+          setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
+          
+          // Avvia automaticamente lo scanner in modalità kiosk
+          setTimeout(() => setIsScanning(true), 500);
+        } else {
+          setSelectedCamera(devices[0].id);
+          showNotification("Permessi camera concessi.", "success");
+        }
+        
         setError(null);
-        showNotification("Camera permission granted.", "success");
       } else {
-        setError("No cameras found. Please ensure your device has a camera and it's not being used by another application.");
-        showNotification("No cameras found on your device.", "error");
+        const errorMsg = "Nessuna camera trovata. Assicurati che il dispositivo abbia una camera funzionante.";
+        setError(errorMsg);
+        if (!kioskMode) {
+          showNotification(errorMsg, "error");
+        }
       }
     } catch (err) {
       console.error("Error getting cameras:", err);
-      setError(`Camera permission error: ${err.message || "Please allow camera access."}`);
-      showNotification("Camera permission denied. Please allow camera access in your browser settings.", "error");
+      const errorMsg = `Errore permessi camera: ${err.message || "Consenti l'accesso alla camera nelle impostazioni del browser."}`;
+      setError(errorMsg);
+      if (!kioskMode) {
+        showNotification(errorMsg, "error");
+      }
     }
   };
 
-  // Initialize scanner on first mount to request camera permissions
+  // Initialize scanner on first mount
   useEffect(() => {
     fetchCameras();
+    loadScanStats();
+    
+    // In modalità kiosk, nascondi la UI del browser dopo un po'
+    if (kioskMode) {
+      setTimeout(() => {
+        if (window.screen && window.screen.orientation) {
+          // Blocca l'orientamento se possibile
+          window.screen.orientation.lock('portrait').catch(() => {
+            // Ignora errori se non supportato
+          });
+        }
+      }, 2000);
+    }
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Carica statistiche scansioni
+  const loadScanStats = () => {
+    try {
+      const stats = localStorage.getItem(`scan_stats_${deviceId}`);
+      if (stats) {
+        setScanStats(JSON.parse(stats));
+      }
+    } catch (error) {
+      console.error("Error loading scan stats:", error);
+    }
+  };
+
+  // Aggiorna statistiche scansioni
+  const updateScanStats = () => {
+    try {
+      const today = new Date().toDateString();
+      const currentStats = { ...scanStats };
+      const savedDate = localStorage.getItem(`scan_stats_date_${deviceId}`);
+      
+      // Reset statistiche giornaliere se è un nuovo giorno
+      if (savedDate !== today) {
+        currentStats.today = 0;
+        localStorage.setItem(`scan_stats_date_${deviceId}`, today);
+      }
+      
+      currentStats.total += 1;
+      currentStats.today += 1;
+      
+      setScanStats(currentStats);
+      localStorage.setItem(`scan_stats_${deviceId}`, JSON.stringify(currentStats));
+    } catch (error) {
+      console.error("Error updating scan stats:", error);
+    }
+  };
+
   // Start/stop scanning based on isScanning state
   useEffect(() => {
-    // Initialize scanner and start scanning
     const startScanner = async () => {
       if (!selectedCamera) {
-        showNotification("No camera selected. Please select a camera.", "error");
+        const errorMsg = "Nessuna camera selezionata.";
+        if (!kioskMode) {
+          showNotification(errorMsg, "error");
+        }
+        setError(errorMsg);
         setIsScanning(false);
         return;
       }
 
       setInitializing(true);
       try {
-        // Initialize scanner
         if (!html5QrCode.current) {
           html5QrCode.current = new Html5Qrcode("qr-reader");
         }
 
-        // Start scanning
+        const config = {
+          fps: kioskMode ? 15 : 10, // FPS più alto in modalità kiosk
+          qrbox: kioskMode ? { width: 300, height: 300 } : { width: 250, height: 250 },
+          aspectRatio: kioskMode ? 1.0 : 1.0,
+          disableFlip: false
+        };
+
         await html5QrCode.current.start(
           selectedCamera,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
+          config,
           async (decodedText, decodedResult) => {
             console.log(`QR Code scanned: ${decodedText}`, decodedResult);
             
             try {
-              // Expected format: iacuzzo:user:[userId]:[timestamp]
               const parts = decodedText.split(':');
               
               if (parts.length < 3 || parts[0] !== 'iacuzzo' || parts[1] !== 'user') {
-                throw new Error("Invalid QR code format");
+                throw new Error("Formato QR code non valido");
               }
               
               const userId = parts[2];
               
-              // Pause scanning to prevent multiple scans
-              await html5QrCode.current.pause();
+              // In modalità kiosk, pausa brevemente per evitare scansioni multiple
+              if (kioskMode) {
+                await html5QrCode.current.pause();
+              }
               
-              // Process the scan based on scan type (in/out)
               await processTimekeepingScan(userId, scanType);
               
-              // Show success state
               setScanResult({
                 userId,
                 timestamp: new Date().toISOString(),
@@ -105,32 +185,59 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
                 type: scanType
               });
               
+              // Aggiorna statistiche
+              updateScanStats();
+              
+              // Auto-resume in modalità kiosk
+              if (kioskMode) {
+                const timer = setTimeout(() => {
+                  resumeScanning();
+                }, AUTO_RESUME_DELAY);
+                setAutoResumeTimer(timer);
+              }
+              
             } catch (err) {
               console.error("Error processing scan:", err);
-              setError(err.message || "Error processing scan");
-              showNotification(err.message || "Error processing scan", "error");
+              setError(err.message || "Errore durante la scansione");
+              showNotification(err.message || "Errore durante la scansione", "error");
+              
+              // In modalità kiosk, riprendi automaticamente anche in caso di errore
+              if (kioskMode) {
+                setTimeout(() => {
+                  resumeScanning();
+                }, 3000);
+              }
             }
           },
           (errorMessage) => {
-            // This is for QR detection errors, which we can ignore
-            // console.log(`QR Code scanning error: ${errorMessage}`);
+            // Ignora errori di rilevamento QR comuni
           }
         );
         
         setError(null);
         setInitializing(false);
-        showNotification("Scanner started successfully.", "success");
+        
+        if (!kioskMode) {
+          showNotification("Scanner avviato con successo.", "success");
+        }
       } catch (err) {
         console.error("Error starting scanner:", err);
-        setError(`Failed to start scanner: ${err.message}`);
-        showNotification(`Scanner error: ${err.message}. Try refreshing the page.`, "error");
+        const errorMsg = `Errore avvio scanner: ${err.message}`;
+        setError(errorMsg);
+        if (!kioskMode) {
+          showNotification(`${errorMsg}. Prova ad aggiornare la pagina.`, "error");
+        }
         setIsScanning(false);
         setInitializing(false);
       }
     };
 
-    // Stop scanning and clean up scanner
     const stopScanner = async () => {
+      if (autoResumeTimer) {
+        clearTimeout(autoResumeTimer);
+        setAutoResumeTimer(null);
+      }
+      
       if (html5QrCode.current) {
         try {
           if (html5QrCode.current.isScanning) {
@@ -149,18 +256,16 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
       stopScanner();
     }
 
-    // Cleanup function
     return () => {
       stopScanner();
     };
-  }, [isScanning, selectedCamera, scanType]);
+  }, [isScanning, selectedCamera, scanType, kioskMode]);
 
   // Handle online/offline status
   useEffect(() => {
     const handleOnlineStatus = () => {
       setIsOnline(navigator.onLine);
       
-      // If coming back online and we have offline records, sync them
       if (navigator.onLine && offlineStorage.length > 0) {
         syncOfflineRecords();
       }
@@ -191,7 +296,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   // Function to process a timekeeping scan
   const processTimekeepingScan = async (userId, type) => {
     try {
-      // If offline, store the scan for later
       if (!navigator.onLine) {
         const record = {
           type: type === 'in' ? 'clockIn' : 'clockOut',
@@ -200,15 +304,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           scanInfo: {
             deviceId,
             isAdmin,
-            deviceType: 'web-scanner'
+            deviceType: kioskMode ? 'kiosk' : 'web-scanner',
+            kioskMode
           }
         };
         
-        // Add to offline storage
         const updatedStorage = [...offlineStorage, record];
         setOfflineStorage(updatedStorage);
-        
-        // Save to localStorage
         localStorage.setItem('timekeeping_offline_records', JSON.stringify(updatedStorage));
         
         setLastScannedUser({
@@ -218,16 +320,17 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           type
         });
         
-        showNotification(`${type === 'in' ? 'Clock-in' : 'Clock-out'} saved offline. Will sync when connection is restored.`, "warning");
+        const message = `${type === 'in' ? 'Ingresso' : 'Uscita'} salvato offline. Verrà sincronizzato al ripristino della connessione.`;
+        showNotification(message, "warning");
         return;
       }
       
-      // Process based on scan type
       if (type === 'in') {
         const result = await timekeepingService.clockIn(userId, {
           deviceId,
           isAdmin,
-          deviceType: 'web-scanner'
+          deviceType: kioskMode ? 'kiosk' : 'web-scanner',
+          kioskMode
         });
         
         setLastScannedUser({
@@ -238,12 +341,14 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           result
         });
         
-        showNotification(`${result.userName || userId} clocked in successfully at ${result.clockInTime}`, "success");
+        const message = `✅ ${result.userName || userId} ha timbrato l'INGRESSO alle ${result.clockInTime}`;
+        showNotification(message, "success");
       } else {
         const result = await timekeepingService.clockOut(userId, {
           deviceId,
           isAdmin,
-          deviceType: 'web-scanner'
+          deviceType: kioskMode ? 'kiosk' : 'web-scanner',
+          kioskMode
         });
         
         setLastScannedUser({
@@ -254,10 +359,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           result
         });
         
-        showNotification(
-          `${result.userName || userId} clocked out successfully. Hours worked: ${result.totalHours} (${result.standardHours} standard + ${result.overtimeHours} overtime)`, 
-          "success"
-        );
+        const message = `✅ ${result.userName || userId} ha timbrato l'USCITA. Ore lavorate: ${result.totalHours} (${result.standardHours} standard + ${result.overtimeHours} straordinario)`;
+        showNotification(message, "success");
       }
     } catch (err) {
       console.error("Error processing timekeeping scan:", err);
@@ -269,20 +372,20 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
   const syncOfflineRecords = async () => {
     if (offlineStorage.length === 0) return;
     
-    showNotification(`Syncing ${offlineStorage.length} offline records...`, "info");
+    const syncMessage = `Sincronizzazione ${offlineStorage.length} timbrature offline...`;
+    showNotification(syncMessage, "info");
     
     try {
       const results = await timekeepingService.syncOfflineRecords(offlineStorage);
       
-      // Clear offline storage after successful sync
       setOfflineStorage([]);
       localStorage.removeItem('timekeeping_offline_records');
       
-      showNotification(`Synced ${results.success} of ${results.total} records successfully`, 
-        results.failed > 0 ? "warning" : "success");
+      const resultMessage = `Sincronizzate ${results.success} di ${results.total} timbrature`;
+      showNotification(resultMessage, results.failed > 0 ? "warning" : "success");
     } catch (err) {
       console.error("Error syncing offline records:", err);
-      showNotification("Error syncing some offline records. Please try again later.", "error");
+      showNotification("Errore nella sincronizzazione. Riprova più tardi.", "error");
     }
   };
 
@@ -294,14 +397,20 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
       type
     });
     
-    // Auto-hide after 5 seconds
+    // Auto-hide - più veloce in modalità kiosk
+    const hideDelay = kioskMode ? 3000 : 5000;
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
-    }, 5000);
+    }, hideDelay);
   };
 
   // Resume scanning
   const resumeScanning = async () => {
+    if (autoResumeTimer) {
+      clearTimeout(autoResumeTimer);
+      setAutoResumeTimer(null);
+    }
+    
     setScanResult(null);
     setError(null);
     
@@ -310,12 +419,10 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
         await html5QrCode.current.resume();
       } catch (error) {
         console.error("Error resuming scanner:", error);
-        // If resume fails, restart the scanner
         setIsScanning(false);
         setTimeout(() => setIsScanning(true), 300);
       }
     } else {
-      // If scanner isn't running, restart
       setIsScanning(false);
       setTimeout(() => setIsScanning(true), 300);
     }
@@ -323,7 +430,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
 
   // Toggle scanning on/off
   const toggleScanning = () => {
-    if (initializing) return; // Prevent toggling while initializing
+    if (initializing) return;
     setIsScanning(!isScanning);
     setScanResult(null);
     setError(null);
@@ -341,7 +448,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
     const cameraId = e.target.value;
     setSelectedCamera(cameraId);
     
-    // If already scanning, restart with new camera
     if (isScanning) {
       setIsScanning(false);
       setTimeout(() => setIsScanning(true), 300);
@@ -353,20 +459,115 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
     fetchCameras();
   };
 
+  // Render modalità kiosk semplificata
+  if (kioskMode) {
+    return (
+      <div className="timekeeping-scanner kiosk-mode">
+        <div className="scanner-header">
+          <h2>Sistema Timbrature</h2>
+          <div className="scanner-stats">
+            <span>Oggi: {scanStats.today}</span>
+            <span>Totale: {scanStats.total}</span>
+          </div>
+        </div>
+
+        <div className="scan-type-selector">
+          <button
+            className={`scan-type-btn ${scanType === 'in' ? 'active' : ''}`}
+            onClick={() => handleScanTypeChange('in')}
+          >
+            🔵 INGRESSO
+          </button>
+          <button
+            className={`scan-type-btn ${scanType === 'out' ? 'active' : ''}`}
+            onClick={() => handleScanTypeChange('out')}
+          >
+            🔴 USCITA
+          </button>
+        </div>
+        
+        {notification.show && (
+          <Notification
+            message={notification.message}
+            isVisible={notification.show}
+            onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+            type={notification.type}
+          />
+        )}
+        
+        <div className="scanner-container" ref={scannerRef}>
+          <div id="qr-reader" className="qr-reader"></div>
+          
+          {scanResult && (
+            <div className="scan-result success">
+              <h4>✅ Timbratura {scanType === 'in' ? 'Ingresso' : 'Uscita'} Completata!</h4>
+              {lastScannedUser && (
+                <div className="user-scan-info">
+                  <p><strong>Utente:</strong> {lastScannedUser.userName || lastScannedUser.userId}</p>
+                  <p><strong>Orario:</strong> {new Date(lastScannedUser.timestamp).toLocaleTimeString('it-IT')}</p>
+                  {lastScannedUser.offlineMode && (
+                    <p className="offline-note">⚠️ Salvato offline. Verrà sincronizzato quando disponibile.</p>
+                  )}
+                  {lastScannedUser.result && lastScannedUser.type === 'out' && (
+                    <p><strong>Ore Lavorate:</strong> {lastScannedUser.result.totalHours} 
+                       ({lastScannedUser.result.standardHours} standard + {lastScannedUser.result.overtimeHours} straordinario)</p>
+                  )}
+                </div>
+              )}
+              <div className="auto-resume-info">
+                Scanner si riavvierà automaticamente in {Math.ceil(AUTO_RESUME_DELAY / 1000)} secondi...
+              </div>
+            </div>
+          )}
+          
+          {error && !initializing && (
+            <div className="scan-result error">
+              <h4>❌ Errore</h4>
+              <p className="error-text">{error}</p>
+            </div>
+          )}
+        </div>
+        
+        {!isScanning && !error && cameras.length > 0 && (
+          <div className="scanner-placeholder">
+            <div className="placeholder-icon">📱</div>
+            <p>Scanner in attesa...</p>
+          </div>
+        )}
+
+        {cameras.length === 0 && !initializing && (
+          <div className="camera-issue">
+            <h3>📷 Camera Required</h3>
+            <p>Impossibile accedere alla camera del dispositivo.</p>
+            <button className="retry-btn" onClick={handleRetryCamera}>
+              Riprova
+            </button>
+          </div>
+        )}
+        
+        {offlineStorage.length > 0 && isOnline && (
+          <div className="offline-sync-section">
+            <p>🔄 {offlineStorage.length} timbrature da sincronizzare</p>
+            <button className="sync-btn" onClick={syncOfflineRecords}>
+              Sincronizza Ora
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Render normale per modalità admin
   return (
     <div className="timekeeping-scanner">
       <div className="scanner-header">
         <h2>Scanner Timbrature</h2>
         <div className="scanner-status">
           {!isOnline && (
-            <div className="offline-badge">
-              OFFLINE MODE
-            </div>
+            <div className="offline-badge">OFFLINE MODE</div>
           )}
           {offlineStorage.length > 0 && (
-            <div className="pending-badge">
-              {offlineStorage.length} pending
-            </div>
+            <div className="pending-badge">{offlineStorage.length} pending</div>
           )}
         </div>
       </div>
@@ -397,7 +598,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
 
       {cameras.length > 0 && (
         <div className="camera-selector">
-          <label htmlFor="camera-select">Select Camera:</label>
+          <label htmlFor="camera-select">Seleziona Camera:</label>
           <select 
             id="camera-select" 
             value={selectedCamera}
@@ -419,7 +620,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
           onClick={toggleScanning}
           disabled={initializing || cameras.length === 0}
         >
-          {initializing ? 'Starting Scanner...' : isScanning ? 'Stop Scanner' : 'Start Scanner'}
+          {initializing ? 'Avvio Scanner...' : isScanning ? 'Ferma Scanner' : 'Avvia Scanner'}
         </button>
         
         {cameras.length === 0 && (
@@ -428,7 +629,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
             onClick={handleRetryCamera}
             disabled={initializing}
           >
-            Retry Camera Detection
+            Rileva Camera
           </button>
         )}
       </div>
@@ -438,31 +639,31 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
         
         {scanResult && (
           <div className="scan-result success">
-            <h4>User {scanType === 'in' ? 'Clocked In' : 'Clocked Out'} Successfully!</h4>
+            <h4>Utente {scanType === 'in' ? 'Entrato' : 'Uscito'} con Successo!</h4>
             {lastScannedUser && (
               <div className="user-scan-info">
-                <p><strong>User:</strong> {lastScannedUser.userName || lastScannedUser.userId}</p>
-                <p><strong>Time:</strong> {new Date(lastScannedUser.timestamp).toLocaleTimeString()}</p>
+                <p><strong>Utente:</strong> {lastScannedUser.userName || lastScannedUser.userId}</p>
+                <p><strong>Orario:</strong> {new Date(lastScannedUser.timestamp).toLocaleTimeString()}</p>
                 {lastScannedUser.offlineMode && (
-                  <p className="offline-note">Saved offline. Will sync when connection is restored.</p>
+                  <p className="offline-note">Salvato offline. Verrà sincronizzato al ripristino della connessione.</p>
                 )}
                 {lastScannedUser.result && lastScannedUser.type === 'out' && (
-                  <p><strong>Hours:</strong> {lastScannedUser.result.totalHours} ({lastScannedUser.result.standardHours} standard + {lastScannedUser.result.overtimeHours} overtime)</p>
+                  <p><strong>Ore:</strong> {lastScannedUser.result.totalHours} ({lastScannedUser.result.standardHours} standard + {lastScannedUser.result.overtimeHours} straordinario)</p>
                 )}
               </div>
             )}
             <button className="continue-btn" onClick={resumeScanning}>
-              Continue Scanning
+              Continua Scansione
             </button>
           </div>
         )}
         
         {error && !initializing && (
           <div className="scan-result error">
-            <h4>Error</h4>
+            <h4>Errore</h4>
             <p className="error-text">{error}</p>
             <button className="continue-btn" onClick={resumeScanning}>
-              Try Again
+              Riprova
             </button>
           </div>
         )}
@@ -482,29 +683,29 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '' }) => {
               <path d="M17 17V21H21V17H17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <p>Click "Start Scanner" to begin scanning QR codes</p>
+          <p>Clicca "Avvia Scanner" per iniziare la scansione QR codes</p>
         </div>
       )}
 
       {cameras.length === 0 && !initializing && (
         <div className="camera-issue">
-          <h3>Camera Access Required</h3>
-          <p>We couldn't detect any cameras on your device. Please check:</p>
+          <h3>Accesso Camera Richiesto</h3>
+          <p>Non è stato possibile rilevare nessuna camera sul dispositivo. Controlla:</p>
           <ul>
-            <li>Your device has a working camera</li>
-            <li>You've granted camera permission to this website</li>
-            <li>No other application is currently using your camera</li>
+            <li>Il dispositivo ha una camera funzionante</li>
+            <li>Hai concesso i permessi camera a questo sito</li>
+            <li>Nessun'altra applicazione sta usando la camera</li>
           </ul>
-          <p>Check your browser's address bar for a camera icon to manage permissions.</p>
+          <p>Controlla la barra degli indirizzi del browser per l'icona della camera per gestire i permessi.</p>
         </div>
       )}
       
       {offlineStorage.length > 0 && isOnline && (
         <div className="offline-sync-section">
-          <h4>Offline Records</h4>
-          <p>You have {offlineStorage.length} records saved offline that need to be synced.</p>
+          <h4>Record Offline</h4>
+          <p>Hai {offlineStorage.length} record salvati offline che devono essere sincronizzati.</p>
           <button className="sync-btn" onClick={syncOfflineRecords}>
-            Sync Now
+            Sincronizza Ora
           </button>
         </div>
       )}
