@@ -1,4 +1,4 @@
-// src/services/timekeepingService.js - With improved error handling
+// src/services/timekeepingService.js - With improved error handling for duplicate entries
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -27,18 +27,20 @@ const timekeepingService = {
    */
   async clockIn(userId, scanInfo = {}) {
     try {
+      console.log(`ClockIn attempt for user: ${userId}`);
+      
       // Verify the user exists
       const userRef = doc(db, "users", userId);
       const userSnap = await getDoc(userRef);
       
       if (!userSnap.exists()) {
-        throw new Error("User not found");
+        throw new Error("Utente non trovato nel sistema");
       }
       
       // Check user QR status
       const userData = userSnap.data();
       if (userData.qrStatus && userData.qrStatus.active === false) {
-        throw new Error("QR code is deactivated");
+        throw new Error("QR code disattivato dall'amministratore");
       }
       
       // Get current date in YYYY-MM-DD format (based on local timezone)
@@ -53,7 +55,9 @@ const timekeepingService = {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
       
-      // Check if user already has a clock-in for today
+      console.log(`Checking existing records for ${userId} on ${dateString}`);
+      
+      // Check if user already has ANY record for today (in-progress OR completed)
       const timekeepingRef = collection(db, "timekeeping");
       const q = query(
         timekeepingRef,
@@ -65,19 +69,36 @@ const timekeepingService = {
       
       if (!querySnapshot.empty) {
         const existingRecord = querySnapshot.docs[0].data();
+        console.log(`Found existing record:`, existingRecord);
         
-        // If there's a completed record for today, don't allow a new clock-in
-        if (existingRecord.clockOutTime) {
-          throw new Error("Already clocked out for today");
+        // If there's a completed record for today (already clocked out)
+        if (existingRecord.clockOutTime && existingRecord.status === "completed") {
+          throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
         }
         
-        // If there's only a clock-in, return the existing record
-        return {
-          id: querySnapshot.docs[0].id,
-          ...existingRecord,
-          message: "Already clocked in for today"
-        };
+        // If there's an auto-closed record for today
+        if (existingRecord.status === "auto-closed") {
+          throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
+        }
+        
+        // If there's only a clock-in (in-progress), return warning but allow continuation
+        if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
+          // Return the existing record with a clear message
+          const userName = userData.nome && userData.cognome ? 
+            `${userData.nome} ${userData.cognome}` : userData.email;
+          
+          return {
+            id: querySnapshot.docs[0].id,
+            ...existingRecord,
+            userName,
+            message: `Sei già entrato oggi alle ${existingRecord.clockInTime}. Per uscire, scansiona di nuovo selezionando 'USCITA'.`,
+            duplicateEntry: true,
+            clockInTime: existingRecord.clockInTime
+          };
+        }
       }
+      
+      console.log(`Creating new clock-in record for ${userId}`);
       
       // Create new clock-in record
       const recordData = {
@@ -106,11 +127,14 @@ const timekeepingService = {
       };
       
       const docRef = await addDoc(timekeepingRef, recordData);
+      console.log(`Clock-in successful with ID: ${docRef.id}`);
       
       return {
         id: docRef.id,
         ...recordData,
-        message: "Clock-in successful"
+        message: "Ingresso registrato con successo",
+        clockInTime: timeString,
+        userName: recordData.userName
       };
     } catch (error) {
       console.error("Error during clock-in:", error);
@@ -126,6 +150,18 @@ const timekeepingService = {
    */
   async clockOut(userId, scanInfo = {}) {
     try {
+      console.log(`ClockOut attempt for user: ${userId}`);
+      
+      // Verify the user exists first
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        throw new Error("Utente non trovato nel sistema");
+      }
+      
+      const userData = userSnap.data();
+      
       // Get current date in YYYY-MM-DD format
       const now = new Date();
       const year = now.getFullYear();
@@ -138,24 +174,51 @@ const timekeepingService = {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
       
-      // Find clock-in record for today
+      console.log(`Looking for active clock-in for ${userId} on ${dateString}`);
+      
+      // Find active clock-in record for today
       const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
+      const activeQuery = query(
         timekeepingRef,
         where("userId", "==", userId),
         where("date", "==", dateString),
         where("status", "==", "in-progress")
       );
       
-      const querySnapshot = await getDocs(q);
+      const activeSnapshot = await getDocs(activeQuery);
       
-      if (querySnapshot.empty) {
-        throw new Error("No active clock-in found for today");
+      if (activeSnapshot.empty) {
+        // Check if there's ANY record for today
+        const anyQuery = query(
+          timekeepingRef,
+          where("userId", "==", userId),
+          where("date", "==", dateString)
+        );
+        
+        const anySnapshot = await getDocs(anyQuery);
+        
+        if (!anySnapshot.empty) {
+          const existingRecord = anySnapshot.docs[0].data();
+          
+          if (existingRecord.status === "completed") {
+            throw new Error(`Hai già timbrato l'uscita oggi alle ${existingRecord.clockOutTime}. Ore lavorate: ${existingRecord.totalHours || 0} (${existingRecord.standardHours || 0} standard + ${existingRecord.overtimeHours || 0} straordinario)`);
+          } else if (existingRecord.status === "auto-closed") {
+            throw new Error("La giornata è stata chiusa automaticamente. Per modifiche contatta l'amministratore.");
+          }
+        }
+        
+        // No active clock-in found - user needs to clock in first
+        const userName = userData.nome && userData.cognome ? 
+          `${userData.nome} ${userData.cognome}` : userData.email;
+        
+        throw new Error(`Nessun ingresso trovato per oggi. Prima devi timbrare l'INGRESSO, poi potrai timbrare l'USCITA.`);
       }
       
+      console.log(`Found active clock-in record, processing clock-out`);
+      
       // Get the clock-in record
-      const docRef = doc(db, "timekeeping", querySnapshot.docs[0].id);
-      const record = querySnapshot.docs[0].data();
+      const docRef = doc(db, "timekeeping", activeSnapshot.docs[0].id);
+      const record = activeSnapshot.docs[0].data();
       
       // Calculate hours worked
       const clockInParts = record.clockInTime.split(':');
@@ -205,15 +268,30 @@ const timekeepingService = {
       };
       
       await updateDoc(docRef, updateData);
+      console.log(`Clock-out successful for record: ${docRef.id}`);
       
       // Update workHours collection if needed - but don't overwrite manual entries
-      await this.syncToWorkHours(userId, dateString, standardHours, overtimeHours);
+      try {
+        await this.syncToWorkHours(userId, dateString, standardHours, overtimeHours);
+      } catch (syncError) {
+        console.error("Error syncing to workHours:", syncError);
+        // Don't fail the clock-out if sync fails
+      }
+      
+      const userName = userData.nome && userData.cognome ? 
+        `${userData.nome} ${userData.cognome}` : userData.email;
       
       return {
         id: docRef.id,
         ...record,
         ...updateData,
-        message: "Clock-out successful"
+        userName,
+        message: "Uscita registrata con successo",
+        clockInTime: record.clockInTime,
+        clockOutTime: timeString,
+        totalHours: roundedHoursWorked,
+        standardHours,
+        overtimeHours
       };
     } catch (error) {
       console.error("Error during clock-out:", error);
@@ -338,7 +416,7 @@ const timekeepingService = {
       if (querySnapshot.empty) {
         return {
           status: "not-started",
-          message: "Not clocked in today",
+          message: "Non hai timbrato oggi",
           date: dateString,
           timestamp: now.toISOString()
         };
@@ -357,8 +435,10 @@ const timekeepingService = {
         overtimeHours: record.overtimeHours,
         date: dateString,
         message: record.status === "in-progress" 
-          ? "Currently clocked in" 
-          : "Clocked out for today",
+          ? "Attualmente al lavoro" 
+          : record.status === "completed"
+            ? "Giornata completata"
+            : "Giornata chiusa automaticamente",
         timestamp: now.toISOString()
       };
     } catch (error) {
@@ -434,7 +514,7 @@ const timekeepingService = {
               ...existingEntry,
               total: standardHours,
               overtime: overtimeHours,
-              notes: existingEntry.notes || "Updated from timekeeping system"
+              notes: existingEntry.notes || "Aggiornato dal sistema di timbrature"
             };
             
             // Update the document
@@ -452,7 +532,7 @@ const timekeepingService = {
               day: dayOfWeek,
               total: standardHours,
               overtime: overtimeHours,
-              notes: "Added from timekeeping system",
+              notes: "Aggiunto dal sistema di timbrature",
               isWeekend
             };
             
