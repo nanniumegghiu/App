@@ -651,6 +651,10 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 setScanType('');
                 setScanTypeSelected(false);
                 showNotification("Scansione completata! Seleziona il tipo per la prossima timbratura.", "success");
+                 // Aggiungi refresh dopo 3 secondi per timbratura ingresso
+                setTimeout(() => {
+                    window.location.reload();
+              }, 3000);
               } else {
                 if (autoResumeEnabled && !manualControl) {
                   const resumeTimer = setTimeout(() => {
