@@ -1,4 +1,4 @@
-// src/components/TimekeepingScanner.jsx - Fix per riavvio automatico in modalità kiosk
+// src/components/TimekeepingScanner.jsx - Con scanner in pausa di default in modalità kiosk
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
@@ -7,7 +7,7 @@ import './timekeepingScanner.css';
 
 /**
  * Component for scanning QR codes for clock-in/out operations
- * Enhanced with kiosk mode support and fixed auto-resume functionality
+ * Enhanced with kiosk mode support and default pause functionality
  */
 const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -16,7 +16,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-  const [scanType, setScanType] = useState('in');
+  const [scanType, setScanType] = useState('');  // Vuoto di default in modalità kiosk
   const [lastScannedUser, setLastScannedUser] = useState(null);
   const [offlineStorage, setOfflineStorage] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -25,20 +25,23 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const [scanStats, setScanStats] = useState({ total: 0, today: 0 });
   const [resumeCountdown, setResumeCountdown] = useState(0);
   
-  // Nuovi stati per gestire il loop infinito
+  // Stati per gestire il controllo del scanner
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [autoResumeEnabled, setAutoResumeEnabled] = useState(true);
   const [manualControl, setManualControl] = useState(false);
   const [lastErrorTime, setLastErrorTime] = useState(null);
+  
+  // Nuovo stato per gestire il tipo di scansione selezionato in modalità kiosk
+  const [scanTypeSelected, setScanTypeSelected] = useState(false);
   
   const scannerRef = useRef(null);
   const html5QrCode = useRef(null);
   const isInitialized = useRef(false);
   const countdownTimer = useRef(null);
 
-  // Auto-resume scanning after successful scan (ridotto per modalità kiosk)
-  const AUTO_RESUME_DELAY = kioskMode ? 3000 : 8000; // 3 secondi in modalità kiosk, 8 in modalità normale
-  const MAX_CONSECUTIVE_ERRORS = 3; // Massimo errori consecutivi prima di fermare l'auto-resume
+  // Auto-resume scanning after successful scan
+  const AUTO_RESUME_DELAY = kioskMode ? 3000 : 8000;
+  const MAX_CONSECUTIVE_ERRORS = 3;
   const ERROR_RESET_TIME = 30000; // 30 secondi per resettare il contatore errori
 
   // Fetch available cameras
@@ -61,17 +64,14 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           );
           setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
           
-          // Avvia automaticamente lo scanner in modalità kiosk solo se non siamo in controllo manuale
-          if (!manualControl) {
-            setTimeout(() => setIsScanning(true), 500);
-          }
+          // NON avviare automaticamente lo scanner in modalità kiosk
+          // Lo scanner si attiverà solo quando viene selezionato il tipo di scansione
         } else {
           setSelectedCamera(devices[0].id);
           showNotification("Permessi camera concessi.", "success");
         }
         
         setError(null);
-        // Reset errori consecutivi quando le camere vengono caricate con successo
         setConsecutiveErrors(0);
       } else {
         const errorMsg = "Nessuna camera trovata. Assicurati che il dispositivo abbia una camera funzionante.";
@@ -96,7 +96,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const handleError = (errorType) => {
     const now = Date.now();
     
-    // Se l'ultimo errore è stato più di ERROR_RESET_TIME fa, resetta il contatore
     if (lastErrorTime && (now - lastErrorTime) > ERROR_RESET_TIME) {
       setConsecutiveErrors(0);
     }
@@ -105,7 +104,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     setConsecutiveErrors(prev => {
       const newCount = prev + 1;
       
-      // Se raggiungiamo il limite di errori consecutivi, disabilita l'auto-resume
       if (newCount >= MAX_CONSECUTIVE_ERRORS) {
         setAutoResumeEnabled(false);
         setManualControl(true);
@@ -117,7 +115,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           );
         }
         
-        // Ferma qualsiasi timer di auto-resume attivo
         if (autoResumeTimer) {
           clearTimeout(autoResumeTimer);
           setAutoResumeTimer(null);
@@ -138,7 +135,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     setConsecutiveErrors(0);
     setLastErrorTime(null);
     
-    // Riabilita l'auto-resume se era stato disabilitato
     if (!autoResumeEnabled) {
       setAutoResumeEnabled(true);
       if (kioskMode) {
@@ -155,11 +151,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       isInitialized.current = true;
     }
     
-    // In modalità kiosk, nascondi la UI del browser dopo un po'
     if (kioskMode) {
       setTimeout(() => {
         if (window.screen && window.screen.orientation) {
-          // Blocca l'orientamento se possibile
           window.screen.orientation.lock('portrait').catch(() => {
             // Ignora errori se non supportato
           });
@@ -167,17 +161,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }, 2000);
     }
     
-    // Cleanup function
     return () => {
-      // Clear timers
       if (autoResumeTimer) {
         clearTimeout(autoResumeTimer);
       }
       if (countdownTimer.current) {
         clearInterval(countdownTimer.current);
       }
-      
-      // Stop scanner
       stopScanner();
     };
   }, []);
@@ -201,7 +191,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       const currentStats = { ...scanStats };
       const savedDate = localStorage.getItem(`scan_stats_date_${deviceId}`);
       
-      // Reset statistiche giornaliere se è un nuovo giorno
       if (savedDate !== today) {
         currentStats.today = 0;
         localStorage.setItem(`scan_stats_date_${deviceId}`, today);
@@ -220,7 +209,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   // Safely stop scanner
   const stopScanner = async () => {
     try {
-      // Clear all timers
       if (autoResumeTimer) {
         clearTimeout(autoResumeTimer);
         setAutoResumeTimer(null);
@@ -242,14 +230,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }
     } catch (err) {
       console.error("Error stopping scanner:", err);
-      // Reset the scanner reference if stop fails
       html5QrCode.current = null;
     }
   };
 
   // Start countdown for auto-resume
   const startAutoResumeCountdown = () => {
-    // Non avviare il countdown se l'auto-resume è disabilitato
     if (!autoResumeEnabled) {
       return;
     }
@@ -272,6 +258,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   // Start/stop scanning based on isScanning state
   useEffect(() => {
     const startScanner = async () => {
+      // In modalità kiosk, verifica che sia stato selezionato un tipo di scansione
+      if (kioskMode && !scanType) {
+        console.log("Kiosk mode: Waiting for scan type selection");
+        return;
+      }
+      
       if (!selectedCamera) {
         const errorMsg = "Nessuna camera selezionata.";
         if (!kioskMode) {
@@ -283,15 +275,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         return;
       }
 
-      // Stop existing scanner first
       await stopScanner();
 
       setInitializing(true);
       setError(null);
-      setScanResult(null); // Clear previous results
+      setScanResult(null);
       
       try {
-        // Create new scanner instance
         html5QrCode.current = new Html5Qrcode("qr-reader");
 
         const config = {
@@ -316,7 +306,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               
               const userId = parts[2];
               
-              // Pausa lo scanner immediatamente dopo la scansione
               if (html5QrCode.current) {
                 try {
                   const currentState = html5QrCode.current.getState();
@@ -329,7 +318,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 }
               }
               
-              // Processa la timbratura
               await processTimekeepingScan(userId, scanType);
               
               setScanResult({
@@ -339,23 +327,28 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 type: scanType
               });
               
-              // Aggiorna statistiche
               updateScanStats();
-              
-              // Gestisci il successo (reset errori consecutivi)
               handleSuccess();
               
-              // Avvia il timer per il riavvio automatico solo se abilitato
-              if (autoResumeEnabled && !manualControl) {
-                const resumeTimer = setTimeout(() => {
-                  console.log("Auto-resuming scanner after successful scan");
-                  resumeScanning();
-                }, AUTO_RESUME_DELAY);
+              // In modalità kiosk, dopo una scansione riuscita, ferma lo scanner
+              // e aspetta una nuova selezione del tipo
+              if (kioskMode) {
+                setIsScanning(false);
+                setScanType(''); // Reset del tipo di scansione
+                setScanTypeSelected(false); // Reset selezione tipo
                 
-                setAutoResumeTimer(resumeTimer);
-                
-                // Avvia il countdown visuale
-                startAutoResumeCountdown();
+                showNotification("Scansione completata! Seleziona il tipo per la prossima timbratura.", "success");
+              } else {
+                // Modalità normale: riavvia automaticamente
+                if (autoResumeEnabled && !manualControl) {
+                  const resumeTimer = setTimeout(() => {
+                    console.log("Auto-resuming scanner after successful scan");
+                    resumeScanning();
+                  }, AUTO_RESUME_DELAY);
+                  
+                  setAutoResumeTimer(resumeTimer);
+                  startAutoResumeCountdown();
+                }
               }
               
             } catch (err) {
@@ -363,10 +356,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               setError(err.message || "Errore durante la scansione");
               showNotification(err.message || "Errore durante la scansione", "error");
               
-              // Gestisci l'errore
               handleError("Scan processing error");
               
-              // In modalità kiosk, riprendi automaticamente solo se abilitato
               if (kioskMode && autoResumeEnabled && !manualControl) {
                 const errorResumeTimer = setTimeout(() => {
                   console.log("Auto-resuming scanner after error");
@@ -377,8 +368,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             }
           },
           (errorMessage) => {
-            // Ignora errori di rilevamento QR comuni per evitare spam
-            // Non loggare per evitare rumore nella console
+            // Ignora errori di rilevamento QR comuni
           }
         );
         
@@ -398,10 +388,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         setIsScanning(false);
         setInitializing(false);
         
-        // Reset scanner reference on error
         html5QrCode.current = null;
-        
-        // Gestisci l'errore
         handleError("Scanner start error");
       }
     };
@@ -413,7 +400,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
 
     return () => {
-      // Cleanup function for this effect
       if (autoResumeTimer) {
         clearTimeout(autoResumeTimer);
       }
@@ -421,9 +407,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         clearInterval(countdownTimer.current);
       }
     };
-  }, [isScanning, selectedCamera, autoResumeEnabled, manualControl]);
+  }, [isScanning, selectedCamera, scanType, autoResumeEnabled, manualControl]);
 
-  // Handle scan type change without restarting scanner
+  // Handle scan type change
   useEffect(() => {
     setScanResult(null);
     setError(null);
@@ -567,18 +553,16 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       type
     });
     
-    // Auto-hide - più veloce in modalità kiosk
     const hideDelay = kioskMode ? 3000 : 5000;
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
     }, hideDelay);
   };
 
-  // Resume scanning (improved version)
+  // Resume scanning
   const resumeScanning = async () => {
     console.log("Attempting to resume scanning...");
     
-    // Clear any pending timers
     if (autoResumeTimer) {
       clearTimeout(autoResumeTimer);
       setAutoResumeTimer(null);
@@ -589,7 +573,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       countdownTimer.current = null;
     }
     
-    // Reset UI state
     setScanResult(null);
     setError(null);
     setResumeCountdown(0);
@@ -604,21 +587,18 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           console.log("Scanner resumed successfully");
         } else if (currentState === Html5Qrcode.NOT_STARTED) {
           console.log("Scanner not started, restarting...");
-          // Restart scanner if it's not started
           setIsScanning(false);
           setTimeout(() => setIsScanning(true), 500);
         } else if (currentState === Html5Qrcode.SCANNING) {
           console.log("Scanner already scanning");
         } else {
           console.log("Unknown scanner state, restarting...");
-          // Force restart for unknown states
           setIsScanning(false);
           setTimeout(() => setIsScanning(true), 500);
         }
       } catch (error) {
         console.error("Error resuming scanner:", error);
         handleError("Resume error");
-        // Force restart on resume error only if not in manual control
         if (!manualControl) {
           console.log("Force restarting scanner due to resume error");
           setIsScanning(false);
@@ -627,7 +607,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }
     } else {
       console.log("No scanner instance, restarting...");
-      // No scanner instance, restart
       setIsScanning(false);
       setTimeout(() => setIsScanning(true), 500);
     }
@@ -637,7 +616,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const toggleScanning = () => {
     if (initializing) return;
     
-    // Clear any pending auto-resume timers when manually toggling
     if (autoResumeTimer) {
       clearTimeout(autoResumeTimer);
       setAutoResumeTimer(null);
@@ -648,7 +626,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       countdownTimer.current = null;
     }
     
-    // Attiva il controllo manuale
     setManualControl(true);
     
     setIsScanning(!isScanning);
@@ -667,14 +644,20 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     showNotification("Stato errori resettato. Auto-resume riabilitato.", "success");
   };
 
-  // Change scan type (in/out)
+  // Change scan type (in/out) - MODIFICATO per modalità kiosk
   const handleScanTypeChange = (type) => {
     setScanType(type);
-    // Clear results and errors when changing scan type
+    setScanTypeSelected(true);
     setScanResult(null);
     setError(null);
     setLastScannedUser(null);
     setResumeCountdown(0);
+    
+    // In modalità kiosk, avvia automaticamente lo scanner quando viene selezionato il tipo
+    if (kioskMode && selectedCamera && !isScanning) {
+      setIsScanning(true);
+      showNotification(`Modalità ${type === 'in' ? 'INGRESSO' : 'USCITA'} attivata. Scanner avviato.`, "info");
+    }
   };
 
   // Handle camera selection change
@@ -682,7 +665,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     const cameraId = e.target.value;
     setSelectedCamera(cameraId);
     
-    // Restart scanner with new camera
     if (isScanning) {
       setIsScanning(false);
       setTimeout(() => setIsScanning(true), 500);
@@ -694,7 +676,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     fetchCameras();
   };
 
-  // Render modalità kiosk semplificata
+  // Render modalità kiosk semplificata - MODIFICATO
   if (kioskMode) {
     return (
       <div className="timekeeping-scanner kiosk-mode">
@@ -709,40 +691,56 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         </div>
 
+        {/* Selettore tipo scansione - SEMPRE VISIBILE e PROMINENTE */}
         <div className="scan-type-selector">
           <button
             className={`scan-type-btn ${scanType === 'in' ? 'active' : ''}`}
             onClick={() => handleScanTypeChange('in')}
+            disabled={isScanning && scanType === 'in'}
           >
             🔵 INGRESSO
           </button>
           <button
             className={`scan-type-btn ${scanType === 'out' ? 'active' : ''}`}
             onClick={() => handleScanTypeChange('out')}
+            disabled={isScanning && scanType === 'out'}
           >
             🔴 USCITA
           </button>
         </div>
 
+        {/* Messaggio di istruzioni quando nessun tipo è selezionato */}
+        {!scanTypeSelected && (
+          <div className="kiosk-instructions">
+            <div className="instruction-card">
+              <h3>👆 Seleziona il tipo di timbratura</h3>
+              <p>Tocca <strong>INGRESSO</strong> per timbrare l'entrata</p>
+              <p>Tocca <strong>USCITA</strong> per timbrare l'uscita</p>
+            </div>
+          </div>
+        )}
+
         {/* Controlli manuali per modalità kiosk */}
-        <div className="kiosk-manual-controls">
-          <button
-            className={`manual-control-btn ${isScanning ? 'stop' : 'start'}`}
-            onClick={toggleScanning}
-            disabled={initializing}
-          >
-            {initializing ? '⏳ Inizializzazione...' : isScanning ? '⏹️ Ferma Scanner' : '▶️ Avvia Scanner'}
-          </button>
-          
-          {(!autoResumeEnabled || consecutiveErrors > 0) && (
+        {scanTypeSelected && (
+          <div className="kiosk-manual-controls">
             <button
-              className="reset-error-btn"
-              onClick={resetErrorState}
+              className={`manual-control-btn ${isScanning ? 'stop' : 'start'}`}
+              onClick={toggleScanning}
+              disabled={initializing}
             >
-              🔄 Reset Errori ({consecutiveErrors})
+              {initializing ? '⏳ Inizializzazione...' : isScanning ? '⏹️ Ferma Scanner' : '▶️ Avvia Scanner'}
             </button>
-          )}
-        </div>
+            
+            {(!autoResumeEnabled || consecutiveErrors > 0) && (
+              <button
+                className="reset-error-btn"
+                onClick={resetErrorState}
+              >
+                🔄 Reset Errori ({consecutiveErrors})
+              </button>
+            )}
+          </div>
+        )}
         
         {notification.show && (
           <Notification
@@ -773,31 +771,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 </div>
               )}
               
-              {resumeCountdown > 0 && autoResumeEnabled && !manualControl && (
-                <div className="auto-resume-info">
-                  <div className="countdown-display">
-                    Scanner si riavvierà automaticamente in <strong>{resumeCountdown}</strong> secondi...
-                  </div>
-                  <button 
-                    className="manual-resume-btn"
-                    onClick={resumeScanning}
-                  >
-                    Riavvia Subito
-                  </button>
-                </div>
-              )}
-              
-              {(!autoResumeEnabled || manualControl) && (
-                <div className="manual-resume-info">
-                  <p>Auto-resume disabilitato. Usa i controlli manuali.</p>
-                  <button 
-                    className="manual-resume-btn"
-                    onClick={resumeScanning}
-                  >
-                    Riavvia Scanner
-                  </button>
-                </div>
-              )}
+              <div className="next-scan-info">
+                <p>Per la prossima timbratura, seleziona nuovamente il tipo desiderato.</p>
+              </div>
             </div>
           )}
           
@@ -822,10 +798,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           )}
         </div>
         
-        {!isScanning && !error && cameras.length > 0 && (
+        {!isScanning && !error && cameras.length > 0 && scanTypeSelected && (
           <div className="scanner-placeholder">
             <div className="placeholder-icon">📱</div>
             <p>Scanner fermato</p>
+            <p>Tipo selezionato: <strong>{scanType === 'in' ? 'INGRESSO' : 'USCITA'}</strong></p>
             <button className="start-scan-btn" onClick={() => setIsScanning(true)}>
               Avvia Scanner
             </button>
