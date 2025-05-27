@@ -1,4 +1,4 @@
-// src/components/TimekeepingScanner.jsx - Modalità kiosk rimodulata
+// src/components/TimekeepingScanner.jsx - VERSIONE CORRETTA
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
@@ -7,7 +7,7 @@ import './timekeepingScanner.css';
 
 /**
  * Component for scanning QR codes for clock-in/out operations
- * Enhanced with redesigned kiosk mode functionality
+ * VERSIONE CORRETTA con debug per identificare problemi di timbratura
  */
 const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -23,16 +23,17 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const [initializing, setInitializing] = useState(false);
   const [scanStats, setScanStats] = useState({ total: 0, today: 0 });
   
-  // Nuovi stati per la modalità kiosk rimodulata
-  const [kioskState, setKioskState] = useState('selection'); // 'selection', 'scanning', 'result', 'error'
+  // Nuovi stati per debugging
+  const [debugInfo, setDebugInfo] = useState(null);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  
+  // Stati per modalità kiosk rimodulata
+  const [kioskState, setKioskState] = useState('selection');
   const [scannerReady, setScannerReady] = useState(false);
   
   const scannerRef = useRef(null);
   const html5QrCode = useRef(null);
   const isInitialized = useRef(false);
-
-  // Auto-resume scanning after successful scan (rimosso per kiosk)
-  const AUTO_RESUME_DELAY = kioskMode ? 0 : 8000; // Disabilitato in kiosk
 
   // Fetch available cameras
   const fetchCameras = async () => {
@@ -45,7 +46,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       if (devices && devices.length) {
         setCameras(devices);
         
-        // In modalità kiosk, seleziona automaticamente la camera posteriore se disponibile
         if (kioskMode) {
           const backCamera = devices.find(device => 
             device.label.toLowerCase().includes('back') || 
@@ -85,25 +85,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       isInitialized.current = true;
     }
     
-    // In modalità kiosk, nascondi la UI del browser dopo un po'
-    if (kioskMode) {
-      setTimeout(() => {
-        if (window.screen && window.screen.orientation) {
-          // Blocca l'orientamento se possibile
-          window.screen.orientation.lock('portrait').catch(() => {
-            // Ignora errori se non supportato
-          });
-        }
-      }, 2000);
-    }
-    
-    // Cleanup function
     return () => {
       stopScanner();
     };
   }, []);
 
-  // Carica statistiche scansioni
   const loadScanStats = () => {
     try {
       const stats = localStorage.getItem(`scan_stats_${deviceId}`);
@@ -115,14 +101,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
   };
 
-  // Aggiorna statistiche scansioni
   const updateScanStats = () => {
     try {
       const today = new Date().toDateString();
       const currentStats = { ...scanStats };
       const savedDate = localStorage.getItem(`scan_stats_date_${deviceId}`);
       
-      // Reset statistiche giornaliere se è un nuovo giorno
       if (savedDate !== today) {
         currentStats.today = 0;
         localStorage.setItem(`scan_stats_date_${deviceId}`, today);
@@ -138,7 +122,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
   };
 
-  // Safely stop scanner
   const stopScanner = async () => {
     try {
       setIsScanning(false);
@@ -152,12 +135,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }
     } catch (err) {
       console.error("Error stopping scanner:", err);
-      // Reset the scanner reference if stop fails
       html5QrCode.current = null;
     }
   };
 
-  // Start scanning (solo quando chiamato esplicitamente)
+  // Start scanning con debug migliorato
   const startScanning = async () => {
     if (!selectedCamera || !scanType) {
       const errorMsg = "Seleziona prima il tipo di timbratura";
@@ -170,7 +152,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       return;
     }
 
-    // Stop existing scanner first
     await stopScanner();
 
     setInitializing(true);
@@ -179,7 +160,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     setKioskState('scanning');
     
     try {
-      // Create new scanner instance
       html5QrCode.current = new Html5Qrcode("qr-reader");
 
       const config = {
@@ -204,10 +184,24 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             
             const userId = parts[2];
             
-            // Ferma lo scanner immediatamente dopo la scansione
             await stopScanner();
             
-            // Processa la timbratura
+            // DEBUG: Log informazioni pre-timbratura
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const currentDate = now.toISOString().split('T')[0];
+            
+            console.log(`DEBUG: Attempting ${scanType} for user ${userId} at ${currentTime} on ${currentDate}`);
+            
+            setDebugInfo({
+              userId,
+              scanType,
+              currentTime,
+              currentDate,
+              timestamp: now.toISOString()
+            });
+            
+            // Processa la timbratura con gestione errori migliorata
             await processTimekeepingScan(userId, scanType);
             
             setScanResult({
@@ -217,16 +211,22 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               type: scanType
             });
             
-            // Aggiorna statistiche
             updateScanStats();
             
-            // In modalità kiosk, vai allo stato risultato
             if (kioskMode) {
               setKioskState('result');
             }
             
           } catch (err) {
             console.error("Error processing scan:", err);
+            
+            // DEBUG: Log errore dettagliato
+            console.log("DEBUG Error details:", {
+              error: err.message,
+              stack: err.stack,
+              debugInfo
+            });
+            
             await stopScanner();
             setError(err.message || "Errore durante la scansione");
             
@@ -238,7 +238,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           }
         },
         (errorMessage) => {
-          // Ignora errori di rilevamento QR comuni per evitare spam
+          // Ignora errori di rilevamento QR comuni
         }
       );
       
@@ -262,7 +262,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         showNotification(`${errorMsg}. Prova ad aggiornare la pagina.`, "error");
       }
       
-      // Reset scanner reference on error
       html5QrCode.current = null;
     }
   };
@@ -286,7 +285,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     };
   }, [offlineStorage]);
 
-  // Load offline storage from localStorage on component mount
   useEffect(() => {
     const savedRecords = localStorage.getItem('timekeeping_offline_records');
     if (savedRecords) {
@@ -299,9 +297,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
   }, []);
 
-  // Function to process a timekeeping scan
+  // Function to process a timekeeping scan con debug migliorato
   const processTimekeepingScan = async (userId, type) => {
     try {
+      console.log(`Processing ${type} for user ${userId}`);
+      
       if (!navigator.onLine) {
         const record = {
           type: type === 'in' ? 'clockIn' : 'clockOut',
@@ -331,6 +331,15 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         return;
       }
       
+      // Debugging: Log dettagli pre-chiamata
+      console.log('DEBUG: Calling timekeeping service with:', {
+        userId,
+        type,
+        deviceId,
+        isAdmin,
+        kioskMode
+      });
+      
       if (type === 'in') {
         const result = await timekeepingService.clockIn(userId, {
           deviceId,
@@ -338,6 +347,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           deviceType: kioskMode ? 'kiosk' : 'web-scanner',
           kioskMode
         });
+        
+        console.log('DEBUG: ClockIn result:', result);
         
         setLastScannedUser({
           userId,
@@ -357,6 +368,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           kioskMode
         });
         
+        console.log('DEBUG: ClockOut result:', result);
+        
         setLastScannedUser({
           userId,
           userName: result.userName,
@@ -370,6 +383,16 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }
     } catch (err) {
       console.error("Error processing timekeeping scan:", err);
+      
+      // Log dettagliato dell'errore per debugging
+      console.log('DEBUG: Detailed error:', {
+        message: err.message,
+        stack: err.stack,
+        userId,
+        type,
+        timestamp: new Date().toISOString()
+      });
+      
       throw err;
     }
   };
@@ -403,7 +426,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       type
     });
     
-    // Auto-hide - più veloce in modalità kiosk
     const hideDelay = kioskMode ? 3000 : 5000;
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
@@ -417,7 +439,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     setScanResult(null);
     setKioskState('scanning');
     
-    // Avvia lo scanner solo dopo la selezione
     setTimeout(() => {
       startScanning();
     }, 500);
@@ -437,9 +458,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const toggleScanning = () => {
     if (initializing) return;
     
-    setIsScanning(!isScanning);
-    setScanResult(null);
-    setError(null);
+    if (isScanning) {
+      stopScanner();
+    } else {
+      startScanning();
+    }
   };
 
   // Change scan type (in/out) per modalità normale
@@ -455,10 +478,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     const cameraId = e.target.value;
     setSelectedCamera(cameraId);
     
-    // Restart scanner with new camera
     if (isScanning) {
-      setIsScanning(false);
-      setTimeout(() => setIsScanning(true), 500);
+      stopScanner();
+      setTimeout(() => startScanning(), 500);
     }
   };
 
@@ -467,7 +489,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     fetchCameras();
   };
 
-  // Render modalità kiosk rimodulata
+  // Toggle debug info
+  const toggleDebugInfo = () => {
+    setShowDebugInfo(!showDebugInfo);
+  };
+
+  // Render modalità kiosk
   if (kioskMode) {
     return (
       <div className="timekeeping-scanner kiosk-mode">
@@ -488,7 +515,27 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           />
         )}
 
-        {/* Stato: Selezione tipo timbratura */}
+        {/* Debug panel per kiosk (solo se necessario) */}
+        {showDebugInfo && debugInfo && (
+          <div className="debug-panel" style={{
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            fontSize: '12px',
+            zIndex: 1000
+          }}>
+            <div>User: {debugInfo.userId}</div>
+            <div>Type: {debugInfo.scanType}</div>
+            <div>Time: {debugInfo.currentTime}</div>
+            <div>Date: {debugInfo.currentDate}</div>
+          </div>
+        )}
+
+        {/* Resto del codice kiosk rimane uguale */}
         {kioskState === 'selection' && (
           <div className="kiosk-selection-screen">
             <div className="selection-title">
@@ -531,7 +578,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Stato: Scansione in corso */}
+        {/* Altri stati kiosk rimangono uguali */}
         {kioskState === 'scanning' && (
           <div className="kiosk-scanning-screen">
             <div className="scanning-header">
@@ -557,7 +604,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Stato: Risultato */}
         {kioskState === 'result' && scanResult && (
           <div className="kiosk-result-screen success">
             <div className="result-icon">✅</div>
@@ -588,7 +634,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Stato: Errore */}
         {kioskState === 'error' && (
           <div className="kiosk-result-screen error">
             <div className="result-icon">❌</div>
@@ -607,7 +652,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Footer con offline sync */}
         {offlineStorage.length > 0 && isOnline && (
           <div className="offline-sync-section">
             <p>🔄 {offlineStorage.length} timbrature da sincronizzare</p>
@@ -620,7 +664,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     );
   }
 
-  // Render normale per modalità admin (resto del codice rimane uguale)
+  // Render normale per modalità admin
   return (
     <div className="timekeeping-scanner">
       <div className="scanner-header">
@@ -632,8 +676,52 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           {offlineStorage.length > 0 && (
             <div className="pending-badge">{offlineStorage.length} pending</div>
           )}
+          {/* Debug toggle button */}
+          {isAdmin && (
+            <button 
+              className="debug-toggle-btn"
+              onClick={toggleDebugInfo}
+              style={{
+                padding: '5px 10px',
+                fontSize: '12px',
+                backgroundColor: showDebugInfo ? '#e74c3c' : '#95a5a6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+            >
+              DEBUG {showDebugInfo ? 'ON' : 'OFF'}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Debug panel */}
+      {showDebugInfo && (
+        <div className="debug-panel" style={{
+          background: '#f8f9fa',
+          border: '1px solid #ddd',
+          borderRadius: '5px',
+          padding: '15px',
+          marginBottom: '20px'
+        }}>
+          <h4 style={{margin: '0 0 10px 0'}}>Debug Information</h4>
+          <div><strong>Online:</strong> {isOnline ? 'Yes' : 'No'}</div>
+          <div><strong>Selected Camera:</strong> {selectedCamera}</div>
+          <div><strong>Scan Type:</strong> {scanType || 'None'}</div>
+          <div><strong>Scanner State:</strong> {isScanning ? 'Active' : 'Inactive'}</div>
+          {debugInfo && (
+            <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#e9ecef', borderRadius: '3px'}}>
+              <div><strong>Last Scan Info:</strong></div>
+              <div>User ID: {debugInfo.userId}</div>
+              <div>Type: {debugInfo.scanType}</div>
+              <div>Time: {debugInfo.currentTime}</div>
+              <div>Date: {debugInfo.currentDate}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="scan-type-selector">
         <button
@@ -681,7 +769,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         <button 
           className={`toggle-btn ${isScanning ? 'active' : ''}`} 
           onClick={toggleScanning}
-          disabled={initializing || cameras.length === 0}
+          disabled={initializing || cameras.length === 0 || !scanType}
         >
           {initializing ? 'Avvio Scanner...' : isScanning ? 'Ferma Scanner' : 'Avvia Scanner'}
         </button>
