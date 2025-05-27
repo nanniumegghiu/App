@@ -877,6 +877,739 @@
   }
 }
 
+/* ========================================
+   MODALITÀ KIOSK - SCHERMATE PRINCIPALI
+   ======================================== */
+
+   .kiosk-mode {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .kiosk-mode .timekeeping-scanner {
+    background: transparent;
+    box-shadow: none;
+    max-width: none;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+    padding: 0;
+  }
+  
+  .kiosk-mode .scanner-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 20px 30px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .kiosk-mode .scanner-header h2 {
+    font-size: 2.5rem;
+    margin: 0;
+    color: #2c3e50;
+    text-align: center;
+  }
+  
+  .kiosk-mode .scanner-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 10px;
+    font-size: 1.1rem;
+    color: #666;
+  }
+  
+  /* ========================================
+     SCHERMATA SELEZIONE TIPO TIMBRATURA
+     ======================================== */
+  
+  .kiosk-selection-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    text-align: center;
+  }
+  
+  .selection-title {
+    margin-bottom: 60px;
+  }
+  
+  .selection-title h3 {
+    font-size: 3rem;
+    color: white;
+    margin: 0 0 20px 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+  }
+  
+  .selection-title p {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .kiosk-type-buttons {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .kiosk-type-btn {
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 20px;
+    padding: 40px;
+    min-width: 280px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(15px);
+  }
+  
+  .kiosk-type-btn:hover:not(:disabled) {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 1);
+  }
+  
+  .kiosk-type-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .kiosk-type-btn.entrance:hover:not(:disabled) {
+    border-left: 8px solid #27ae60;
+  }
+  
+  .kiosk-type-btn.exit:hover:not(:disabled) {
+    border-left: 8px solid #e74c3c;
+  }
+  
+  .btn-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+  }
+  
+  .btn-text {
+    text-align: center;
+  }
+  
+  .btn-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 10px;
+  }
+  
+  .btn-subtitle {
+    font-size: 1.2rem;
+    color: #666;
+    font-weight: 500;
+  }
+  
+  .camera-loading {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+  }
+  
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .camera-loading p {
+    font-size: 1.3rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* ========================================
+     SCHERMATA SCANSIONE
+     ======================================== */
+  
+  .kiosk-scanning-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 40px 40px;
+  }
+  
+  .scanning-header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+  }
+  
+  .scanning-header h3 {
+    font-size: 2.5rem;
+    margin: 0 0 15px 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .scanning-header p {
+    font-size: 1.4rem;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .scanning-header strong {
+    color: #fff;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 15px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+  }
+  
+  .kiosk-scanning-screen .scanner-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  .kiosk-scanning-screen #qr-reader {
+    max-width: 600px;
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+  }
+  
+  .scanning-instructions {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+  }
+  
+  .scanning-instructions p {
+    font-size: 1.3rem;
+    margin: 10px 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+  }
+  
+  .kiosk-cancel-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-size: 1.3rem;
+    font-weight: 600;
+    padding: 15px 30px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    align-self: center;
+  }
+  
+  .kiosk-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* ========================================
+     SCHERMATE RISULTATO ED ERRORE
+     ======================================== */
+  
+  .kiosk-result-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    text-align: center;
+  }
+  
+  .kiosk-result-screen.success {
+    color: white;
+  }
+  
+  .kiosk-result-screen.error {
+    color: white;
+  }
+  
+  .result-icon {
+    font-size: 8rem;
+    margin-bottom: 30px;
+    animation: result-appear 0.6s ease-out;
+  }
+  
+  @keyframes result-appear {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .kiosk-result-screen h3 {
+    font-size: 3rem;
+    margin: 0 0 30px 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+  }
+  
+  .result-details,
+  .error-details {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  
+  .result-details p,
+  .error-details p {
+    font-size: 1.4rem;
+    margin: 15px 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .result-details strong {
+    color: #fff;
+  }
+  
+  .work-hours {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .work-hours p {
+    font-size: 1.3rem;
+    margin: 10px 0;
+  }
+  
+  .offline-note {
+    color: #f39c12 !important;
+    font-style: italic;
+    background: rgba(243, 156, 18, 0.2);
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin-top: 15px;
+  }
+  
+  .kiosk-continue-btn {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 20px 40px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .kiosk-continue-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(39, 174, 96, 0.6);
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  }
+  
+  .kiosk-result-screen.error .kiosk-continue-btn {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4);
+  }
+  
+  .kiosk-result-screen.error .kiosk-continue-btn:hover {
+    box-shadow: 0 15px 40px rgba(231, 76, 60, 0.6);
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+  }
+  
+  /* ========================================
+     SEZIONE SYNC OFFLINE
+     ======================================== */
+  
+  .kiosk-mode .offline-sync-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 30px;
+    text-align: center;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .kiosk-mode .offline-sync-section p {
+    font-size: 1.1rem;
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+    font-weight: 600;
+  }
+  
+  .kiosk-mode .sync-btn {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .kiosk-mode .sync-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+  }
+  
+  /* ========================================
+     RESPONSIVE DESIGN
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    .selection-title h3 {
+      font-size: 2.2rem;
+    }
+    
+    .selection-title p {
+      font-size: 1.2rem;
+    }
+    
+    .kiosk-type-buttons {
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .kiosk-type-btn {
+      min-width: 250px;
+      min-height: 150px;
+      padding: 30px;
+    }
+    
+    .btn-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+    
+    .btn-title {
+      font-size: 1.6rem;
+    }
+    
+    .btn-subtitle {
+      font-size: 1rem;
+    }
+    
+    .scanning-header h3 {
+      font-size: 2rem;
+    }
+    
+    .scanning-header p {
+      font-size: 1.2rem;
+    }
+    
+    .scanning-instructions p {
+      font-size: 1.1rem;
+    }
+    
+    .kiosk-result-screen h3 {
+      font-size: 2.2rem;
+    }
+    
+    .result-details p,
+    .error-details p {
+      font-size: 1.2rem;
+    }
+    
+    .result-icon {
+      font-size: 6rem;
+    }
+    
+    .kiosk-continue-btn {
+      font-size: 1.3rem;
+      padding: 15px 30px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .kiosk-selection-screen,
+    .kiosk-scanning-screen,
+    .kiosk-result-screen {
+      padding: 20px;
+    }
+    
+    .kiosk-mode .scanner-header {
+      padding: 15px 20px;
+    }
+    
+    .kiosk-mode .scanner-header h2 {
+      font-size: 2rem;
+    }
+    
+    .kiosk-mode .scanner-stats {
+      gap: 20px;
+      font-size: 1rem;
+    }
+    
+    .selection-title h3 {
+      font-size: 1.8rem;
+    }
+    
+    .selection-title p {
+      font-size: 1rem;
+    }
+    
+    .kiosk-type-btn {
+      min-width: 200px;
+      min-height: 120px;
+      padding: 20px;
+    }
+    
+    .btn-icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    .btn-title {
+      font-size: 1.4rem;
+    }
+    
+    .btn-subtitle {
+      font-size: 0.9rem;
+    }
+    
+    .scanning-header h3 {
+      font-size: 1.6rem;
+    }
+    
+    .scanning-header p {
+      font-size: 1rem;
+    }
+    
+    .scanning-instructions p {
+      font-size: 1rem;
+    }
+    
+    .kiosk-cancel-btn {
+      font-size: 1.1rem;
+      padding: 12px 25px;
+    }
+    
+    .kiosk-result-screen h3 {
+      font-size: 1.8rem;
+    }
+    
+    .result-details,
+    .error-details {
+      padding: 20px;
+    }
+    
+    .result-details p,
+    .error-details p {
+      font-size: 1rem;
+    }
+    
+    .result-icon {
+      font-size: 5rem;
+    }
+    
+    .kiosk-continue-btn {
+      font-size: 1.1rem;
+      padding: 12px 25px;
+      width: 100%;
+      max-width: 300px;
+    }
+  }
+  
+  /* ========================================
+     ORIENTAMENTO LANDSCAPE SU TABLET
+     ======================================== */
+  
+  @media (orientation: landscape) and (max-height: 600px) {
+    .selection-title {
+      margin-bottom: 30px;
+    }
+    
+    .selection-title h3 {
+      font-size: 2rem;
+    }
+    
+    .selection-title p {
+      font-size: 1.1rem;
+    }
+    
+    .kiosk-type-buttons {
+      gap: 30px;
+    }
+    
+    .kiosk-type-btn {
+      min-height: 120px;
+      padding: 20px 30px;
+    }
+    
+    .btn-icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    .btn-title {
+      font-size: 1.4rem;
+    }
+    
+    .scanning-header h3 {
+      font-size: 1.8rem;
+    }
+    
+    .kiosk-result-screen h3 {
+      font-size: 2rem;
+    }
+    
+    .result-icon {
+      font-size: 5rem;
+      margin-bottom: 20px;
+    }
+    
+    .result-details,
+    .error-details {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+  }
+  
+  /* ========================================
+     ANIMAZIONI SPECIFICHE PER KIOSK
+     ======================================== */
+  
+  .kiosk-selection-screen {
+    animation: kiosk-fade-in 0.5s ease-out;
+  }
+  
+  .kiosk-scanning-screen {
+    animation: kiosk-slide-in 0.4s ease-out;
+  }
+  
+  .kiosk-result-screen {
+    animation: kiosk-fade-in 0.6s ease-out;
+  }
+  
+  @keyframes kiosk-fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes kiosk-slide-in {
+    0% {
+      opacity: 0;
+      transform: translateX(-50px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  /* ========================================
+     PERSONALIZZAZIONE HTML5QrCode IN KIOSK
+     ======================================== */
+  
+  .kiosk-mode #qr-reader__dashboard_section {
+    display: none !important;
+  }
+  
+  .kiosk-mode #qr-reader__header_message {
+    display: none !important;
+  }
+  
+  .kiosk-mode #qr-reader__status_span {
+    font-size: 1.2rem !important;
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    padding: 10px !important;
+  }
+  
+  .kiosk-mode #qr-reader video {
+    border-radius: 15px !important;
+    max-width: 100% !important;
+    max-height: 400px !important;
+    object-fit: cover !important;
+  }
+  
+  /* ========================================
+     ACCESSIBILITÀ E FOCUS
+     ======================================== */
+  
+  .kiosk-type-btn:focus,
+  .kiosk-cancel-btn:focus,
+  .kiosk-continue-btn:focus {
+    outline: 3px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 3px;
+  }
+  
+  .kiosk-type-btn:focus {
+    background: rgba(255, 255, 255, 1);
+  }
+  
+  /* ========================================
+     STATI DI CARICAMENTO MIGLIORATI
+     ======================================== */
+  
+  .camera-loading {
+    animation: loading-pulse 2s infinite;
+  }
+  
+  @keyframes loading-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
 /* Responsive styles */
 @media (max-width: 576px) {
   .timekeeping-scanner {
