@@ -1,4 +1,4 @@
-// src/components/TimekeepingScanner.jsx - VERSIONE CORRETTA
+// src/components/TimekeepingScanner.jsx - VERSIONE CORRETTA CON KIOSK MODE FUNZIONANTE
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
@@ -7,7 +7,7 @@ import './timekeepingScanner.css';
 
 /**
  * Component for scanning QR codes for clock-in/out operations
- * VERSIONE CORRETTA con debug per identificare problemi di timbratura
+ * VERSIONE CORRETTA con modalità kiosk funzionante
  */
 const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -23,13 +23,14 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
   const [initializing, setInitializing] = useState(false);
   const [scanStats, setScanStats] = useState({ total: 0, today: 0 });
   
-  // Nuovi stati per debugging
+  // Stati per debugging
   const [debugInfo, setDebugInfo] = useState(null);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   
-  // Stati per modalità kiosk rimodulata
+  // Stati per modalità kiosk
   const [kioskState, setKioskState] = useState('selection');
   const [scannerReady, setScannerReady] = useState(false);
+  const [cameraInitialized, setCameraInitialized] = useState(false);
   
   const scannerRef = useRef(null);
   const html5QrCode = useRef(null);
@@ -43,19 +44,28 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       }
       
       const devices = await Html5Qrcode.getCameras();
+      console.log("Cameras found:", devices);
+      
       if (devices && devices.length) {
         setCameras(devices);
         
         if (kioskMode) {
+          // Per modalità kiosk, preferisci la camera posteriore
           const backCamera = devices.find(device => 
             device.label.toLowerCase().includes('back') || 
             device.label.toLowerCase().includes('rear') ||
             device.label.toLowerCase().includes('environment')
           );
-          setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
+          const selectedCameraId = backCamera ? backCamera.id : devices[0].id;
+          
+          setSelectedCamera(selectedCameraId);
+          setCameraInitialized(true);
           setScannerReady(true);
+          
+          console.log("Kiosk mode: Camera selected:", selectedCameraId);
         } else {
           setSelectedCamera(devices[0].id);
+          setCameraInitialized(true);
           showNotification("Permessi camera concessi.", "success");
         }
         
@@ -71,6 +81,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       console.error("Error getting cameras:", err);
       const errorMsg = `Errore permessi camera: ${err.message || "Consenti l'accesso alla camera nelle impostazioni del browser."}`;
       setError(errorMsg);
+      setCameraInitialized(false);
+      setScannerReady(false);
       if (!kioskMode) {
         showNotification(errorMsg, "error");
       }
@@ -139,10 +151,21 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
   };
 
-  // Start scanning con debug migliorato
+  // Start scanning con gestione migliorata per modalità kiosk
   const startScanning = async () => {
+    console.log("StartScanning called with:", { 
+      selectedCamera, 
+      scanType, 
+      cameraInitialized, 
+      scannerReady 
+    });
+
+    // Verifica prerequisiti
     if (!selectedCamera || !scanType) {
-      const errorMsg = "Seleziona prima il tipo di timbratura";
+      const errorMsg = kioskMode ? 
+        "Errore: configurazione scanner non completa" : 
+        "Seleziona prima il tipo di timbratura";
+      
       if (kioskMode) {
         setError(errorMsg);
         setKioskState('error');
@@ -152,22 +175,42 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       return;
     }
 
+    if (!cameraInitialized) {
+      const errorMsg = "Camera non inizializzata. Riprova tra qualche secondo.";
+      setError(errorMsg);
+      if (kioskMode) {
+        setKioskState('error');
+      } else {
+        showNotification(errorMsg, "error");
+      }
+      return;
+    }
+
+    // Ferma il scanner precedente se attivo
     await stopScanner();
 
     setInitializing(true);
     setError(null);
     setScanResult(null);
-    setKioskState('scanning');
+    
+    if (kioskMode) {
+      setKioskState('scanning');
+    }
     
     try {
+      console.log("Creating new Html5Qrcode instance");
       html5QrCode.current = new Html5Qrcode("qr-reader");
 
       const config = {
         fps: kioskMode ? 15 : 10,
         qrbox: kioskMode ? { width: 300, height: 300 } : { width: 250, height: 250 },
         aspectRatio: 1.0,
-        disableFlip: false
+        disableFlip: false,
+        rememberLastUsedCamera: true
       };
+
+      console.log("Starting scanner with config:", config);
+      console.log("Using camera:", selectedCamera);
 
       await html5QrCode.current.start(
         selectedCamera,
@@ -184,6 +227,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             
             const userId = parts[2];
             
+            // Ferma lo scanner dopo una scansione riuscita
             await stopScanner();
             
             // DEBUG: Log informazioni pre-timbratura
@@ -201,7 +245,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               timestamp: now.toISOString()
             });
             
-            // Processa la timbratura con gestione errori migliorata
+            // Processa la timbratura
             await processTimekeepingScan(userId, scanType);
             
             setScanResult({
@@ -238,13 +282,18 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           }
         },
         (errorMessage) => {
-          // Ignora errori di rilevamento QR comuni
+          // Ignora errori di rilevamento QR comuni per non spam la console
+          if (!errorMessage.includes("No QR code found")) {
+            console.warn("QR scan warning:", errorMessage);
+          }
         }
       );
       
       setError(null);
       setInitializing(false);
       setIsScanning(true);
+      
+      console.log("Scanner started successfully");
       
       if (!kioskMode) {
         showNotification("Scanner avviato con successo.", "success");
@@ -297,7 +346,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     }
   }, []);
 
-  // Function to process a timekeeping scan con debug migliorato
+  // Function to process a timekeeping scan
   const processTimekeepingScan = async (userId, type) => {
     try {
       console.log(`Processing ${type} for user ${userId}`);
@@ -434,11 +483,23 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
   // Gestione della selezione del tipo di timbratura in modalità kiosk
   const handleKioskScanTypeSelection = (type) => {
+    console.log("Kiosk scan type selected:", type);
+    console.log("Scanner ready:", scannerReady);
+    console.log("Camera initialized:", cameraInitialized);
+    console.log("Selected camera:", selectedCamera);
+    
+    if (!scannerReady || !cameraInitialized || !selectedCamera) {
+      setError("Camera non pronta. Attendi l'inizializzazione.");
+      setKioskState('error');
+      return;
+    }
+    
     setScanType(type);
     setError(null);
     setScanResult(null);
     setKioskState('scanning');
     
+    // Avvia lo scanner dopo un breve delay per permettere la transizione dello stato
     setTimeout(() => {
       startScanning();
     }, 500);
@@ -486,6 +547,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
   // Retry camera detection
   const handleRetryCamera = () => {
+    setCameraInitialized(false);
+    setScannerReady(false);
     fetchCameras();
   };
 
@@ -503,6 +566,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           <div className="scanner-stats">
             <span>Oggi: {scanStats.today}</span>
             <span>Totale: {scanStats.total}</span>
+            {!isOnline && <span className="offline-indicator">OFFLINE</span>}
           </div>
         </div>
 
@@ -535,7 +599,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Resto del codice kiosk rimane uguale */}
+        {/* Schermata di selezione tipo timbratura */}
         {kioskState === 'selection' && (
           <div className="kiosk-selection-screen">
             <div className="selection-title">
@@ -547,7 +611,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               <button
                 className="kiosk-type-btn entrance"
                 onClick={() => handleKioskScanTypeSelection('in')}
-                disabled={!scannerReady}
+                disabled={!scannerReady || !cameraInitialized}
               >
                 <div className="btn-icon">🟢</div>
                 <div className="btn-text">
@@ -559,7 +623,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               <button
                 className="kiosk-type-btn exit"
                 onClick={() => handleKioskScanTypeSelection('out')}
-                disabled={!scannerReady}
+                disabled={!scannerReady || !cameraInitialized}
               >
                 <div className="btn-icon">🔴</div>
                 <div className="btn-text">
@@ -569,16 +633,62 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
               </button>
             </div>
             
-            {!scannerReady && (
+            {!scannerReady || !cameraInitialized ? (
               <div className="camera-loading">
                 <div className="loading-spinner"></div>
-                <p>Inizializzazione camera...</p>
+                <p>
+                  {!cameraInitialized ? 
+                    "Inizializzazione camera..." : 
+                    "Preparazione scanner..."
+                  }
+                </p>
+                <button 
+                  className="retry-camera-btn"
+                  onClick={handleRetryCamera}
+                  style={{
+                    marginTop: '10px',
+                    padding: '8px 16px',
+                    backgroundColor: '#3498db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Riprova inizializzazione
+                </button>
+              </div>
+            ) : null}
+
+            {error && (
+              <div className="camera-error" style={{
+                marginTop: '20px',
+                padding: '15px',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderRadius: '8px',
+                color: '#e74c3c',
+                textAlign: 'center'
+              }}>
+                <p>{error}</p>
+                <button 
+                  onClick={handleRetryCamera}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#e74c3c',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Riprova
+                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Altri stati kiosk rimangono uguali */}
+        {/* Schermata scansione */}
         {kioskState === 'scanning' && (
           <div className="kiosk-scanning-screen">
             <div className="scanning-header">
@@ -589,6 +699,13 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             <div className="scanner-container">
               <div id="qr-reader" className="qr-reader"></div>
             </div>
+            
+            {initializing && (
+              <div className="scanning-status">
+                <div className="loading-spinner"></div>
+                <p>Avvio scanner...</p>
+              </div>
+            )}
             
             <div className="scanning-instructions">
               <p>📱 Avvicina il QR Code alla camera</p>
@@ -604,6 +721,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
+        {/* Schermata risultato successo */}
         {kioskState === 'result' && scanResult && (
           <div className="kiosk-result-screen success">
             <div className="result-icon">✅</div>
@@ -634,6 +752,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
+        {/* Schermata errore */}
         {kioskState === 'error' && (
           <div className="kiosk-result-screen error">
             <div className="result-icon">❌</div>
