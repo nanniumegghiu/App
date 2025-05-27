@@ -1,4 +1,4 @@
-// src/services/timekeepingService.js - Final version with time limits, lunch break, and all original features
+// src/services/timekeepingService.js - With improved error handling for duplicate entries
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -8,7 +8,6 @@ import {
   setDoc, 
   updateDoc, 
   addDoc, 
-  deleteDoc,
   query, 
   where, 
   serverTimestamp, 
@@ -17,221 +16,9 @@ import {
 } from 'firebase/firestore';
 
 /**
- * Service for handling time clock functionality with time limits and lunch break calculation
+ * Service for handling time clock functionality
  */
 const timekeepingService = {
-  /**
-   * Validates if a clock-in time is within allowed time windows
-   * @param {string} timeString - Time in HH:MM format
-   * @returns {Object} - Validation result with allowed clock-out window
-   */
-  validateClockInTime(timeString) {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const timeInMinutes = hours * 60 + minutes;
-    
-    // Convert time windows to minutes
-    const midnight = 0 * 60;        // 00:00
-    const afternoon3PM = 15 * 60;   // 15:00
-    
-    if (timeInMinutes >= midnight && timeInMinutes < afternoon3PM) {
-      // Morning shift: 00:00 - 14:59, can clock out until 21:00 same day
-      return {
-        isValid: true,
-        shiftType: 'morning',
-        maxClockOutTime: '21:00',
-        maxClockOutDay: 'same'
-      };
-    } else if (timeInMinutes >= afternoon3PM) {
-      // Evening shift: 15:00 - 23:59, can clock out until 08:00 next day
-      return {
-        isValid: true,
-        shiftType: 'evening',
-        maxClockOutTime: '08:00',
-        maxClockOutDay: 'next'
-      };
-    }
-    
-    // This should never happen since we cover 00:00-23:59
-    return {
-      isValid: false,
-      message: 'Orario di ingresso non valido.'
-    };
-  },
-
-  /**
-   * Validates if a clock-out time is within the allowed window for the given clock-in
-   * @param {string} clockInTime - Clock-in time in HH:MM format
-   * @param {string} clockOutTime - Clock-out time in HH:MM format
-   * @param {string} clockInDate - Clock-in date in YYYY-MM-DD format
-   * @param {string} clockOutDate - Clock-out date in YYYY-MM-DD format
-   * @returns {Object} - Validation result
-   */
-  validateClockOutTime(clockInTime, clockOutTime, clockInDate, clockOutDate) {
-    const validation = this.validateClockInTime(clockInTime);
-    
-    if (!validation.isValid) {
-      return validation;
-    }
-    
-    const [outHours, outMinutes] = clockOutTime.split(':').map(Number);
-    const clockOutTimeInMinutes = outHours * 60 + outMinutes;
-    
-    if (validation.shiftType === 'morning') {
-      // Morning shift: must clock out same day before 21:00
-      if (clockInDate !== clockOutDate) {
-        return {
-          isValid: false,
-          message: 'Per il turno mattutino devi timbrare l\'uscita lo stesso giorno.',
-          forceStandardHours: true
-        };
-      }
-      
-      const maxOutTime = 21 * 60; // 21:00
-      if (clockOutTimeInMinutes > maxOutTime) {
-        return {
-          isValid: false,
-          message: 'Per il turno mattutino puoi timbrare l\'uscita entro le 21:00.',
-          forceStandardHours: true
-        };
-      }
-    } else if (validation.shiftType === 'evening') {
-      // Evening shift: can clock out next day until 08:00
-      const nextDay = new Date(clockInDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const expectedNextDay = nextDay.toISOString().split('T')[0];
-      
-      if (clockOutDate === clockInDate) {
-        // Same day clock-out for evening shift is allowed (short shift)
-        return { isValid: true };
-      } else if (clockOutDate === expectedNextDay) {
-        // Next day clock-out
-        const maxOutTime = 8 * 60; // 08:00
-        if (clockOutTimeInMinutes > maxOutTime) {
-          return {
-            isValid: false,
-            message: 'Per il turno serale puoi timbrare l\'uscita entro le 08:00 del giorno seguente.',
-            forceStandardHours: true
-          };
-        }
-      } else {
-        return {
-          isValid: false,
-          message: 'Orario di uscita non valido per il turno serale.',
-          forceStandardHours: true
-        };
-      }
-    }
-    
-    return { isValid: true };
-  },
-
-  /**
-   * Calculates worked hours with lunch break deduction
-   * @param {string} clockInTime - Clock-in time in HH:MM format
-   * @param {string} clockOutTime - Clock-out time in HH:MM format
-   * @param {string} clockInDate - Clock-in date in YYYY-MM-DD format
-   * @param {string} clockOutDate - Clock-out date in YYYY-MM-DD format
-   * @returns {Object} - Calculated hours with breakdown
-   */
-  calculateHoursWorked(clockInTime, clockOutTime, clockInDate, clockOutDate) {
-    const [inHours, inMinutes] = clockInTime.split(':').map(Number);
-    const [outHours, outMinutes] = clockOutTime.split(':').map(Number);
-    
-    // Convert to minutes
-    let clockInMinutes = inHours * 60 + inMinutes;
-    let clockOutMinutes = outHours * 60 + outMinutes;
-    
-    // Handle overnight shifts
-    if (clockOutDate !== clockInDate) {
-      clockOutMinutes += 24 * 60; // Add 24 hours for next day
-    }
-    
-    // If clock-out is earlier than clock-in on same day, assume next day
-    if (clockOutDate === clockInDate && clockOutMinutes < clockInMinutes) {
-      clockOutMinutes += 24 * 60;
-    }
-    
-    // Calculate total minutes worked
-    let totalMinutesWorked = clockOutMinutes - clockInMinutes;
-    
-    // Check if lunch break should be deducted (12:00-13:00 interval)
-    let lunchBreakDeduction = 0;
-    if (totalMinutesWorked > 8 * 60) { // More than 8 hours
-      const lunchStart = 12 * 60; // 12:00
-      const lunchEnd = 13 * 60;   // 13:00
-      
-      // Check if work period includes lunch time
-      let workStart = clockInMinutes;
-      let workEnd = clockOutMinutes;
-      
-      // For overnight shifts, handle the lunch break calculation
-      if (clockOutDate !== clockInDate) {
-        // If work spans midnight, check lunch break on both days
-        const midnightMinutes = 24 * 60;
-        
-        // Check lunch on first day
-        if (workStart < midnightMinutes) {
-          const firstDayEnd = Math.min(workEnd, midnightMinutes);
-          if (workStart <= lunchEnd && firstDayEnd >= lunchStart) {
-            const overlapStart = Math.max(workStart, lunchStart);
-            const overlapEnd = Math.min(firstDayEnd, lunchEnd);
-            if (overlapEnd > overlapStart) {
-              lunchBreakDeduction = Math.min(60, overlapEnd - overlapStart);
-            }
-          }
-        }
-        
-        // Check lunch on second day (if no lunch break found on first day)
-        if (lunchBreakDeduction === 0 && workEnd > midnightMinutes) {
-          const secondDayStart = Math.max(workStart, midnightMinutes);
-          const adjustedLunchStart = midnightMinutes + lunchStart;
-          const adjustedLunchEnd = midnightMinutes + lunchEnd;
-          
-          if (secondDayStart <= adjustedLunchEnd && workEnd >= adjustedLunchStart) {
-            const overlapStart = Math.max(secondDayStart, adjustedLunchStart);
-            const overlapEnd = Math.min(workEnd, adjustedLunchEnd);
-            if (overlapEnd > overlapStart) {
-              lunchBreakDeduction = Math.min(60, overlapEnd - overlapStart);
-            }
-          }
-        }
-      } else {
-        // Same day work
-        if (workStart <= lunchEnd && workEnd >= lunchStart) {
-          const overlapStart = Math.max(workStart, lunchStart);
-          const overlapEnd = Math.min(workEnd, lunchEnd);
-          if (overlapEnd > overlapStart) {
-            lunchBreakDeduction = Math.min(60, overlapEnd - overlapStart);
-          }
-        }
-      }
-    }
-    
-    // Apply lunch break deduction
-    totalMinutesWorked -= lunchBreakDeduction;
-    
-    // Round to nearest half hour
-    let roundedHours = Math.floor(totalMinutesWorked / 60);
-    const remainingMinutes = totalMinutesWorked % 60;
-    
-    if (remainingMinutes >= 30) {
-      roundedHours += 1;
-    }
-    
-    // Calculate standard and overtime hours
-    const standardHours = Math.min(8, roundedHours);
-    const overtimeHours = Math.max(0, roundedHours - 8);
-    
-    return {
-      totalMinutesWorked: totalMinutesWorked + lunchBreakDeduction, // Original before deduction
-      lunchBreakDeducted: lunchBreakDeduction,
-      totalHours: roundedHours,
-      standardHours,
-      overtimeHours,
-      hasLunchBreak: lunchBreakDeduction > 0
-    };
-  },
-
   /**
    * Records a clock in event for a user
    * @param {string} userId - The user's ID
@@ -256,26 +43,21 @@ const timekeepingService = {
         throw new Error("QR code disattivato dall'amministratore");
       }
       
-      // Get current date and time
+      // Get current date in YYYY-MM-DD format (based on local timezone)
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
       
+      // Format time in HH:MM format
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
       
-      // Validate clock-in time
-      const timeValidation = this.validateClockInTime(timeString);
-      if (!timeValidation.isValid) {
-        throw new Error(timeValidation.message);
-      }
-      
       console.log(`Checking existing records for ${userId} on ${dateString}`);
       
-      // Check if user already has ANY record for today
+      // Check if user already has ANY record for today (in-progress OR completed)
       const timekeepingRef = collection(db, "timekeeping");
       const q = query(
         timekeepingRef,
@@ -289,15 +71,19 @@ const timekeepingService = {
         const existingRecord = querySnapshot.docs[0].data();
         console.log(`Found existing record:`, existingRecord);
         
+        // If there's a completed record for today (already clocked out)
         if (existingRecord.clockOutTime && existingRecord.status === "completed") {
           throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
         }
         
+        // If there's an auto-closed record for today
         if (existingRecord.status === "auto-closed") {
           throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
         }
         
+        // If there's only a clock-in (in-progress), return warning but allow continuation
         if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
+          // Return the existing record with a clear message
           const userName = userData.nome && userData.cognome ? 
             `${userData.nome} ${userData.cognome}` : userData.email;
           
@@ -307,8 +93,7 @@ const timekeepingService = {
             userName,
             message: `Sei già entrato oggi alle ${existingRecord.clockInTime}. Per uscire, scansiona di nuovo selezionando 'USCITA'.`,
             duplicateEntry: true,
-            clockInTime: existingRecord.clockInTime,
-            shiftInfo: timeValidation
+            clockInTime: existingRecord.clockInTime
           };
         }
       }
@@ -333,9 +118,6 @@ const timekeepingService = {
         year: year.toString(),
         month: month.toString(),
         day: day.toString(),
-        shiftType: timeValidation.shiftType,
-        maxClockOutTime: timeValidation.maxClockOutTime,
-        maxClockOutDay: timeValidation.maxClockOutDay,
         scanInfo: {
           ...scanInfo,
           timestamp: now.toISOString()
@@ -350,10 +132,9 @@ const timekeepingService = {
       return {
         id: docRef.id,
         ...recordData,
-        message: `Ingresso registrato con successo (${timeValidation.shiftType === 'morning' ? 'Turno mattutino' : 'Turno serale'})`,
+        message: "Ingresso registrato con successo",
         clockInTime: timeString,
-        userName: recordData.userName,
-        shiftInfo: timeValidation
+        userName: recordData.userName
       };
     } catch (error) {
       console.error("Error during clock-in:", error);
@@ -381,48 +162,30 @@ const timekeepingService = {
       
       const userData = userSnap.data();
       
-      // Get current date and time
+      // Get current date in YYYY-MM-DD format
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
       
+      // Format time in HH:MM format
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
       
-      console.log(`Looking for active clock-in for ${userId}`);
+      console.log(`Looking for active clock-in for ${userId} on ${dateString}`);
       
-      // Find active clock-in record (could be from today or yesterday for evening shifts)
+      // Find active clock-in record for today
       const timekeepingRef = collection(db, "timekeeping");
-      
-      // First check today
-      let activeQuery = query(
+      const activeQuery = query(
         timekeepingRef,
         where("userId", "==", userId),
         where("date", "==", dateString),
         where("status", "==", "in-progress")
       );
       
-      let activeSnapshot = await getDocs(activeQuery);
-      
-      // If no active session today, check yesterday for evening shift
-      if (activeSnapshot.empty) {
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayString = yesterday.toISOString().split('T')[0];
-        
-        activeQuery = query(
-          timekeepingRef,
-          where("userId", "==", userId),
-          where("date", "==", yesterdayString),
-          where("status", "==", "in-progress"),
-          where("shiftType", "==", "evening")
-        );
-        
-        activeSnapshot = await getDocs(activeQuery);
-      }
+      const activeSnapshot = await getDocs(activeQuery);
       
       if (activeSnapshot.empty) {
         // Check if there's ANY record for today
@@ -444,7 +207,11 @@ const timekeepingService = {
           }
         }
         
-        throw new Error(`Nessun ingresso attivo trovato. Prima devi timbrare l'INGRESSO, poi potrai timbrare l'USCITA.`);
+        // No active clock-in found - user needs to clock in first
+        const userName = userData.nome && userData.cognome ? 
+          `${userData.nome} ${userData.cognome}` : userData.email;
+        
+        throw new Error(`Nessun ingresso trovato per oggi. Prima devi timbrare l'INGRESSO, poi potrai timbrare l'USCITA.`);
       }
       
       console.log(`Found active clock-in record, processing clock-out`);
@@ -452,55 +219,44 @@ const timekeepingService = {
       // Get the clock-in record
       const docRef = doc(db, "timekeeping", activeSnapshot.docs[0].id);
       const record = activeSnapshot.docs[0].data();
-      const clockInDate = record.date;
       
-      // Validate clock-out time
-      const clockOutValidation = this.validateClockOutTime(
-        record.clockInTime, 
-        timeString, 
-        clockInDate, 
-        dateString
-      );
+      // Calculate hours worked
+      const clockInParts = record.clockInTime.split(':');
+      const clockInHour = parseInt(clockInParts[0]);
+      const clockInMinute = parseInt(clockInParts[1]);
       
-      let calculatedHours;
-      let statusMessage = "Uscita registrata con successo";
+      const clockOutHour = parseInt(hours);
+      const clockOutMinute = parseInt(minutes);
       
-      if (!clockOutValidation.isValid) {
-        if (clockOutValidation.forceStandardHours) {
-          // Force 8 standard hours due to time limit violation
-          calculatedHours = {
-            totalHours: 8,
-            standardHours: 8,
-            overtimeHours: 0,
-            hasLunchBreak: false,
-            lunchBreakDeducted: 0
-          };
-          statusMessage = `Limite orario superato. Registrate 8 ore standard. ${clockOutValidation.message}`;
-        } else {
-          throw new Error(clockOutValidation.message);
-        }
-      } else {
-        // Calculate hours normally
-        calculatedHours = this.calculateHoursWorked(
-          record.clockInTime, 
-          timeString, 
-          clockInDate, 
-          dateString
-        );
+      // Calculate total minutes worked
+      let totalMinutesWorked = (clockOutHour - clockInHour) * 60 + (clockOutMinute - clockInMinute);
+      
+      // If the result is negative or zero, assume it's for overnight shifts (add 24 hours)
+      if (totalMinutesWorked <= 0) {
+        totalMinutesWorked += 24 * 60;
       }
+      
+      // Round minutes to nearest half hour
+      // If minutes >= 30, round up to next hour, otherwise round down
+      let roundedHoursWorked = Math.floor(totalMinutesWorked / 60);
+      const remainingMinutes = totalMinutesWorked % 60;
+      
+      if (remainingMinutes >= 30) {
+        roundedHoursWorked += 1;
+      }
+      
+      // Split into standard hours (up to 8) and overtime
+      const standardHours = Math.min(8, roundedHoursWorked);
+      const overtimeHours = Math.max(0, roundedHoursWorked - 8);
       
       // Update the record with clock-out information
       const updateData = {
         clockOutTime: timeString,
         clockOutTimestamp: serverTimestamp(),
-        clockOutDate: dateString,
-        totalHours: calculatedHours.totalHours,
-        standardHours: calculatedHours.standardHours,
-        overtimeHours: calculatedHours.overtimeHours,
-        lunchBreakDeducted: calculatedHours.lunchBreakDeducted || 0,
-        hasLunchBreak: calculatedHours.hasLunchBreak || false,
+        totalHours: roundedHoursWorked,
+        standardHours,
+        overtimeHours,
         status: "completed",
-        timeLimitViolation: !clockOutValidation.isValid,
         scanInfo: {
           ...(record.scanInfo || {}),
           clockOut: {
@@ -514,41 +270,28 @@ const timekeepingService = {
       await updateDoc(docRef, updateData);
       console.log(`Clock-out successful for record: ${docRef.id}`);
       
-      // Update workHours collection if needed
+      // Update workHours collection if needed - but don't overwrite manual entries
       try {
-        await this.syncToWorkHours(
-          userId, 
-          clockInDate, // Use clock-in date for work hours sync
-          calculatedHours.standardHours, 
-          calculatedHours.overtimeHours
-        );
+        await this.syncToWorkHours(userId, dateString, standardHours, overtimeHours);
       } catch (syncError) {
         console.error("Error syncing to workHours:", syncError);
+        // Don't fail the clock-out if sync fails
       }
       
       const userName = userData.nome && userData.cognome ? 
         `${userData.nome} ${userData.cognome}` : userData.email;
-      
-      let detailedMessage = statusMessage;
-      if (calculatedHours.hasLunchBreak) {
-        detailedMessage += ` (Dedotta pausa pranzo: ${calculatedHours.lunchBreakDeducted} minuti)`;
-      }
       
       return {
         id: docRef.id,
         ...record,
         ...updateData,
         userName,
-        message: detailedMessage,
+        message: "Uscita registrata con successo",
         clockInTime: record.clockInTime,
         clockOutTime: timeString,
-        totalHours: calculatedHours.totalHours,
-        standardHours: calculatedHours.standardHours,
-        overtimeHours: calculatedHours.overtimeHours,
-        lunchInfo: calculatedHours.hasLunchBreak ? {
-          deducted: true,
-          minutes: calculatedHours.lunchBreakDeducted
-        } : null
+        totalHours: roundedHoursWorked,
+        standardHours,
+        overtimeHours
       };
     } catch (error) {
       console.error("Error during clock-out:", error);
@@ -566,7 +309,7 @@ const timekeepingService = {
     try {
       // Get today's date
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0); // Set to beginning of day
       
       // Find all open clock-in records for this user before today
       const timekeepingRef = collection(db, "timekeeping");
@@ -574,49 +317,37 @@ const timekeepingService = {
         timekeepingRef,
         where("userId", "==", userId),
         where("status", "==", "in-progress"),
-        limit(50)
+        limit(50) // Add limit to avoid processing too many at once
       );
       
       const querySnapshot = await getDocs(q);
       const closedSessions = [];
       
+      // Loop through all open sessions
       for (const docSnap of querySnapshot.docs) {
         try {
           const session = docSnap.data();
           
           if (!session.date) {
             console.error("Session missing date field:", docSnap.id);
-            continue;
+            continue; // Skip invalid sessions
           }
           
           const sessionDate = new Date(`${session.date}T00:00:00`);
           
-          // For evening shifts, allow until next day 08:00
-          let cutoffTime = new Date(sessionDate);
-          if (session.shiftType === 'evening') {
-            cutoffTime.setDate(cutoffTime.getDate() + 1);
-            cutoffTime.setHours(8, 0, 0, 0); // 08:00 next day
-          } else {
-            cutoffTime.setHours(21, 0, 0, 0); // 21:00 same day
-          }
-          
-          // If the session has exceeded its time limit
-          if (today > cutoffTime) {
+          // If the session is from a previous day
+          if (sessionDate < today) {
             const docRef = doc(db, "timekeeping", docSnap.id);
             
             // Auto-close with 8 standard hours
             const updateData = {
-              clockOutTime: session.shiftType === 'evening' ? "08:00" : "21:00",
-              clockOutTimestamp: Timestamp.fromDate(cutoffTime),
-              clockOutDate: session.shiftType === 'evening' ? 
-                new Date(sessionDate.getTime() + 24*60*60*1000).toISOString().split('T')[0] : 
-                session.date,
+              clockOutTime: "23:59",
+              clockOutTimestamp: Timestamp.fromDate(new Date(session.date + 'T23:59:00')),
               totalHours: 8,
               standardHours: 8,
               overtimeHours: 0,
               status: "auto-closed",
-              autoClosedReason: "Time limit exceeded",
-              timeLimitViolation: true,
+              autoClosedReason: "Missing clock-out",
               updatedAt: serverTimestamp()
             };
             
@@ -627,6 +358,7 @@ const timekeepingService = {
               await this.syncToWorkHours(userId, session.date, 8, 0);
             } catch (syncError) {
               console.error("Error syncing auto-closed session to workHours:", syncError);
+              // Continue even if sync fails
             }
             
             closedSessions.push({
@@ -637,16 +369,18 @@ const timekeepingService = {
           }
         } catch (sessionError) {
           console.error("Error processing session:", sessionError, docSnap.id);
+          // Continue with next session
         }
       }
       
       return closedSessions;
     } catch (error) {
       console.error("Error during auto-closing sessions:", error);
+      // Return empty array instead of throwing - don't block the dashboard
       return [];
     }
   },
-
+  
   /**
    * Get user's timekeeper status for today
    * @param {string} userId - The user ID
@@ -671,11 +405,12 @@ const timekeepingService = {
       
       const querySnapshot = await getDocs(q);
       
-      // Try to auto-close sessions
+      // Try to auto-close sessions regardless of today's status
       try {
         await this.autoCloseOpenSessions(userId);
       } catch (closeError) {
         console.error("Error auto-closing sessions:", closeError);
+        // Don't block the rest of the function
       }
       
       if (querySnapshot.empty) {
@@ -698,10 +433,6 @@ const timekeepingService = {
         totalHours: record.totalHours,
         standardHours: record.standardHours,
         overtimeHours: record.overtimeHours,
-        lunchBreakDeducted: record.lunchBreakDeducted,
-        hasLunchBreak: record.hasLunchBreak,
-        shiftType: record.shiftType,
-        timeLimitViolation: record.timeLimitViolation,
         date: dateString,
         message: record.status === "in-progress" 
           ? "Attualmente al lavoro" 
@@ -759,14 +490,18 @@ const timekeepingService = {
           
           if (entryIndex >= 0) {
             // Entry exists - only update if it doesn't have a manual value set
+            // Special values (M, P, A) are considered manual entries
             const existingEntry = entries[entryIndex];
             
             // Special letters are considered manual entries - don't overwrite
             if (typeof existingEntry.total === 'string' && ["M", "P", "A"].includes(existingEntry.total)) {
+              // Do not modify manual entries with special codes
               return false;
             }
             
             // Check if current entry appears to be a manual entry
+            // If overtime is already set or hours don't match timekeeping defaults, 
+            // consider it a manual entry and don't update
             const hasManualEntry = existingEntry.notes?.includes("Manual entry") || 
                                 existingEntry.notes?.includes("Inserted by admin");
             
@@ -790,7 +525,7 @@ const timekeepingService = {
           } else {
             // Entry doesn't exist for this date, add it
             const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
-            const isWeekend = [0, 6].includes(new Date(date).getDay());
+            const isWeekend = [0, 6].includes(new Date(date).getDay()); // 0 = Sunday, 6 = Saturday
             
             const newEntry = {
               date,
@@ -810,7 +545,7 @@ const timekeepingService = {
         } else {
           // Document doesn't exist, create it
           const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
-          const isWeekend = [0, 6].includes(new Date(date).getDay());
+          const isWeekend = [0, 6].includes(new Date(date).getDay()); // 0 = Sunday, 6 = Saturday
           
           const entry = {
             date,
@@ -837,10 +572,10 @@ const timekeepingService = {
       return true;
     } catch (error) {
       console.error("Error syncing to workHours:", error);
-      return false;
+      return false; // Return false instead of throwing - don't block timekeeping process
     }
   },
-
+  
   /**
    * Records a clock event from an offline database when connection is restored
    * @param {Array} offlineRecords - Array of offline records to sync
@@ -939,216 +674,7 @@ const timekeepingService = {
       }));
     } catch (error) {
       console.error("Error getting timekeeping history:", error);
-      return [];
-    }
-  },
-
-  /**
-   * Get user's timekeeping records for a specific date range
-   * @param {string} userId - The user ID
-   * @param {string} startDate - Start date in YYYY-MM-DD format
-   * @param {string} endDate - End date in YYYY-MM-DD format
-   * @returns {Promise<Array>} - Array of timekeeping records
-   */
-  async getRecordsByDateRange(userId, startDate, endDate) {
-    try {
-      const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
-        timekeepingRef,
-        where("userId", "==", userId),
-        where("date", ">=", startDate),
-        where("date", "<=", endDate)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const records = [];
-      
-      querySnapshot.forEach((doc) => {
-        records.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      
-      // Sort by date
-      records.sort((a, b) => a.date.localeCompare(b.date));
-      
-      return records;
-    } catch (error) {
-      console.error("Error getting records by date range:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get user's timekeeping records for a specific month
-   * @param {string} userId - The user ID
-   * @param {string} year - Year as string
-   * @param {string} month - Month as string (1-12)
-   * @returns {Promise<Array>} - Array of timekeeping records for the month
-   */
-  async getRecordsByMonth(userId, year, month) {
-    try {
-      const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
-        timekeepingRef,
-        where("userId", "==", userId),
-        where("year", "==", year),
-        where("month", "==", month.padStart(2, '0'))
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const records = [];
-      
-      querySnapshot.forEach((doc) => {
-        records.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      
-      // Sort by date
-      records.sort((a, b) => a.date.localeCompare(b.date));
-      
-      return records;
-    } catch (error) {
-      console.error("Error getting records by month:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Administrative function to manually adjust a timekeeping record
-   * @param {string} recordId - The record ID to update
-   * @param {Object} updates - Updates to apply
-   * @returns {Promise<Object>} - Updated record
-   */
-  async adminUpdateRecord(recordId, updates) {
-    try {
-      const recordRef = doc(db, "timekeeping", recordId);
-      const recordSnap = await getDoc(recordRef);
-      
-      if (!recordSnap.exists()) {
-        throw new Error("Record not found");
-      }
-      
-      const currentRecord = recordSnap.data();
-      
-      // Prepare update data
-      const updateData = {
-        ...updates,
-        updatedAt: serverTimestamp(),
-        adminModified: true,
-        adminModifiedAt: serverTimestamp()
-      };
-      
-      // If hours are being updated, recalculate totals
-      if (updates.standardHours !== undefined || updates.overtimeHours !== undefined) {
-        const standardHours = updates.standardHours !== undefined ? updates.standardHours : currentRecord.standardHours;
-        const overtimeHours = updates.overtimeHours !== undefined ? updates.overtimeHours : currentRecord.overtimeHours;
-        
-        updateData.totalHours = standardHours + overtimeHours;
-      }
-      
-      await updateDoc(recordRef, updateData);
-      
-      // If hours changed, sync to workHours
-      if (updates.standardHours !== undefined || updates.overtimeHours !== undefined) {
-        try {
-          await this.syncToWorkHours(
-            currentRecord.userId,
-            currentRecord.date,
-            updateData.standardHours || currentRecord.standardHours,
-            updateData.overtimeHours || currentRecord.overtimeHours
-          );
-        } catch (syncError) {
-          console.error("Error syncing admin update to workHours:", syncError);
-        }
-      }
-      
-      return {
-        id: recordId,
-        ...currentRecord,
-        ...updateData
-      };
-    } catch (error) {
-      console.error("Error in admin update:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Delete a timekeeping record (admin function)
-   * @param {string} recordId - The record ID to delete
-   * @returns {Promise<boolean>} - Success state
-   */
-  async adminDeleteRecord(recordId) {
-    try {
-      const recordRef = doc(db, "timekeeping", recordId);
-      const recordSnap = await getDoc(recordRef);
-      
-      if (!recordSnap.exists()) {
-        throw new Error("Record not found");
-      }
-      
-      const recordData = recordSnap.data();
-      
-      // Delete the record
-      await deleteDoc(recordRef);
-      
-      console.log(`Deleted timekeeping record: ${recordId}`);
-      return true;
-    } catch (error) {
-      console.error("Error deleting record:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get statistics for a user's timekeeping data
-   * @param {string} userId - The user ID
-   * @param {string} startDate - Start date in YYYY-MM-DD format
-   * @param {string} endDate - End date in YYYY-MM-DD format
-   * @returns {Promise<Object>} - Statistics object
-   */
-  async getStatistics(userId, startDate, endDate) {
-    try {
-      const records = await this.getRecordsByDateRange(userId, startDate, endDate);
-      
-      const stats = {
-        totalDays: records.length,
-        completedDays: records.filter(r => r.status === "completed").length,
-        inProgressDays: records.filter(r => r.status === "in-progress").length,
-        autoClosedDays: records.filter(r => r.status === "auto-closed").length,
-        totalStandardHours: 0,
-        totalOvertimeHours: 0,
-        totalHours: 0,
-        averageHoursPerDay: 0,
-        daysWithLunchBreak: 0,
-        timeLimitViolations: 0,
-        shiftTypeBreakdown: {
-          morning: 0,
-          evening: 0
-        }
-      };
-      
-      records.forEach(record => {
-        if (record.standardHours) stats.totalStandardHours += record.standardHours;
-        if (record.overtimeHours) stats.totalOvertimeHours += record.overtimeHours;
-        if (record.totalHours) stats.totalHours += record.totalHours;
-        if (record.hasLunchBreak) stats.daysWithLunchBreak++;
-        if (record.timeLimitViolation) stats.timeLimitViolations++;
-        if (record.shiftType) stats.shiftTypeBreakdown[record.shiftType]++;
-      });
-      
-      if (stats.completedDays > 0) {
-        stats.averageHoursPerDay = stats.totalHours / stats.completedDays;
-      }
-      
-      return stats;
-    } catch (error) {
-      console.error("Error calculating statistics:", error);
-      throw error;
+      return []; // Return empty array instead of throwing
     }
   },
   

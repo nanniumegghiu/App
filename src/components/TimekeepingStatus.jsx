@@ -240,7 +240,7 @@ const TimekeepingStatus = () => {
               </div>
               
               <div className="time-entry highlighted">
-                <div className="time-label">Trascorse:</div>
+                <div className="time-label">Elapsed:</div>
                 <div className="time-value">{formatElapsedTime()}</div>
               </div>
               
