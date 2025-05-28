@@ -1,11 +1,11 @@
-// src/components/TimekeepingStatus.jsx - With improved error handling
+// src/components/TimekeepingStatus.jsx - Con nuove regole giornaliere
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import timekeepingService from '../services/timekeepingService';
 import './timekeepingStatus.css';
 
 /**
- * Component to display current timekeeping status on the user dashboard
+ * Component to display current timekeeping status with daily-based rules
  */
 const TimekeepingStatus = () => {
   const [status, setStatus] = useState(null);
@@ -80,24 +80,29 @@ const TimekeepingStatus = () => {
     return `${day}/${month}/${year}`;
   };
   
-  // Calculate elapsed time since clock-in
+  // Calculate elapsed time since clock-in (only for today)
   const calculateElapsedTime = () => {
     if (!status || !status.clockInTime || status.status !== 'in-progress') {
       return null;
     }
     
     try {
-      // Parse clock-in time
+      // Parse clock-in time for today
       const today = new Date();
       const [clockInHours, clockInMinutes] = status.clockInTime.split(':').map(Number);
       
-      // Create Date objects for comparison
+      // Create Date objects for comparison (same day)
       const clockInDate = new Date(today);
       clockInDate.setHours(clockInHours, clockInMinutes, 0, 0);
       
-      // Calculate difference in minutes
+      // Calculate difference in minutes (within the same day)
       const diffMs = today - clockInDate;
       const diffMinutes = Math.floor(diffMs / 60000);
+      
+      // If negative, it means we're before the clock-in time (shouldn't happen normally)
+      if (diffMinutes < 0) {
+        return { hours: 0, minutes: 0, totalMinutes: 0 };
+      }
       
       const hours = Math.floor(diffMinutes / 60);
       const minutes = diffMinutes % 60;
@@ -144,25 +149,25 @@ const TimekeepingStatus = () => {
     }
   };
   
-  // Get the status display text
+  // Get the status display text with daily context
   const getStatusDisplay = () => {
     if (!status) return 'Status Unknown';
     
     switch (status.status) {
       case 'in-progress':
-        return 'In Corso';
+        return 'Al Lavoro (Giornata in Corso)';
       case 'completed':
-        return 'Giornata Conclusa';
+        return 'Giornata Completata';
       case 'auto-closed':
-        return 'Auto-Chiusa per Mancata Uscita';
+        return 'Chiusa Automaticamente (23:59)';
       case 'not-started':
-        return 'Nessun Ingresso Registrato';
+        return 'Non Hai Timbrato Oggi';
       default:
         return status.status;
     }
   };
   
-  // Format time as HH:MM AM/PM
+  // Format time as HH:MM
   const formatTimeAMPM = (date) => {
     try {
       let hours = date.getHours();
@@ -177,6 +182,30 @@ const TimekeepingStatus = () => {
       return '--:--';
     }
   };
+  
+  // Get time until automatic closure (23:59)
+  const getTimeUntilClosure = () => {
+    if (!status || status.status !== 'in-progress') {
+      return null;
+    }
+    
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 0, 0);
+    
+    const timeLeft = endOfDay - now;
+    
+    if (timeLeft <= 0) {
+      return { hours: 0, minutes: 0 };
+    }
+    
+    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return { hours, minutes };
+  };
+  
+  const timeUntilClosure = getTimeUntilClosure();
   
   if (loading) {
     return (
@@ -204,7 +233,7 @@ const TimekeepingStatus = () => {
   return (
     <div className={`timekeeping-status-card ${getStatusClass()}`}>
       <div className="status-header">
-        <h3>Ore Lavorative Odierne</h3>
+        <h3>Stato Timbrature di Oggi</h3>
         <div className="current-time">{formatTimeAMPM(currentTime)}</div>
       </div>
       
@@ -240,9 +269,24 @@ const TimekeepingStatus = () => {
               </div>
               
               <div className="time-entry highlighted">
-                <div className="time-label">Elapsed:</div>
+                <div className="time-label">Tempo Trascorso:</div>
                 <div className="time-value">{formatElapsedTime()}</div>
               </div>
+              
+              {timeUntilClosure && (
+                <div className="time-entry" style={{ 
+                  backgroundColor: timeUntilClosure.hours < 2 ? '#fff3cd' : '#f8f9fa',
+                  border: timeUntilClosure.hours < 2 ? '1px solid #ffeaa7' : 'none'
+                }}>
+                  <div className="time-label">Chiusura Automatica In:</div>
+                  <div className="time-value" style={{
+                    color: timeUntilClosure.hours < 2 ? '#d68910' : 'inherit',
+                    fontWeight: timeUntilClosure.hours < 2 ? 'bold' : 'normal'
+                  }}>
+                    {timeUntilClosure.hours}h {timeUntilClosure.minutes}m
+                  </div>
+                </div>
+              )}
               
               <div className="progress-bar-container">
                 <div 
@@ -266,35 +310,55 @@ const TimekeepingStatus = () => {
               
               <div className="time-entry">
                 <div className="time-label">Uscita:</div>
-                <div className="time-value">{formatTime(status.clockOutTime)}</div>
+                <div className="time-value">
+                  {formatTime(status.clockOutTime)}
+                  {status.status === 'auto-closed' && <span className="auto-note">(Auto)</span>}
+                </div>
               </div>
               
               <div className="time-entry highlighted">
                 <div className="time-label">Totale:</div>
                 <div className="time-value">
-                  {status.totalHours} 
-                  {status.status === 'auto-closed' && <span className="auto-note">(Auto)</span>}
+                  {status.totalHours}h
+                  {status.status === 'auto-closed' && <span className="auto-note"> (Chiusura automatica)</span>}
                 </div>
               </div>
               
               <div className="hours-breakdown">
                 <div className="breakdown-item">
                   <span className="breakdown-label">Standard:</span>
-                  <span className="breakdown-value">{status.standardHours}</span>
+                  <span className="breakdown-value">{status.standardHours}h</span>
                 </div>
                 
                 <div className="breakdown-item">
                   <span className="breakdown-label">Straordinario:</span>
-                  <span className="breakdown-value">{status.overtimeHours}</span>
+                  <span className="breakdown-value">{status.overtimeHours}h</span>
                 </div>
               </div>
+              
+              {status.status === 'auto-closed' && (
+                <div className="auto-close-info" style={{
+                  marginTop: '15px',
+                  padding: '10px',
+                  backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                  borderRadius: '5px',
+                  fontSize: '0.9rem',
+                  color: '#d68910'
+                }}>
+                  ⚠️ Giornata chiusa automaticamente alle 23:59 con 8 ore standard.<br/>
+                  Per modifiche contatta l'amministratore.
+                </div>
+              )}
             </>
           )}
           
           {status?.status === 'not-started' && (
             <div className="not-started-message">
-              <p>Non hai timbrato oggi.</p>
-              <p className="hint">Usa il tuo QRCode per timbrare.</p>
+              <p>Non hai ancora timbrato oggi.</p>
+              <p className="hint">
+                📱 Usa il tuo QR Code per timbrare l'ingresso.<br/>
+                ⏰ Ricorda: devi timbrare l'uscita entro le 23:59 di oggi, altrimenti la giornata sarà chiusa automaticamente con 8 ore.
+              </p>
             </div>
           )}
         </div>
