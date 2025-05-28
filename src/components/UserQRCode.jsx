@@ -169,7 +169,7 @@ const UserQRCode = ({ className = '' }) => {
       <div className="qrcode-header">
         <h3>Il tuo QR Code personale</h3>
         <p className="qrcode-description">
-          Usa questo codice per le operazioni di check-in/check-out
+          Usa questo QrCode per le timbrature ingresso/uscita
         </p>
       </div>
 
@@ -203,11 +203,6 @@ const UserQRCode = ({ className = '' }) => {
             Attivo
           </div>
         )}
-      </div>
-
-      <div className="user-details">
-        <p><strong>Utente:</strong> {userName}</p>
-        <p><strong>ID:</strong> {userId.substring(0, 8)}...</p>
       </div>
 
       {!isQRActive && (

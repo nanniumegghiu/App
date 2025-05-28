@@ -416,11 +416,11 @@ const DeviceRegistration = () => {
           )}
           
           <div className="device-info-panel">
-            <h4>About Scanning Devices</h4>
-            <p>Scanning devices are tablets, kiosks, or other devices authorized to scan employee QR codes for time tracking.</p>
-            <p>Only registered devices can process clock-in and clock-out operations.</p>
-            <p>Each device needs a unique ID that will be used to identify it in the system.</p>
-            <p>You can deactivate devices at any time to prevent them from processing QR scans.</p>
+            <h4>Dispositivi Registrati</h4>
+            <p>Qui trovi i dispositivi registrati, abilitati alla timbratura da postazione fissa, con i loro nomi e ID.</p>
+            <p>Ricorda che per entrare in modalità Kiosk devi inserire la chiave KIOSK2025 in fase di accesso.</p>
+            <p>I dispositivi Kiosk hanno due modalità di uscita di emergenza.</p>
+            <p>Se disponibile tastiera, premi il tasto ESC, se non disponibile fai 5 tap nell'angolo a sinistra in alto, inserisci lì la chiave d'emergenza.</p>
           </div>
         </div>
       )}

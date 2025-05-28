@@ -100,7 +100,7 @@ const UserDashboard = () => {
     return (
       <div className="dashboard-container">
         <div className="dashboard-header">
-          <h2>Dashboard</h2>
+          <h2>Pannello Personale</h2>
           <p className="current-date">{getCurrentDate()}</p>
         </div>
         
@@ -114,12 +114,12 @@ const UserDashboard = () => {
             <div className="dashboard-card qrcode-card">
               <UserQRCode />
               <div className="qrcode-instructions">
-                <h4>How to use your QR code:</h4>
+                <h4>Come usare il tuo QRCode:</h4>
                 <ol>
-                  <li>Show this QR code to the scanning device at the beginning of your shift to clock in.</li>
-                  <li>At the end of your shift, show the QR code again to clock out.</li>
-                  <li>Hours will be calculated automatically, including any overtime beyond 8 hours.</li>
-                  <li>If you forget to clock out, the system will automatically close your day with 8 standard hours.</li>
+                  <li>Mostra questo QrCode alle postazioni fisse con scanner o chiedi al tuo responsabile la timbratura di ingresso.</li>
+                  <li>A fine giornata lavorativa, timbra l'uscita mostrando ancora una volta il QrCode alle postazioni fisse o dal tuo responsabile.</li>
+                  <li>Verrà calcolata l'intera giornata lavorativa, inclusi eventuali straordinari e pausa pranzo.</li>
+                  <li>Se dimentichi di timbrare l'uscita, verrà conteggiata una giornata standard di 8 ore e perderai eventuali straordinari.</li>
                 </ol>
               </div>
             </div>
@@ -134,7 +134,7 @@ const UserDashboard = () => {
     return (
       <div className="dashboard-container">
         <div className="dashboard-header">
-          <h2>Dashboard</h2>
+          <h2>Pannello Personale</h2>
           <p className="current-date">{getCurrentDate()}</p>
         </div>
         
@@ -149,7 +149,7 @@ const UserDashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h2>Dashboard</h2>
+        <h2>Pannello Personale</h2>
         <p className="current-date">{getCurrentDate()}</p>
       </div>
 
@@ -162,12 +162,12 @@ const UserDashboard = () => {
           <div className="dashboard-card qrcode-card">
             <UserQRCode />
             <div className="qrcode-instructions">
-              <h4>How to use your QR code:</h4>
+              <h4>Come usare il tuo QRCode:</h4>
               <ol>
-                <li>Show this QR code to the scanning device at the beginning of your shift to clock in.</li>
-                <li>At the end of your shift, show the QR code again to clock out.</li>
-                <li>Hours will be calculated automatically, including any overtime beyond 8 hours.</li>
-                <li>If you forget to clock out, the system will automatically close your day with 8 standard hours.</li>
+              <li>Mostra questo QrCode alle postazioni fisse con scanner o chiedi al tuo responsabile la timbratura di ingresso.</li>
+                  <li>A fine giornata lavorativa, timbra l'uscita mostrando ancora una volta il QrCode alle postazioni fisse o dal tuo responsabile.</li>
+                  <li>Verrà calcolata l'intera giornata lavorativa, inclusi eventuali straordinari e pausa pranzo.</li>
+                  <li>Se dimentichi di timbrare l'uscita, verrà conteggiata una giornata standard di 8 ore e perderai eventuali straordinari.</li>
               </ol>
             </div>
           </div>
