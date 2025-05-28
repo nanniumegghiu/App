@@ -1,55 +1,104 @@
-/* src/components/timekeepingStatus.css */
+/* src/components/timekeepingStatus.css - Enhanced with Shift Management and Graphics (No Global Variables) */
+
+/* --- Colori di Base (Definiti qui direttamente) --- */
+/* Puoi personalizzare questi colori */
+:root {
+  --primary-color: #3498db;    /* Blu (es. in-progress, barra di progresso, valori statistiche) */
+  --success-color: #2ecc71;    /* Verde (es. completed) */
+  --warning-color: #f39c12;    /* Arancione (es. auto-closed, straordinario) */
+  --danger-color: #e74c3c;     /* Rosso (es. errori) */
+  --dark-text-color: #34495e;  /* Grigio scuro per i testi principali */
+  --light-gray-bg: #ecf0f1;    /* Grigio chiaro per sfondi secondari */
+  --medium-gray-text: #7f8c8d; /* Grigio medio per testi secondari */
+  --border-color: #e0e0e0;     /* Colore per bordi e separatori */
+}
+
+/* --- Stili Generali della Card --- */
 .timekeeping-status-card {
   background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  margin-bottom: 20px;
-  transition: all 0.3s ease;
-  border-left: 5px solid transparent;
+  border-radius: 12px; /* Leggermente più arrotondato */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* Ombra più pronunciata */
+  padding: 25px; /* Padding aumentato */
+  margin-bottom: 25px; /* Margine aumentato */
+  transition: all 0.4s ease-in-out; /* Transizione più morbida */
+  border-left: 6px solid transparent; /* Bordo laterale più spesso */
+  position: relative;
+  overflow: hidden; /* Assicura che i pattern non escano */
+  font-family: 'Inter', sans-serif; /* Font moderno */
 }
 
 .timekeeping-status-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-5px); /* Effetto sollevamento più accentuato */
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15); /* Ombra intensificata al hover */
 }
 
-/* Status specific styling */
+/* --- Stili Specifici per Stato --- */
 .timekeeping-status-card.status-in-progress {
-  border-left-color: var(--primary);
+  border-left-color: var(--primary-color);
+  background: linear-gradient(145deg, #f8faff 0%, rgba(52, 152, 219, 0.05) 100%);
+  /* Sottile pattern a righe diagonali per lo stato 'in-progress' */
+  background-image: linear-gradient(145deg, #f8faff 0%, rgba(52, 152, 219, 0.05) 100%),
+                    repeating-linear-gradient(45deg, rgba(52, 152, 219, 0.02) 0px, rgba(52, 152, 219, 0.02) 2px, transparent 2px, transparent 12px);
+  background-size: 100% 100%, 100% 100%;
 }
 
 .timekeeping-status-card.status-completed {
-  border-left-color: var(--success);
+  border-left-color: var(--success-color);
+  background: linear-gradient(145deg, #fafff8 0%, rgba(46, 204, 113, 0.05) 100%);
+  /* Sottile pattern a punti per lo stato 'completed' */
+  background-image: linear-gradient(145deg, #fafff8 0%, rgba(46, 204, 113, 0.05) 100%),
+                    radial-gradient(circle at 100% 0%, rgba(46, 204, 113, 0.01) 2px, transparent 2px),
+                    radial-gradient(circle at 0% 100%, rgba(46, 204, 113, 0.01) 2px, transparent 2px);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
+  background-position: 0 0, 0 0, 10px 10px;
 }
 
 .timekeeping-status-card.status-auto-closed {
-  border-left-color: var(--warning);
+  border-left-color: var(--warning-color);
+  background: linear-gradient(145deg, #fffbf8 0%, rgba(243, 156, 18, 0.05) 100%);
+  /* Sottile pattern a scacchiera per lo stato 'auto-closed' */
+  background-image: linear-gradient(145deg, #fffbf8 0%, rgba(243, 156, 18, 0.05) 100%),
+                    linear-gradient(45deg, rgba(243, 156, 18, 0.02) 25%, transparent 25%, transparent 75%, rgba(243, 156, 18, 0.02) 75%, rgba(243, 156, 18, 0.02) 100%),
+                    linear-gradient(45deg, rgba(243, 156, 18, 0.02) 25%, transparent 25%, transparent 75%, rgba(243, 156, 18, 0.02) 75%, rgba(243, 156, 18, 0.02) 100%);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
+  background-position: 0 0, 0 0, 10px 10px;
 }
 
 .timekeeping-status-card.status-not-started {
-  border-left-color: #95a5a6;
+  border-left-color: var(--medium-gray-text); /* Usa un grigio più scuro */
+  background: linear-gradient(145deg, #fdfdfe 0%, rgba(149, 165, 166, 0.05) 100%);
+  /* Sottile pattern a griglia per lo stato 'not-started' */
+  background-image: linear-gradient(145deg, #fdfdfe 0%, rgba(149, 165, 166, 0.05) 100%),
+                    linear-gradient(to right, rgba(149, 165, 166, 0.01) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(149, 165, 166, 0.01) 1px, transparent 1px);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
 }
 
 .timekeeping-status-card.loading {
   display: flex;
+  flex-direction: column; /* Centra verticalmente */
   align-items: center;
   justify-content: center;
-  min-height: 200px;
-  gap: 15px;
+  min-height: 220px; /* Altezza minima aumentata */
+  gap: 20px;
+  background-color: #fcfcfc;
+  border-left-color: var(--border-color);
 }
 
 .timekeeping-status-card.error {
-  border-left-color: var(--danger);
+  border-left-color: var(--danger-color);
+  background: linear-gradient(145deg, #fff8f8 0%, rgba(231, 76, 60, 0.05) 100%);
 }
 
+/* --- Spinner di Caricamento --- */
 .card-spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  width: 40px; /* Dimensione aumentata */
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
   border-radius: 50%;
-  border-top-color: var(--primary);
+  border-top-color: var(--primary-color);
   animation: spin 1s linear infinite;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); /* Ombra allo spinner */
 }
 
 @keyframes spin {
@@ -58,209 +107,447 @@
   }
 }
 
+/* --- Header della Card --- */
 .status-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px; /* Margine aumentato */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Sottile separatore */
+  padding-bottom: 15px;
 }
 
 .status-header h3 {
   margin: 0;
-  color: var(--dark);
-  font-size: 1.2rem;
+  color: var(--dark-text-color);
+  font-size: 1.35rem; /* Dimensione del titolo aumentata */
+  font-weight: 700; /* Più audace */
 }
 
 .current-time {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--dark);
+  font-size: 1.2rem; /* Dimensione ora aumentata */
+  font-weight: 700;
+  color: var(--dark-text-color);
+  font-family: 'Roboto Mono', monospace; /* Font monospace per l'ora */
+  background-color: var(--light-gray-bg);
+  padding: 5px 10px;
+  border-radius: 5px;
 }
 
+/* --- Contenuto della Card --- */
 .status-content {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px; /* Spazio tra le sezioni */
 }
 
 .status-indicator {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
+/* --- Badge di Stato --- */
 .status-badge {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 5px;
+  display: flex; /* Permette allineamento icona/testo */
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px; /* Padding aumentato */
+  border-radius: 25px; /* Più arrotondato */
+  font-weight: 700;
+  font-size: 1.05rem; /* Dimensione badge aumentata */
+  margin-bottom: 10px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Sottile ombra sul badge */
+  min-width: 150px; /* Larghezza minima per coerenza */
+}
+
+.status-badge .badge-icon {
+  margin-right: 8px; /* Spazio tra icona e testo */
+  font-size: 1.3em; /* Dimensione icona */
 }
 
 .status-in-progress .status-badge {
-  background-color: rgba(52, 152, 219, 0.2);
-  color: var(--primary);
+  background-color: rgba(52, 152, 219, 0.15); /* Sfondo più saturo */
+  color: var(--primary-color);
 }
 
 .status-completed .status-badge {
-  background-color: rgba(46, 204, 113, 0.2);
-  color: var(--success);
+  background-color: rgba(46, 204, 113, 0.15);
+  color: var(--success-color);
 }
 
 .status-auto-closed .status-badge {
-  background-color: rgba(243, 156, 18, 0.2);
-  color: var(--warning);
+  background-color: rgba(243, 156, 18, 0.15);
+  color: var(--warning-color);
 }
 
 .status-not-started .status-badge {
-  background-color: rgba(149, 165, 166, 0.2);
-  color: #7f8c8d;
+  background-color: rgba(149, 165, 166, 0.15);
+  color: var(--medium-gray-text);
 }
 
 .status-date {
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 0.95rem;
+  color: var(--medium-gray-text);
+  margin-top: 5px;
 }
 
-.time-details {
+/* --- Shift Info (Turno Attuale) --- */
+.shift-info {
+  text-align: center;
   margin-top: 15px;
+  padding: 10px 0;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.shift-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--dark-text-color);
+}
+
+.shift-type .shift-name {
+  background-color: var(--light-gray-bg);
+  padding: 4px 10px;
+  border-radius: 5px;
+}
+
+.shift-limits {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* --- Dettagli del Tempo (Clock In/Out, Durata) --- */
+.time-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
 }
 
 .time-entry {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03); /* Linea leggera per separare */
 }
 
-.time-entry.highlighted {
-  background-color: rgba(52, 152, 219, 0.1);
-  font-weight: 600;
-}
-
-.status-completed .time-entry.highlighted,
-.status-auto-closed .time-entry.highlighted {
-  background-color: rgba(46, 204, 113, 0.1);
+.time-entry:last-child {
+  border-bottom: none;
 }
 
 .time-label {
-  color: #666;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  color: #555;
+  font-weight: 500;
 }
 
 .time-value {
-  font-weight: 500;
-  color: var(--dark);
-}
-
-.hours-breakdown {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 10px;
-  padding: 8px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
-}
-
-.breakdown-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.breakdown-label {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.breakdown-value {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: var(--dark);
+  color: var(--dark-text-color);
 }
 
+.time-entry.highlighted .time-value {
+  color: var(--primary-color); /* Colore primario per evidenziare */
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+/* --- Progress Bar per Turno in Corso --- */
 .progress-bar-container {
-  height: 8px;
-  background-color: #eee;
-  border-radius: 4px;
-  margin: 10px 0;
+  width: 100%;
+  background-color: var(--light-gray-bg);
+  border-radius: 8px;
+  height: 15px; /* Altezza barra aumentata */
+  margin-top: 15px;
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative; /* Per posizionare la label */
 }
 
 .progress-bar {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s ease;
+  background-color: var(--primary-color);
+  width: 0%; /* Controllato da JS */
+  border-radius: 8px;
+  transition: width 0.7s ease-out; /* Animazione più fluida */
 }
 
-.auto-note {
-  margin-left: 5px;
+.progress-bar.overtime {
+  background-color: var(--warning-color); /* Colore per straordinario */
+}
+
+.progress-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--dark-text-color); /* Colore del testo sulla barra */
   font-size: 0.8rem;
-  color: var(--warning);
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.7); /* Per leggibilità */
+}
+
+/* --- Promemoria Turno --- */
+.shift-reminder {
+  margin-top: 15px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #777;
+  padding: 10px;
+  background-color: rgba(52, 152, 219, 0.05); /* Usando il colore primario direttamente */
+  border-left: 3px solid var(--primary-color);
+  border-radius: 5px;
+}
+
+/* --- Dettagli Turno Concluso/Auto-Chiuso --- */
+.auto-note {
+  font-size: 0.8em;
+  color: var(--medium-gray-text);
+  margin-left: 5px;
   font-style: italic;
 }
 
+.hours-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Layout flessibile */
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.breakdown-item {
+  background-color: #fcfcfc;
+  padding: 10px 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #eee;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.03);
+}
+
+.breakdown-label {
+  font-size: 0.9rem;
+  color: #777;
+  font-weight: 500;
+}
+
+.breakdown-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--dark-text-color);
+}
+
+/* --- Stato "Non Iniziato" --- */
 .not-started-message {
   text-align: center;
-  padding: 20px;
-  color: #666;
+  padding: 25px;
+  background-color: #fcfdfe;
+  border-radius: 10px;
+  border: 2px dashed #e0e6e7; /* Bordo tratteggiato */
+  color: var(--medium-gray-text);
+  position: relative;
+  overflow: hidden;
 }
 
-.hint {
+.not-started-message::before {
+  content: '🕒'; /* Icona a forma di orologio */
+  display: block;
+  font-size: 3.5em; /* Dimensione aumentata */
+  margin-bottom: 15px;
+  color: #ccc;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.not-started-message p {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+}
+
+.not-started-message .hint {
   font-size: 0.9rem;
-  font-style: italic;
-  margin-top: 10px;
   color: #95a5a6;
+  font-style: italic;
+}
+
+/* --- Statistiche Mensili --- */
+.monthly-stats-summary {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08); /* Separatore più marcato */
+}
+
+.monthly-stats-summary h4 {
+  margin: 0 0 18px 0;
+  color: var(--dark-text-color);
+  font-size: 1.15rem;
+  text-align: center;
+  position: relative;
+}
+
+.monthly-stats-summary h4::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 3px;
+  background-color: var(--primary-color);
+  margin: 8px auto 0;
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); /* Layout responsivo */
+  gap: 15px; /* Spazio tra gli elementi */
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background-color: #fcfdff;
+  border-radius: 10px;
+  border: 1px solid #eef1f4;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.stat-item .stat-value {
+  font-size: 1.7rem; /* Valore più grande */
+  font-weight: 800; /* Extra audace */
+  color: var(--primary-color); /* Colore primario per i valori */
+  margin-bottom: 5px;
+}
+
+.stat-item .stat-label {
+  font-size: 0.9rem;
+  color: #777;
+  font-weight: 500;
+  text-align: center;
+}
+
+.split-shifts-info {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #777;
+  background-color: #f0f4f7;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border-left: 3px solid #b2c2d4;
+}
+
+/* --- Stili per messaggi di Errore/Warning --- */
+.status-error, .status-warning {
+  padding: 12px 18px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .status-error {
-  padding: 20px;
-  text-align: center;
-  color: var(--danger);
+  background-color: rgba(231, 76, 60, 0.1);
+  border-left: 4px solid var(--danger-color);
+  color: var(--danger-color);
+}
+
+.status-warning {
+  background-color: rgba(243, 156, 18, 0.1);
+  border-left: 4px solid var(--warning-color);
+  color: var(--warning-color);
+}
+
+.status-error::before {
+  content: '⚠️'; /* Icona warning per errori */
+  font-size: 1.2em;
+}
+
+.status-warning::before {
+  content: '❗'; /* Icona warning per avvisi */
+  font-size: 1.2em;
 }
 
 .retry-btn {
-  background-color: var(--primary);
+  background-color: var(--danger-color);
   color: white;
   border: none;
+  padding: 8px 15px;
   border-radius: 5px;
-  padding: 8px 16px;
-  margin-top: 10px;
   cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
 }
 
 .retry-btn:hover {
-  background-color: var(--secondary);
+  background-color: #c0392b;
 }
 
-/* Responsive adjustments */
-@media (max-width: 576px) {
+/* --- Media Queries per la Responsività --- */
+@media (max-width: 768px) {
   .timekeeping-status-card {
-    padding: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
   }
-  
+
   .status-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .current-time {
     align-self: flex-end;
   }
-  
-  .hours-breakdown {
-    flex-direction: column;
-    gap: 10px;
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr; /* 2 colonne su schermi più piccoli */
   }
-  
-  .breakdown-item {
-    flex-direction: row;
-    justify-content: space-between;
+
+  .status-badge {
+    min-width: unset; /* Rimuovi larghezza minima per schermi piccoli */
+    padding: 8px 15px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .timekeeping-status-card {
+    padding: 15px;
+  }
+
+  .status-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .current-time {
+    font-size: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr; /* Singola colonna su schermi molto piccoli */
+  }
+
+  .stat-item .stat-value {
+    font-size: 1.5rem;
   }
 }
