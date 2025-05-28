@@ -1,4 +1,4 @@
-// src/components/TimekeepingScanner.jsx - Versione aggiornata con fix kiosk mode
+// src/components/TimekeepingScanner.jsx - Versione corretta per modalità kiosk
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import timekeepingService from '../services/timekeepingService';
@@ -50,13 +50,14 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
   // Show a notification message
   const showNotification = useCallback((message, type) => {
+    console.log(`Notification: ${type} - ${message}`);
     setNotification({
       show: true,
       message,
       type
     });
 
-    const hideDelay = kioskMode ? 3000 : 5000;
+    const hideDelay = kioskMode ? 4000 : 5000; // Aumentato per modalità kiosk
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
     }, hideDelay);
@@ -285,9 +286,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     countdownTimer.current = timer;
   };
 
-  // Function to process a timekeeping scan
+  // Function to process a timekeeping scan - MODIFICATA PER GESTIRE MEGLIO GLI ERRORI
   const processTimekeepingScan = useCallback(async (userId, type) => {
     try {
+      console.log(`Processing ${type} scan for user: ${userId}`);
+      
       if (!navigator.onLine) {
         const record = {
           type: type === 'in' ? 'clockIn' : 'clockOut',
@@ -314,11 +317,12 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
         const message = `${type === 'in' ? 'Ingresso' : 'Uscita'} salvato offline. Verrà sincronizzato al ripristino della connessione.`;
         showNotification(message, "warning");
-        return;
+        return { success: true, offline: true };
       }
 
+      let result;
       if (type === 'in') {
-        const result = await timekeepingService.clockIn(userId, {
+        result = await timekeepingService.clockIn(userId, {
           deviceId,
           isAdmin,
           deviceType: kioskMode ? 'kiosk' : 'web-scanner',
@@ -336,7 +340,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         const message = `✅ ${result.userName || userId} ha timbrato l'INGRESSO alle ${result.clockInTime}`;
         showNotification(message, "success");
       } else {
-        const result = await timekeepingService.clockOut(userId, {
+        result = await timekeepingService.clockOut(userId, {
           deviceId,
           isAdmin,
           deviceType: kioskMode ? 'kiosk' : 'web-scanner',
@@ -354,19 +358,11 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         const message = `✅ ${result.userName || userId} ha timbrato l'USCITA. Ore lavorate: ${result.totalHours} (${result.standardHours} standard + ${result.overtimeHours} straordinario)`;
         showNotification(message, "success");
       }
+      
+      return { success: true, result };
     } catch (err) {
       console.error("Error processing timekeeping scan:", err);
-      
-      // Mostra il messaggio di errore specifico dal servizio
-      showNotification(err.message || "Errore durante la timbratura. Riprova.", "error");
-      
-      // In kiosk mode, refresh automatico anche per gli errori
-      if (kioskMode) {
-        setTimeout(() => {
-          window.location.reload();
-        }, 4000); // 4 secondi per leggere l'errore
-      }
-      throw err;
+      throw err; // Rilancia l'errore per gestirlo nel chiamante
     }
   }, [deviceId, isAdmin, kioskMode, offlineStorage, showNotification]);
 
@@ -540,7 +536,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
     fetchCameras();
   }, [fetchCameras]);
 
-  // Start/stop scanning based on isScanning state
+  // Start/stop scanning based on isScanning state - MODIFICATO PER GESTIRE MEGLIO GLI ERRORI
   useEffect(() => {
     console.log("useEffect [isScanning, selectedCamera, scanType, ...]: Executing. isScanning:", isScanning, "scanType:", scanType, "selectedCamera:", selectedCamera);
 
@@ -622,6 +618,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
 
               const userId = parts[2];
 
+              // Pausa lo scanner immediatamente
               if (html5QrCode.current) {
                 try {
                   const currentState = html5QrCode.current.getState();
@@ -634,71 +631,66 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
                 }
               }
 
-              await processTimekeepingScan(userId, scanType);
-
-              setScanResult({
-                userId,
-                timestamp: new Date().toISOString(),
-                success: true,
-                type: scanType
-              });
-
-              updateScanStats();
-              handleSuccess();
-
-              // Stop scanning dopo successo - chiudi esplicitamente la fotocamera
-              await stopScanner();
-              setIsScanning(false);
+              // Processa la timbratura e gestisci il risultato
+              const scanProcessResult = await processTimekeepingScan(userId, scanType);
               
-              if (kioskMode) {
-                // In kiosk mode, ferma sempre lo scanner e chiudi la fotocamera
-                setScanType('');
-                setScanTypeSelected(false);
-                
-                // Refresh dopo 3 secondi
-                setTimeout(() => {
-                  window.location.reload();
-                }, 3000);
-              } else {
-                if (autoResumeEnabled && !manualControl) {
-                  const resumeTimer = setTimeout(() => {
-                    console.log("Auto-resuming scanner after successful scan");
-                    resumeScanning();
-                  }, AUTO_RESUME_DELAY);
+              if (scanProcessResult.success) {
+                setScanResult({
+                  userId,
+                  timestamp: new Date().toISOString(),
+                  success: true,
+                  type: scanType
+                });
 
-                  setAutoResumeTimer(resumeTimer);
-                  startAutoResumeCountdown();
+                updateScanStats();
+                handleSuccess();
+
+                // Stop scanning dopo successo - chiudi esplicitamente la fotocamera
+                await stopScanner();
+                setIsScanning(false);
+                
+                if (kioskMode) {
+                  // In kiosk mode, ferma sempre lo scanner e chiudi la fotocamera
+                  setScanType('');
+                  setScanTypeSelected(false);
+                  
+                  // Refresh dopo 4 secondi per vedere il messaggio di successo
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 4000);
+                } else {
+                  if (autoResumeEnabled && !manualControl) {
+                    const resumeTimer = setTimeout(() => {
+                      console.log("Auto-resuming scanner after successful scan");
+                      resumeScanning();
+                    }, AUTO_RESUME_DELAY);
+
+                    setAutoResumeTimer(resumeTimer);
+                    startAutoResumeCountdown();
+                  }
                 }
               }
 
             } catch (err) {
               console.error("Error processing scan:", err);
+              
+              // Mostra errore specifico
               setError(err.message || "Errore durante la scansione");
+              showNotification(err.message || "Errore durante la scansione. Riprova.", "error");
 
               handleError("Scan processing error");
 
-              if (kioskMode && autoResumeEnabled && !manualControl) {
+              // In modalità kiosk, refresh automatico anche per gli errori dopo un delay maggiore
+              if (kioskMode) {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 4000); // 4 secondi per leggere l'errore
+              } else if (autoResumeEnabled && !manualControl) {
                 const errorResumeTimer = setTimeout(() => {
                   console.log("Auto-resuming scanner after error");
                   resumeScanning();
                 }, 2000);
                 setAutoResumeTimer(errorResumeTimer);
-              }
-              if (kioskMode && scanType && !inactivityTimerRef.current && html5QrCode.current && html5QrCode.current.getState() === Html5Qrcode.SCANNING) {
-                console.log("Error detected, no inactivity timer, starting one.");
-                inactivityTimerRef.current = setTimeout(() => {
-                  if (isScanning) {
-                    console.log("30 seconds inactivity after error, resetting scanner.");
-                    setIsScanning(false);
-                    setScanType('');
-                    setScanTypeSelected(false);
-                    setScanResult(null);
-                    setError(null);
-                    setLastScannedUser(null);
-                    showNotification("Nessuna scansione rilevata. Seleziona il tipo di timbratura.", "info");
-                  }
-                  inactivityTimerRef.current = null;
-                }, INACTIVITY_RESET_DELAY);
               }
             }
           },
