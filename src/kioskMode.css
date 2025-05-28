@@ -1,14 +1,10 @@
-/* src/kioskMode.css - Stili per modalità kiosk con logout di emergenza */
+/* src/kioskMode.css - Ottimizzato per tutti i dispositivi */
 
-/* Reset per modalità kiosk */
+/* Reset per modalità kiosk - versione responsive */
 .kiosk-app {
-  position: fixed;
-  top: 0;
-  left: 0;
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  overflow: hidden;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   user-select: none;
   -webkit-user-select: none;
@@ -16,9 +12,13 @@
   -ms-user-select: none;
   display: flex;
   flex-direction: column;
+  /* Rimosso position: fixed e overflow: hidden per permettere scroll */
+  position: relative;
+  overflow-x: hidden; /* Solo orizzontale */
+  overflow-y: auto; /* Verticale permesso */
 }
 
-/* Previeni zoom e interazioni indesiderate */
+/* Previeni zoom e interazioni indesiderate - versione più leggera */
 .kiosk-app * {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -29,42 +29,51 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Header del kiosk */
+/* Header del kiosk - responsive */
 .kiosk-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: clamp(10px, 3vw, 20px);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
+  min-height: 60px;
+  flex-shrink: 0;
 }
 
 .device-info {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: clamp(10px, 3vw, 20px);
+  flex: 1;
+  min-width: 0; /* Permette text truncation */
 }
 
 .device-name {
-  font-size: 1.3rem;
+  font-size: clamp(1rem, 4vw, 1.3rem);
   font-weight: 700;
   color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .device-status {
   display: flex;
   align-items: center;
-  gap: 15px;
-  font-size: 0.9rem;
+  gap: clamp(8px, 2vw, 15px);
+  font-size: clamp(0.8rem, 2.5vw, 0.9rem);
   color: #555;
+  flex-wrap: wrap;
 }
 
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: clamp(8px, 2vw, 15px);
+  flex-shrink: 0;
 }
 
 .fullscreen-btn {
@@ -72,8 +81,8 @@
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 1.2rem;
+  padding: clamp(6px, 2vw, 10px) clamp(8px, 2.5vw, 12px);
+  font-size: clamp(1rem, 3vw, 1.2rem);
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 10px rgba(52, 152, 219, 0.3);
@@ -85,15 +94,12 @@
   box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
 }
 
-.fullscreen-btn:active {
-  transform: translateY(0);
-}
-
 .time {
   font-weight: 600;
   font-family: 'Courier New', monospace;
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
   color: #2c3e50;
+  white-space: nowrap;
 }
 
 .connection {
@@ -101,6 +107,7 @@
   align-items: center;
   gap: 5px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .connection.online {
@@ -114,57 +121,76 @@
 .battery {
   font-weight: 500;
   color: #f39c12;
+  white-space: nowrap;
 }
 
 .hidden-logout {
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   opacity: 0.3;
   cursor: pointer;
   transition: opacity 0.3s;
+  padding: 5px;
 }
 
 .hidden-logout:hover {
   opacity: 0.6;
 }
 
-/* Container principale dello scanner */
+/* Container principale dello scanner - responsive */
 .kiosk-scanner-container {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 20px;
+  align-items: flex-start;
+  padding: clamp(10px, 3vw, 20px);
   position: relative;
+  min-height: 0; /* Importante per flex shrinking */
 }
 
-/* Personalizzazione del component TimekeepingScanner per modalità kiosk */
+/* Personalizzazione del component TimekeepingScanner per modalità kiosk - responsive */
 .kiosk-app .timekeeping-scanner {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(15px);
-  border-radius: 20px;
+  border-radius: clamp(15px, 4vw, 20px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-width: 600px;
+  max-width: min(600px, 95vw);
   width: 100%;
   border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: clamp(15px, 4vw, 25px);
+  /* Altezza massima per evitare overflow su schermi piccoli */
+  max-height: calc(100vh - 140px); /* 140px per header + footer + padding */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.kiosk-app .scanner-header {
+  margin-bottom: clamp(15px, 4vw, 20px);
+  flex-shrink: 0;
 }
 
 .kiosk-app .scanner-header h2 {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: clamp(15px, 4vw, 20px);
   color: #2c3e50;
 }
 
 .kiosk-app .scan-type-selector {
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
+  flex-shrink: 0;
 }
 
 .kiosk-app .scan-type-btn {
-  font-size: 1.2rem;
-  padding: 15px 30px;
-  border-radius: 15px;
+  font-size: clamp(1rem, 4vw, 1.2rem);
+  padding: clamp(12px, 4vw, 15px) clamp(20px, 6vw, 30px);
+  border-radius: clamp(12px, 3vw, 15px);
   font-weight: 600;
   transition: all 0.3s ease;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .kiosk-app .scan-type-btn.active {
@@ -173,16 +199,27 @@
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
+.kiosk-app .scanner-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .kiosk-app #qr-reader {
-  border-radius: 15px;
+  border-radius: clamp(12px, 3vw, 15px);
   overflow: hidden;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  max-height: 400px;
+  width: 100%;
 }
 
 .kiosk-app .scan-result {
-  border-radius: 15px;
-  font-size: 1.1rem;
-  padding: 20px;
+  border-radius: clamp(12px, 3vw, 15px);
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  padding: clamp(15px, 4vw, 20px);
+  margin-top: clamp(10px, 3vw, 15px);
+  flex-shrink: 0;
 }
 
 .kiosk-app .scan-result.success {
@@ -191,87 +228,181 @@
   color: white;
 }
 
+.kiosk-app .scan-result h4 {
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  margin: 0 0 clamp(15px, 4vw, 20px) 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
 .kiosk-app .continue-btn {
   background: rgba(255, 255, 255, 0.9);
   color: #2c3e50;
-  border-radius: 10px;
-  padding: 12px 25px;
+  border-radius: clamp(8px, 2vw, 10px);
+  padding: clamp(10px, 3vw, 12px) clamp(20px, 5vw, 25px);
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  margin-top: clamp(10px, 3vw, 15px);
 }
 
-/* Footer con istruzioni */
+/* Footer con istruzioni - responsive */
 .kiosk-footer {
-  padding: 20px;
+  padding: clamp(15px, 4vw, 20px);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .instructions {
   display: flex;
   justify-content: center;
-  gap: 40px;
+  gap: clamp(20px, 6vw, 40px);
   max-width: 800px;
   margin: 0 auto;
+  flex-wrap: wrap;
 }
 
 .instruction-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(8px, 2vw, 10px);
   color: #2c3e50;
+  text-align: center;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .instruction-item .icon {
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
 }
 
 .instruction-item .text {
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  font-weight: 500;
+  line-height: 1.3;
+  hyphens: auto;
+  word-break: break-word;
+}
+
+/* Istruzioni per modalità kiosk - responsive */
+.kiosk-instructions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: clamp(20px, 5vw, 40px) clamp(10px, 3vw, 20px);
+  min-height: clamp(150px, 30vh, 200px);
+}
+
+.instruction-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: clamp(15px, 4vw, 20px);
+  padding: clamp(25px, 6vw, 40px);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  max-width: min(500px, 90vw);
+  width: 100%;
+  animation: instruction-pulse 3s infinite;
+}
+
+.instruction-card h3 {
+  margin: 0 0 clamp(15px, 4vw, 20px) 0;
+  color: #2c3e50;
+  font-size: clamp(1.4rem, 5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.instruction-card p {
+  margin: clamp(10px, 3vw, 15px) 0;
+  color: #555;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  line-height: 1.4;
+}
+
+/* Controlli manuali migliorati per kiosk - responsive */
+.kiosk-mode .kiosk-manual-controls {
+  margin: clamp(15px, 4vw, 25px) 0;
+  padding: clamp(15px, 4vw, 20px);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: clamp(12px, 3vw, 15px);
+  backdrop-filter: blur(10px);
+  display: flex;
+  gap: clamp(10px, 3vw, 15px);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.manual-control-btn {
+  padding: clamp(10px, 3vw, 12px) clamp(20px, 5vw, 25px);
+  border: none;
+  border-radius: clamp(8px, 2vw, 10px);
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: clamp(140px, 35vw, 160px);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.manual-control-btn.start {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.manual-control-btn.stop {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+/* Placeholder scanner - responsive */
+.kiosk-mode .scanner-placeholder {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px dashed rgba(52, 152, 219, 0.3);
+  border-radius: clamp(12px, 3vw, 15px);
+  padding: clamp(25px, 6vw, 40px) clamp(15px, 4vw, 20px);
+  text-align: center;
+  margin: clamp(15px, 4vw, 20px) 0;
+}
+
+.kiosk-mode .scanner-placeholder .placeholder-icon {
+  font-size: clamp(3rem, 8vw, 4rem);
+  margin-bottom: clamp(15px, 4vw, 20px);
+  opacity: 0.8;
+}
+
+.kiosk-mode .scanner-placeholder p {
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  color: #2c3e50;
+  margin: clamp(8px, 2vw, 10px) 0;
   font-weight: 500;
 }
 
-/* Notifiche kiosk */
-.kiosk-notification {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-  min-width: 300px;
+.kiosk-mode .start-scan-btn {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  border: none;
+  border-radius: clamp(8px, 2vw, 10px);
+  padding: clamp(10px, 3vw, 12px) clamp(20px, 5vw, 25px);
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: clamp(10px, 3vw, 15px);
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(39, 174, 96, 0.3);
+  min-height: 48px;
 }
 
-.kiosk-notification .notification {
-  font-size: 1.2rem;
-  padding: 20px 30px;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  animation: kiosk-notification-appear 0.5s ease-out;
-}
-
-@keyframes kiosk-notification-appear {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Overlay per prevenire interazioni */
-.interaction-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 50;
-}
-
-/* Overlay di emergenza per logout */
+/* Overlay di emergenza per logout - responsive */
 .emergency-overlay {
   position: fixed;
   top: 0;
@@ -285,6 +416,376 @@
   z-index: 2000;
   backdrop-filter: blur(10px);
   animation: emergency-overlay-appear 0.3s ease-out;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.emergency-form {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border-radius: clamp(15px, 4vw, 20px);
+  padding: clamp(25px, 6vw, 40px);
+  max-width: min(500px, 90vw);
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: emergency-form-appear 0.4s ease-out;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.emergency-form h3 {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  margin: 0 0 clamp(15px, 4vw, 20px) 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.emergency-form p {
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  margin: 0 0 clamp(15px, 4vw, 20px) 0;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.emergency-form input {
+  width: 100%;
+  padding: clamp(12px, 4vw, 15px);
+  border: none;
+  border-radius: clamp(8px, 2vw, 10px);
+  font-size: clamp(1.1rem, 3vw, 1.2rem);
+  background: rgba(255, 255, 255, 0.95);
+  color: #2c3e50;
+  margin-bottom: clamp(15px, 4vw, 20px);
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
+  box-sizing: border-box;
+  min-height: 48px;
+}
+
+.emergency-buttons {
+  display: flex;
+  gap: clamp(10px, 3vw, 15px);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.emergency-confirm,
+.emergency-cancel {
+  padding: clamp(10px, 3vw, 12px) clamp(20px, 5vw, 25px);
+  border: none;
+  border-radius: clamp(8px, 2vw, 10px);
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: clamp(100px, 25vw, 120px);
+  min-height: 48px;
+  flex: 1;
+  max-width: 150px;
+}
+
+/* Schermata di setup - responsive */
+.kiosk-setup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.setup-container {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2c3e50;
+  border-radius: clamp(15px, 4vw, 20px);
+  padding: clamp(25px, 6vw, 40px);
+  max-width: min(500px, 90vw);
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(15px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.setup-header h1 {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  margin: 0 0 clamp(8px, 2vw, 10px) 0;
+  color: #2c3e50;
+  line-height: 1.2;
+}
+
+.setup-header p {
+  margin: 0;
+  color: #666;
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  line-height: 1.4;
+}
+
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(15px, 4vw, 20px);
+  margin-top: clamp(20px, 5vw, 30px);
+}
+
+.setup-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-form label {
+  font-weight: 600;
+  margin-bottom: clamp(6px, 2vw, 8px);
+  color: #2c3e50;
+  font-size: clamp(1rem, 3vw, 1.1rem);
+}
+
+.setup-form input {
+  padding: clamp(12px, 4vw, 15px);
+  border: 2px solid #e0e0e0;
+  border-radius: clamp(8px, 2vw, 10px);
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  background: white;
+  transition: all 0.3s ease;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.setup-button {
+  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  color: white;
+  border: none;
+  border-radius: clamp(8px, 2vw, 10px);
+  padding: clamp(12px, 4vw, 15px) clamp(25px, 6vw, 30px);
+  font-size: clamp(1.1rem, 3vw, 1.2rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: clamp(8px, 2vw, 10px);
+  min-height: 48px;
+}
+
+/* Indicatori tap di emergenza - responsive */
+.emergency-tap-zone {
+  position: fixed;
+  top: clamp(15px, 4vw, 20px);
+  left: clamp(15px, 4vw, 20px);
+  background: rgba(231, 76, 60, 0.9);
+  border-radius: clamp(12px, 3vw, 15px);
+  padding: clamp(12px, 3vw, 15px);
+  color: white;
+  z-index: 1500;
+  animation: tap-zone-appear 0.3s ease-out;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+}
+
+.tap-counter {
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tap-progress-bar {
+  width: clamp(60px, 15vw, 80px);
+  height: clamp(6px, 2vw, 8px);
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Responsive breakpoints specifici */
+
+/* Smartphone portrait (fino a 576px) */
+@media (max-width: 576px) and (orientation: portrait) {
+  .kiosk-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    min-height: auto;
+  }
+  
+  .device-info {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .device-status {
+    justify-content: center;
+    gap: 12px;
+  }
+  
+  .header-controls {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .kiosk-app .timekeeping-scanner {
+    max-height: calc(100vh - 200px);
+    padding: 15px;
+  }
+  
+  .instructions {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .instruction-item {
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .kiosk-mode .kiosk-manual-controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .manual-control-btn {
+    width: 100%;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .emergency-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .emergency-confirm,
+  .emergency-cancel {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Smartphone landscape (fino a 896px width, height < 500px) */
+@media (max-width: 896px) and (max-height: 500px) and (orientation: landscape) {
+  .kiosk-header {
+    padding: 8px 15px;
+    min-height: 50px;
+  }
+  
+  .kiosk-footer {
+    padding: 10px 15px;
+  }
+  
+  .kiosk-app .timekeeting-scanner {
+    max-height: calc(100vh - 120px);
+  }
+  
+  .instruction-card {
+    padding: 20px;
+  }
+  
+  .instruction-card h3 {
+    font-size: 1.3rem;
+  }
+}
+
+/* Tablet portrait (577px - 768px) */
+@media (min-width: 577px) and (max-width: 768px) and (orientation: portrait) {
+  .kiosk-header {
+    padding: 15px 20px;
+  }
+  
+  .instructions {
+    gap: 25px;
+  }
+  
+  .kiosk-mode .kiosk-manual-controls {
+    flex-direction: row;
+    gap: 15px;
+  }
+  
+  .manual-control-btn {
+    flex: 1;
+    max-width: 200px;
+  }
+}
+
+/* Tablet landscape e desktop small (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .kiosk-app .timekeeping-scanner {
+    max-width: 70vw;
+  }
+  
+  .instructions {
+    gap: 30px;
+  }
+  
+  .instruction-item {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* Assicura che i pulsanti abbiano sempre una dimensione minima toccabile */
+button, .btn, .manual-control-btn, .scan-type-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Fix per iOS Safari viewport height */
+@supports (-webkit-touch-callout: none) {
+  .kiosk-app {
+    min-height: -webkit-fill-available;
+  }
+  
+  .kiosk-setup {
+    height: -webkit-fill-available;
+  }
+  
+  .emergency-overlay {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Nasconde elementi HTML5QRCode non necessari in modalità kiosk */
+.kiosk-app #qr-reader__dashboard_section {
+  display: none !important;
+}
+
+.kiosk-app #qr-reader__status_span {
+  font-size: clamp(1rem, 3vw, 1.1rem) !important;
+  color: #2c3e50 !important;
+  font-weight: 500 !important;
+}
+
+.kiosk-app #qr-reader select {
+  padding: clamp(8px, 2vw, 10px);
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  border-radius: 8px;
+}
+
+.kiosk-app #qr-reader button {
+  padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 15px) !important;
+  font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
+  border-radius: 8px !important;
+  min-height: 44px !important;
+}
+
+/* Assicura che le animazioni non causino overflow */
+@keyframes instruction-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 15px 40px rgba(52, 152, 219, 0.3);
+  }
 }
 
 @keyframes emergency-overlay-appear {
@@ -294,18 +795,6 @@
   100% {
     opacity: 1;
   }
-}
-
-.emergency-form {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-  color: white;
-  border-radius: 20px;
-  padding: 40px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  text-align: center;
-  animation: emergency-form-appear 0.4s ease-out;
 }
 
 @keyframes emergency-form-appear {
@@ -319,382 +808,6 @@
   }
 }
 
-.emergency-form h3 {
-  font-size: 2rem;
-  margin: 0 0 20px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.emergency-form p {
-  font-size: 1.1rem;
-  margin: 0 0 20px 0;
-  opacity: 0.9;
-}
-
-.emergency-form input {
-  width: 100%;
-  padding: 15px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.2rem;
-  background: rgba(255, 255, 255, 0.95);
-  color: #2c3e50;
-  margin-bottom: 20px;
-  text-align: center;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.emergency-form input:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
-  background: white;
-}
-
-.emergency-form input::placeholder {
-  color: #7f8c8d;
-  font-weight: normal;
-  letter-spacing: normal;
-}
-
-.emergency-buttons {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-}
-
-.emergency-confirm,
-.emergency-cancel {
-  padding: 12px 25px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 120px;
-}
-
-.emergency-confirm {
-  background: rgba(255, 255, 255, 0.95);
-  color: #e74c3c;
-}
-
-.emergency-confirm:hover {
-  background: white;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
-}
-
-.emergency-cancel {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-}
-
-.emergency-cancel:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-}
-
-/* Schermata di setup */
-.kiosk-setup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: white;
-}
-
-.setup-container {
-  background: rgba(255, 255, 255, 0.95);
-  color: #2c3e50;
-  border-radius: 20px;
-  padding: 40px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(15px);
-}
-
-.setup-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.setup-header h1 {
-  font-size: 2rem;
-  margin: 0 0 10px 0;
-  color: #2c3e50;
-}
-
-.setup-header p {
-  margin: 0;
-  color: #666;
-  font-size: 1.1rem;
-}
-
-.setup-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.setup-form .form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.setup-form label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #2c3e50;
-  font-size: 1.1rem;
-}
-
-.setup-form input {
-  padding: 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-.setup-form input:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-}
-
-.setup-button {
-  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 15px 30px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 10px;
-}
-
-.setup-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-}
-
-.setup-button:active {
-  transform: translateY(0);
-}
-
-/* Responsive per tablet e dispositivi mobili */
-@media (max-width: 768px) {
-  .kiosk-header {
-    padding: 10px 15px;
-  }
-  
-  .device-info {
-    gap: 15px;
-  }
-  
-  .device-name {
-    font-size: 1.1rem;
-  }
-  
-  .device-status {
-    gap: 10px;
-    font-size: 0.8rem;
-  }
-  
-  .time {
-    font-size: 1rem;
-  }
-  
-  .header-controls {
-    gap: 10px;
-  }
-  
-  .fullscreen-btn {
-    padding: 6px 10px;
-    font-size: 1.1rem;
-  }
-  
-  .instructions {
-    flex-direction: column;
-    gap: 20px;
-    text-align: center;
-  }
-  
-  .instruction-item {
-    justify-content: center;
-  }
-  
-  .setup-container {
-    padding: 30px 20px;
-    margin: 20px;
-  }
-  
-  .setup-header h1 {
-    font-size: 1.6rem;
-  }
-  
-  .emergency-form {
-    padding: 30px 20px;
-    margin: 20px;
-  }
-  
-  .emergency-form h3 {
-    font-size: 1.6rem;
-  }
-  
-  .emergency-buttons {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .emergency-confirm,
-  .emergency-cancel {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .kiosk-header {
-    flex-direction: column;
-    gap: 10px;
-    padding: 15px;
-  }
-  
-  .device-info {
-    flex-direction: column;
-    gap: 10px;
-    text-align: center;
-  }
-  
-  .device-status {
-    justify-content: center;
-  }
-  
-  .setup-form input {
-    padding: 12px;
-    font-size: 1rem;
-  }
-  
-  .setup-button {
-    padding: 12px 25px;
-    font-size: 1.1rem;
-  }
-  
-  .emergency-form input {
-    padding: 12px;
-    font-size: 1.1rem;
-  }
-}
-
-/* Modalità landscape per tablet */
-@media (orientation: landscape) and (max-height: 600px) {
-  .kiosk-footer {
-    padding: 10px 20px;
-  }
-  
-  .instructions {
-    gap: 30px;
-  }
-  
-  .instruction-item .text {
-    font-size: 0.9rem;
-  }
-  
-  .emergency-form {
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-}
-
-/* Nasconde elementi HTML5QRCode non necessari in modalità kiosk */
-.kiosk-app #qr-reader__dashboard_section {
-  display: none !important;
-}
-
-.kiosk-app #qr-reader__status_span {
-  font-size: 1.1rem !important;
-  color: #2c3e50 !important;
-  font-weight: 500 !important;
-}
-
-/* Personalizzazione camera selector per kiosk */
-.kiosk-app .camera-selector {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
-}
-
-.kiosk-app .camera-selector select {
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 1rem;
-}
-
-/* Disabilita il menu contestuale */
-.kiosk-app {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Nasconde scrollbar */
-.kiosk-app::-webkit-scrollbar {
-  display: none;
-}
-
-.kiosk-app {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Animazione di pulsazione per l'istruzione di emergenza */
-.instruction-item:last-child {
-  animation: emergency-pulse 3s infinite;
-}
-
-@keyframes emergency-pulse {
-  0%, 50%, 100% {
-    opacity: 1;
-  }
-  25%, 75% {
-    opacity: 0.7;
-    transform: scale(1.05);
-  }
-}
-
-/* Indicatori per i tap di emergenza */
-.emergency-tap-zone {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  background: rgba(231, 76, 60, 0.9);
-  border-radius: 15px;
-  padding: 15px;
-  color: white;
-  z-index: 1500;
-  animation: tap-zone-appear 0.3s ease-out;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
-}
-
 @keyframes tap-zone-appear {
   0% {
     opacity: 0;
@@ -706,132 +819,234 @@
   }
 }
 
-.tap-progress {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-width: 100px;
+/* Ottimizzazioni per prestazioni */
+.kiosk-app * {
+  will-change: auto;
 }
 
-.tap-counter {
-  font-size: 1.5rem;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+.kiosk-app .scan-type-btn,
+.kiosk-app .manual-control-btn,
+.kiosk-app .start-scan-btn {
+  will-change: transform, box-shadow;
 }
 
-.tap-progress-bar {
-  width: 80px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  overflow: hidden;
+/* Previeni overflow causato da trasformazioni */
+.kiosk-app {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
-.tap-progress-fill {
-  height: 100%;
-  background: white;
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+/* Gestione sicura dei font per dispositivi che potrebbero non supportare system fonts */
+.kiosk-app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
-/* Animazione per gli indicatori di tap */
-@keyframes tap-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0;
+/* Assicura che il testo sia sempre leggibile */
+.kiosk-app {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Miglioramenti per l'accessibilità */
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-app *,
+  .kiosk-app *::before,
+  .kiosk-app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-/* Area invisibile per i tap di emergenza (angolo alto sinistro) */
-.kiosk-app::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100px;
-  height: 100px;
-  z-index: 10;
-  pointer-events: none;
-  /* Debug: decommenta per vedere l'area
-  background: rgba(231, 76, 60, 0.1);
-  border: 2px dashed rgba(231, 76, 60, 0.3);
-  */
-}
-
-/* Stile per gli indicatori di tap temporanei */
-.tap-indicator {
-  animation: tap-pulse 0.5s ease-out !important;
-}
-
-/* Aggiunta di feedback visivo per l'area di tap */
-.kiosk-app.tap-active::before {
-  background: rgba(231, 76, 60, 0.2);
-  border: 2px solid rgba(231, 76, 60, 0.5);
-  border-radius: 10px;
-  animation: tap-area-highlight 0.3s ease-out;
-}
-
-@keyframes tap-area-highlight {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
+/* Assicura che il contenuto sia sempre visibile anche su schermi molto piccoli */
+@media (max-height: 500px) {
+  .kiosk-app {
+    min-height: 500px;
   }
-  100% {
-    opacity: 1;
-    transform: scale(1);
+  
+  .kiosk-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .kiosk-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+  }
+  
+  .kiosk-scanner-container {
+    min-height: 300px;
   }
 }
 
-/* Responsive per indicatori tap */
-@media (max-width: 768px) {
+/* Gestione speciale per iPhone con notch */
+@supports (padding: max(0px)) {
+  .kiosk-app {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  .kiosk-header {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  
+  .kiosk-footer {
+    padding-bottom: max(15px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Miglioramenti per touch screen */
+@media (pointer: coarse) {
+  .kiosk-app button,
+  .kiosk-app .btn,
+  .kiosk-app .scan-type-btn,
+  .kiosk-app .manual-control-btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: clamp(12px, 4vw, 16px) clamp(16px, 4vw, 24px);
+  }
+  
   .emergency-tap-zone {
-    top: 15px;
-    left: 15px;
-    padding: 12px;
-  }
-  
-  .tap-counter {
-    font-size: 1.3rem;
-  }
-  
-  .tap-progress-bar {
-    width: 60px;
-    height: 6px;
-  }
-  
-  .tap-progress {
-    min-width: 80px;
+    min-width: 48px;
+    min-height: 48px;
   }
 }
 
-@media (max-width: 480px) {
-  .emergency-tap-zone {
-    top: 10px;
-    left: 10px;
-    padding: 10px;
+/* Assicura che il QR scanner sia sempre visibile */
+.kiosk-app #qr-reader video {
+  max-width: 100% !important;
+  max-height: min(300px, 40vh) !important;
+  object-fit: cover !important;
+  border-radius: clamp(8px, 2vw, 12px) !important;
+}
+
+/* Gestione errori di rendering */
+.kiosk-app .scan-result,
+.kiosk-app .scanner-placeholder,
+.kiosk-app .instruction-card {
+  contain: layout style paint;
+}
+
+/* Assicura che il testo non vada mai fuori dai contenitori */
+.kiosk-app p,
+.kiosk-app h1,
+.kiosk-app h2,
+.kiosk-app h3,
+.kiosk-app h4 {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Previeni zoom accidentali su double tap */
+.kiosk-app * {
+  touch-action: manipulation;
+}
+
+/* Ottimizzazioni finali per performance */
+.kiosk-app {
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* Gestione del layout per dispositivi molto stretti (< 320px) */
+@media (max-width: 320px) {
+  .kiosk-app .scan-type-btn {
+    font-size: 0.9rem;
+    padding: 10px 15px;
   }
   
-  .tap-counter {
+  .device-name {
+    font-size: 0.9rem;
+  }
+  
+  .instruction-card h3 {
     font-size: 1.2rem;
   }
   
-  .tap-progress-bar {
-    width: 50px;
-    height: 5px;
+  .instruction-card p {
+    font-size: 0.9rem;
   }
   
-  .tap-progress {
-    min-width: 70px;
-    gap: 8px;
+  .emergency-form h3 {
+    font-size: 1.3rem;
+  }
+  
+  .setup-header h1 {
+    font-size: 1.3rem;
   }
 }
+
+/* Gestione orientamento per evitare problemi di layout */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .instruction-card {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .emergency-form {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .setup-container {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* Assicura che tutti gli elementi interattivi siano facilmente toccabili */
+.kiosk-app [role="button"],
+.kiosk-app button,
+.kiosk-app input[type="button"],
+.kiosk-app input[type="submit"],
+.kiosk-app .clickable {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Gestione del focus per accessibilità */
+.kiosk-app button:focus,
+.kiosk-app select:focus,
+.kiosk-app input:focus {
+  outline: 3px solid rgba(52, 152, 219, 0.6);
+  outline-offset: 2px;
+}
+
+/* Ultima ottimizzazione: assicura che niente vada mai oltre i bordi dello schermo */
+.kiosk-app * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Gestione speciale per contenitori con overflow */
+.kiosk-app .timekeeping-scanner,
+.kiosk-app .instruction-card,
+.kiosk-app .emergency-form,
+.kiosk-app .setup-container {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Assicura che il gradiente di sfondo copra sempre tutto lo schermo */
+.kiosk-app {
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Fix per alcuni browser mobile che potrebbero avere problemi con vh */
+.kiosk-app {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* JavaScript può essere usato per impostare --vh dinamicamente: */
+/* 
+window.addEventListener('resize', () => {
+  let vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+});
+*/
