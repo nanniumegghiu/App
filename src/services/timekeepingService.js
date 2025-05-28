@@ -229,33 +229,23 @@ const timekeepingService = {
       );
       
       const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        const existingRecord = querySnapshot.docs[0].data();
-        console.log(`Found existing record:`, existingRecord);
         
-        if (existingRecord.clockOutTime && existingRecord.status === "completed") {
-          throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
-        }
-        
-        if (existingRecord.status === "auto-closed") {
-          throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
-        }
-        
-        if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
-          const userName = userData.nome && userData.cognome ? 
-            `${userData.nome} ${userData.cognome}` : userData.email;
+        if (!querySnapshot.empty) {
+          const existingRecord = querySnapshot.docs[0].data();
+          console.log(`Found existing record:`, existingRecord);
           
-          return {
-            id: querySnapshot.docs[0].id,
-            ...existingRecord,
-            userName,
-            message: `Sei già entrato oggi alle ${existingRecord.clockInTime}. Per uscire, scansiona di nuovo selezionando 'USCITA'.`,
-            duplicateEntry: true,
-            clockInTime: existingRecord.clockInTime
-          };
+          if (existingRecord.clockOutTime && existingRecord.status === "completed") {
+            throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
+          }
+          
+          if (existingRecord.status === "auto-closed") {
+            throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
+          }
+          
+          if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
+            throw new Error(`Hai già timbrato un ingresso alle ${existingRecord.clockInTime}. Timbra l'USCITA per completare la giornata.`);
+          }
         }
-      }
       
       console.log(`Creating new clock-in record for ${userId}`);
       
