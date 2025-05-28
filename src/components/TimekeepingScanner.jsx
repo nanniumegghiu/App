@@ -825,51 +825,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           </div>
         )}
 
-        {/* Messaggio quando scan è stato completato */}
-        {scanCompleted && (
-          <div className="kiosk-instructions">
-            <div className="instruction-card success">
-              <h3>✅ Scansione completata!</h3>
-              <p>Seleziona nuovamente il tipo per una nuova timbratura</p>
-            </div>
-          </div>
-        )}
-
-        {/* Messaggio quando scan è in timeout */}
-        {scanTimeout && (
-          <div className="kiosk-instructions">
-            <div className="instruction-card warning">
-              <h3>⏰ Timeout scansione</h3>
-              <p>Nessun QR code rilevato entro 30 secondi. Riprova.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Controlli manuali per modalità kiosk */}
-        {scanTypeSelected && !scanCompleted && !scanTimeout && (
-          <div className="kiosk-manual-controls">
-            <button
-              className={`manual-control-btn ${isScanning ? 'stop' : 'start'}`}
-              onClick={toggleScanning}
-              disabled={initializing}
-            >
-              {initializing ? '⏳ Inizializzazione...' : isScanning ? '⏹️ Ferma Scanner' : '▶️ Avvia Scanner'}
-            </button>
-          </div>
-        )}
-
-        {/* Pulsante per reset dopo completamento o timeout */}
-        {(scanCompleted || scanTimeout) && (
-          <div className="kiosk-manual-controls">
-            <button
-              className="manual-control-btn reset"
-              onClick={resetScanner}
-            >
-              🔄 Nuova Timbratura
-            </button>
-          </div>
-        )}
-
         {notification.show && (
           <Notification
             message={notification.message}
