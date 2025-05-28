@@ -1,24 +1,23 @@
-// src/components/TimekeepingStatus.jsx - Con Sistema Turnazioni
+// src/components/TimekeepingStatus.jsx - With improved error handling
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import timekeepingService from '../services/timekeepingService';
 import './timekeepingStatus.css';
 
 /**
- * Component to display current timekeeping status with shift information
+ * Component to display current timekeeping status on the user dashboard
  */
 const TimekeepingStatus = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [shiftStats, setShiftStats] = useState(null);
   
   // Update current time every minute
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000);
+    }, 60000); // Update every minute
     
     return () => clearInterval(intervalId);
   }, []);
@@ -36,18 +35,6 @@ const TimekeepingStatus = () => {
         // Load status for today
         const todayStatus = await timekeepingService.getTodayStatus(user.uid);
         setStatus(todayStatus);
-        
-        // Load shift statistics for current month
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
-        
-        const stats = await timekeepingService.getShiftStatistics(user.uid, {
-          month: currentMonth,
-          year: currentYear
-        });
-        setShiftStats(stats);
-        
         setError(null);
       } catch (err) {
         console.error('Error loading timekeeping status:', err);
@@ -74,7 +61,7 @@ const TimekeepingStatus = () => {
     loadTimekeepingStatus();
     
     // Refresh status every 5 minutes
-    const intervalId = setInterval(loadTimekeepingStatus, 300000);
+    const intervalId = setInterval(loadTimekeepingStatus, 300000); // 5 minutes
     
     return () => clearInterval(intervalId);
   }, []);
@@ -100,12 +87,15 @@ const TimekeepingStatus = () => {
     }
     
     try {
+      // Parse clock-in time
       const today = new Date();
       const [clockInHours, clockInMinutes] = status.clockInTime.split(':').map(Number);
       
+      // Create Date objects for comparison
       const clockInDate = new Date(today);
       clockInDate.setHours(clockInHours, clockInMinutes, 0, 0);
       
+      // Calculate difference in minutes
       const diffMs = today - clockInDate;
       const diffMinutes = Math.floor(diffMs / 60000);
       
@@ -160,36 +150,25 @@ const TimekeepingStatus = () => {
     
     switch (status.status) {
       case 'in-progress':
-        return 'Turno in Corso';
+        return 'In Corso';
       case 'completed':
-        return status.sessionsCount > 1 ? `${status.sessionsCount} Turni Conclusi` : 'Turno Concluso';
+        return 'Giornata Conclusa';
       case 'auto-closed':
-        return 'Auto-Chiuso per Superamento Tempo';
+        return 'Auto-Chiusa per Mancata Uscita';
       case 'not-started':
-        return 'Nessun Turno Iniziato';
+        return 'Nessun Ingresso Registrato';
       default:
         return status.status;
     }
   };
   
-  // Get shift info display
-  const getShiftInfoDisplay = () => {
-    if (!status?.shiftInfo) return null;
-    
-    return {
-      name: status.shiftInfo.name,
-      maxTime: status.shiftInfo.maxClockOutTime,
-      maxDate: formatDate(status.shiftInfo.maxClockOutDate),
-      description: status.shiftInfo.description
-    };
-  };
-  
-  // Format time as HH:MM
+  // Format time as HH:MM AM/PM
   const formatTimeAMPM = (date) => {
     try {
       let hours = date.getHours();
       let minutes = date.getMinutes();
       
+      // Add leading zero if needed
       minutes = minutes < 10 ? '0' + minutes : minutes;
       
       return `${hours}:${minutes}`;
@@ -199,30 +178,11 @@ const TimekeepingStatus = () => {
     }
   };
   
-  // Calculate shift progress for active shifts
-  const getShiftProgress = () => {
-    if (!status || status.status !== 'in-progress' || !elapsedTime) {
-      return null;
-    }
-    
-    // Assume standard 8-hour shift for progress calculation
-    const standardShiftMinutes = 8 * 60;
-    const progressPercent = Math.min((elapsedTime.totalMinutes / standardShiftMinutes) * 100, 100);
-    
-    return {
-      percent: progressPercent,
-      isOvertime: elapsedTime.totalMinutes > standardShiftMinutes
-    };
-  };
-  
-  const shiftProgress = getShiftProgress();
-  const shiftInfo = getShiftInfoDisplay();
-  
   if (loading) {
     return (
       <div className="timekeeping-status-card loading">
         <div className="card-spinner"></div>
-        <p>Loading shift status...</p>
+        <p>Loading timekeeping status...</p>
       </div>
     );
   }
@@ -230,7 +190,7 @@ const TimekeepingStatus = () => {
   if (error && !status) {
     return (
       <div className="timekeeping-status-card error">
-        <h3>Shift Status</h3>
+        <h3>Timekeeping Status</h3>
         <div className="status-error">
           <p>{error}</p>
           <button className="retry-btn" onClick={() => window.location.reload()}>
@@ -244,7 +204,7 @@ const TimekeepingStatus = () => {
   return (
     <div className={`timekeeping-status-card ${getStatusClass()}`}>
       <div className="status-header">
-        <h3>Stato Turni di Oggi</h3>
+        <h3>Ore Lavorative Odierne</h3>
         <div className="current-time">{formatTimeAMPM(currentTime)}</div>
       </div>
       
@@ -269,18 +229,6 @@ const TimekeepingStatus = () => {
           <div className="status-date">
             {formatDate(status?.date)}
           </div>
-          
-          {/* Shift Information */}
-          {shiftInfo && (
-            <div className="shift-info">
-              <div className="shift-type">
-                <span className="shift-name">{shiftInfo.name}</span>
-              </div>
-              <div className="shift-limits">
-                Uscita entro le {shiftInfo.maxTime} del {shiftInfo.maxDate}
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="time-details">
@@ -292,32 +240,20 @@ const TimekeepingStatus = () => {
               </div>
               
               <div className="time-entry highlighted">
-                <div className="time-label">Tempo trascorso:</div>
+                <div className="time-label">Elapsed:</div>
                 <div className="time-value">{formatElapsedTime()}</div>
               </div>
               
-              {shiftProgress && (
-                <div className="progress-bar-container">
-                  <div 
-                    className="progress-bar" 
-                    style={{ 
-                      width: `${Math.min(shiftProgress.percent, 100)}%`,
-                      backgroundColor: shiftProgress.isOvertime ? 'var(--warning)' : 'var(--primary)'
-                    }}
-                  />
-                  <div className="progress-label">
-                    {shiftProgress.isOvertime ? 'Straordinario' : 'Turno Standard'}
-                  </div>
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar" 
+                  style={{ 
+                    width: `${Math.min((elapsedTime?.hours || 0) / 8 * 100, 100)}%`,
+                    backgroundColor: (elapsedTime?.hours || 0) >= 8 ? 'var(--success)' : 'var(--primary)'
+                  }}
+                >
                 </div>
-              )}
-              
-              {shiftInfo && (
-                <div className="shift-reminder">
-                  <small>
-                    💡 Ricorda di timbrare l'uscita entro le {shiftInfo.maxTime}
-                  </small>
-                </div>
-              )}
+              </div>
             </>
           )}
           
@@ -334,9 +270,9 @@ const TimekeepingStatus = () => {
               </div>
               
               <div className="time-entry highlighted">
-                <div className="time-label">Totale Ore:</div>
+                <div className="time-label">Totale:</div>
                 <div className="time-value">
-                  {status.totalHours}h
+                  {status.totalHours} 
                   {status.status === 'auto-closed' && <span className="auto-note">(Auto)</span>}
                 </div>
               </div>
@@ -344,64 +280,24 @@ const TimekeepingStatus = () => {
               <div className="hours-breakdown">
                 <div className="breakdown-item">
                   <span className="breakdown-label">Standard:</span>
-                  <span className="breakdown-value">{status.standardHours}h</span>
+                  <span className="breakdown-value">{status.standardHours}</span>
                 </div>
                 
                 <div className="breakdown-item">
                   <span className="breakdown-label">Straordinario:</span>
-                  <span className="breakdown-value">{status.overtimeHours}h</span>
+                  <span className="breakdown-value">{status.overtimeHours}</span>
                 </div>
-                
-                {status.sessionsCount > 1 && (
-                  <div className="breakdown-item">
-                    <span className="breakdown-label">Turni:</span>
-                    <span className="breakdown-value">{status.sessionsCount}</span>
-                  </div>
-                )}
               </div>
             </>
           )}
           
           {status?.status === 'not-started' && (
             <div className="not-started-message">
-              <p>Non hai iniziato nessun turno oggi.</p>
-              <p className="hint">Usa il tuo QR Code per timbrare l'ingresso.</p>
+              <p>Non hai timbrato oggi.</p>
+              <p className="hint">Usa il tuo QRCode per timbrare.</p>
             </div>
           )}
         </div>
-        
-        {/* Monthly Statistics */}
-        {shiftStats && (
-          <div className="monthly-stats-summary">
-            <h4>Statistiche Mensili</h4>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-value">{shiftStats.totalShifts}</span>
-                <span className="stat-label">Turni</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">{shiftStats.totalHours}h</span>
-                <span className="stat-label">Ore Totali</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">{shiftStats.dayShifts}</span>
-                <span className="stat-label">Turni Diurni</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">{shiftStats.eveningNightShifts}</span>
-                <span className="stat-label">Turni Serali</span>
-              </div>
-            </div>
-            
-            {shiftStats.splitShifts > 0 && (
-              <div className="split-shifts-info">
-                <small>
-                  📅 {shiftStats.splitShifts} turni su più giorni questo mese
-                </small>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
