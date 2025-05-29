@@ -769,3 +769,238 @@ const timekeepingService = {
       );
       
       const activeSnapshot = await getDocs(activeQuery);
+      
+      if (!activeSnapshot.empty) {
+        const activeRecord = activeSnapshot.docs[0].data();
+        return {
+          status: "in-progress",
+          message: `Turno in corso dal ${activeRecord.date} alle ${activeRecord.clockInTime}`,
+          date: activeRecord.date,
+          clockInTime: activeRecord.clockInTime,
+          clockInDate: activeRecord.date,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // Cerca record di oggi (completati o auto-chiusi)
+      const todayQuery = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", "==", dateString),
+        orderBy("clockInTimestamp", "desc"),
+        limit(1)
+      );
+      
+      const todaySnapshot = await getDocs(todayQuery);
+      
+      if (!todaySnapshot.empty) {
+        const todayRecord = todaySnapshot.docs[0].data();
+        
+        if (todayRecord.status === "completed") {
+          return {
+            status: "completed",
+            message: `Turno completato: ${todayRecord.clockInTime} - ${todayRecord.clockOutTime}`,
+            date: dateString,
+            clockInTime: todayRecord.clockInTime,
+            clockOutTime: todayRecord.clockOutTime,
+            totalHours: todayRecord.totalHours,
+            standardHours: todayRecord.standardHours,
+            overtimeHours: todayRecord.overtimeHours,
+            timestamp: new Date().toISOString()
+          };
+        } else if (todayRecord.status === "auto-closed") {
+          return {
+            status: "auto-closed",
+            message: `Turno auto-chiuso per mancata uscita: ${todayRecord.clockInTime} - ${todayRecord.clockOutTime}`,
+            date: dateString,
+            clockInTime: todayRecord.clockInTime,
+            clockOutTime: todayRecord.clockOutTime,
+            totalHours: todayRecord.totalHours,
+            standardHours: todayRecord.standardHours,
+            overtimeHours: todayRecord.overtimeHours,
+            autoClosedReason: todayRecord.autoClosedReason,
+            timestamp: new Date().toISOString()
+          };
+        }
+      }
+      
+      // Nessun record trovato per oggi
+      return {
+        status: "not-started",
+        message: "Nessuna timbratura registrata per oggi",
+        date: dateString,
+        timestamp: new Date().toISOString()
+      };
+      
+    } catch (error) {
+      console.error("Error getting today's status:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Registra un dispositivo per la scansione
+   */
+  async registerTimekeepingDevice(deviceId, deviceName, deviceInfo = {}) {
+    try {
+      const deviceRef = doc(db, "scanDevices", deviceId);
+      const existingDevice = await getDoc(deviceRef);
+      
+      const deviceData = {
+        deviceName,
+        deviceInfo,
+        active: true,
+        lastActivity: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      if (existingDevice.exists()) {
+        await updateDoc(deviceRef, deviceData);
+        return {
+          success: true,
+          message: `Dispositivo ${deviceName} aggiornato con successo`,
+          deviceId,
+          action: 'updated'
+        };
+      } else {
+        await setDoc(deviceRef, {
+          ...deviceData,
+          createdAt: serverTimestamp()
+        });
+        return {
+          success: true,
+          message: `Dispositivo ${deviceName} registrato con successo`,
+          deviceId,
+          action: 'created'
+        };
+      }
+    } catch (error) {
+      console.error("Error registering device:", error);
+      throw new Error(`Errore nella registrazione del dispositivo: ${error.message}`);
+    }
+  },
+
+  /**
+   * Sincronizza record offline
+   */
+  async syncOfflineRecords(offlineRecords) {
+    try {
+      console.log(`Syncing ${offlineRecords.length} offline records`);
+      
+      let successCount = 0;
+      let failedCount = 0;
+      const errors = [];
+      
+      for (const record of offlineRecords) {
+        try {
+          if (record.type === 'clockIn') {
+            await this.clockIn(record.userId, record.scanInfo);
+          } else if (record.type === 'clockOut') {
+            await this.clockOut(record.userId, record.scanInfo);
+          }
+          successCount++;
+        } catch (error) {
+          console.error("Error syncing record:", error, record);
+          failedCount++;
+          errors.push({
+            record,
+            error: error.message
+          });
+        }
+      }
+      
+      return {
+        success: successCount,
+        failed: failedCount,
+        total: offlineRecords.length,
+        errors
+      };
+      
+    } catch (error) {
+      console.error("Error syncing offline records:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Ottieni statistiche timbrature per un utente
+   */
+  async getUserTimekeepingStats(userId, startDate, endDate) {
+    try {
+      const timekeepingRef = collection(db, "timekeeping");
+      const q = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate),
+        where("status", "in", ["completed", "auto-closed"])
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const records = [];
+      
+      querySnapshot.forEach(doc => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Calcola statistiche
+      const totalHours = records.reduce((sum, record) => sum + (record.totalHours || 0), 0);
+      const standardHours = records.reduce((sum, record) => sum + (record.standardHours || 0), 0);
+      const overtimeHours = records.reduce((sum, record) => sum + (record.overtimeHours || 0), 0);
+      const autoClosedCount = records.filter(record => record.status === "auto-closed").length;
+      const completedCount = records.filter(record => record.status === "completed").length;
+      
+      return {
+        totalRecords: records.length,
+        totalHours,
+        standardHours,
+        overtimeHours,
+        completedCount,
+        autoClosedCount,
+        records
+      };
+      
+    } catch (error) {
+      console.error("Error getting user timekeeping stats:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Ottieni record timbrature per data range
+   */
+  async getTimekeepingRecords(userId, startDate, endDate) {
+    try {
+      const timekeepingRef = collection(db, "timekeeping");
+      const q = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate),
+        orderBy("date", "desc"),
+        orderBy("clockInTimestamp", "desc")
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const records = [];
+      
+      querySnapshot.forEach(doc => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      return records;
+      
+    } catch (error) {
+      console.error("Error getting timekeeping records:", error);
+      throw error;
+    }
+  }
+};
+
+export default timekeepingService;
