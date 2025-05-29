@@ -344,10 +344,8 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         <div className="kiosk-instructions">
           <div className="instruction-card">
             <h3>👆 Seleziona il tipo di timbratura</h3>
-            <p><strong>INGRESSO:</strong> Per iniziare la giornata lavorativa</p>
-            <p><strong>USCITA:</strong> Per terminare la giornata lavorativa</p>
             <p className="instruction-note">
-              📱 Dopo la selezione, avrai <strong>30 secondi</strong> per mostrare il tuo QR code alla camera
+              📱 Avrai <strong>30 secondi</strong> per mostrare il tuo QR code alla camera
             </p>
           </div>
         </div>
