@@ -742,4 +742,270 @@ const timekeepingService = {
         console.error("Error auto-closing sessions:", closeError);
       }
       
-      // Cerca
+      // Cerca record per oggi (ingresso attivo o completato)
+      const todayQuery = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", "==", dateString),
+        orderBy("clockInTimestamp", "desc")
+      );
+      
+      const todaySnapshot = await getDocs(todayQuery);
+      
+      // Cerca anche ieri per ingressi che potrebbero essere ancora attivi
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      
+      const yesterdayQuery = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", "==", yesterdayString),
+        where("status", "==", "in-progress")
+      );
+      
+      const yesterdayActiveSnapshot = await getDocs(yesterdayQuery);
+      
+      // Controlla se c'è un ingresso attivo da ieri
+      if (!yesterdayActiveSnapshot.empty) {
+        const activeRecord = yesterdayActiveSnapshot.docs[0].data();
+        
+        // Controlla se può ancora uscire oggi
+        if (canExitNextDay(activeRecord.clockInTime)) {
+          const maxExitInfo = calculateMaxExitTime(activeRecord.clockInTime, activeRecord.date);
+          const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          
+          if (maxExitInfo.maxExitDate === dateString) {
+            return {
+              status: "in-progress",
+              message: `Turno in corso dall'ingresso di ieri alle ${activeRecord.clockInTime}`,
+              date: dateString,
+              clockInTime: activeRecord.clockInTime,
+              clockInDate: activeRecord.date,
+              maxExitTime: maxExitInfo.maxExitTime,
+              canExitUntil: `${maxExitInfo.maxExitTime} di oggi`,
+              timestamp: now.toISOString()
+            };
+          }
+        }
+      }
+      
+      // Analizza i record di oggi
+      if (!todaySnapshot.empty) {
+        const todayRecords = todaySnapshot.docs.map(doc => doc.data());
+        
+        // Cerca il record più recente
+        const latestRecord = todayRecords[0];
+        
+        if (latestRecord.status === "in-progress") {
+          const maxExitInfo = calculateMaxExitTime(latestRecord.clockInTime, latestRecord.date);
+          
+          return {
+            status: "in-progress",
+            message: `Turno in corso dall'ingresso di oggi alle ${latestRecord.clockInTime}`,
+            date: dateString,
+            clockInTime: latestRecord.clockInTime,
+            clockInDate: latestRecord.date,
+            maxExitTime: maxExitInfo.maxExitTime,
+            maxExitDate: maxExitInfo.maxExitDate,
+            canExitUntil: maxExitInfo.isNextDay ? 
+              `${maxExitInfo.maxExitTime} di domani` : 
+              `${maxExitInfo.maxExitTime} di oggi`,
+            timestamp: now.toISOString()
+          };
+        } else if (latestRecord.status === "completed" || latestRecord.status === "auto-closed") {
+          // Calcola totale ore oggi (potrebbero essere multiple sessioni)
+          const todayCompletedRecords = todayRecords.filter(r => 
+            r.status === "completed" || r.status === "auto-closed"
+          );
+          
+          const totalHours = todayCompletedRecords.reduce((sum, record) => {
+            if (record.hoursDistribution && record.hoursDistribution[dateString]) {
+              return sum + record.hoursDistribution[dateString];
+            }
+            return sum + (record.totalHours || 0);
+          }, 0);
+          
+          const totalStandardHours = Math.min(8, totalHours);
+          const totalOvertimeHours = Math.max(0, totalHours - 8);
+          
+          return {
+            status: latestRecord.status,
+            message: `Giornata ${latestRecord.status === "completed" ? "completata" : "auto-chiusa"}`,
+            date: dateString,
+            clockInTime: latestRecord.clockInTime,
+            clockOutTime: latestRecord.clockOutTime,
+            totalHours: totalHours,
+            standardHours: totalStandardHours,
+            overtimeHours: totalOvertimeHours,
+            completedSessions: todayCompletedRecords.length,
+            lastSession: {
+              clockIn: latestRecord.clockInTime,
+              clockOut: latestRecord.clockOutTime,
+              hours: latestRecord.totalHours
+            },
+            timestamp: now.toISOString()
+          };
+        }
+      }
+      
+      // Nessun record per oggi
+      return {
+        status: "not-started",
+        message: "Nessuna timbratura oggi",
+        date: dateString,
+        timestamp: now.toISOString()
+      };
+      
+    } catch (error) {
+      console.error("Error getting today's status:", error);
+      return {
+        status: "error",
+        message: "Errore nel recupero dello stato",
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
+      };
+    }
+  },
+
+  /**
+   * Registra dispositivo per timbrature
+   */
+  async registerTimekeepingDevice(deviceId, deviceName, deviceInfo = {}) {
+    try {
+      const deviceRef = doc(db, "scanDevices", deviceId);
+      const existingDevice = await getDoc(deviceRef);
+      
+      if (existingDevice.exists()) {
+        // Aggiorna dispositivo esistente
+        await updateDoc(deviceRef, {
+          deviceName,
+          deviceInfo: {
+            ...existingDevice.data().deviceInfo,
+            ...deviceInfo
+          },
+          lastActivity: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        
+        return {
+          success: true,
+          message: `Dispositivo ${deviceName} aggiornato con successo`
+        };
+      } else {
+        // Registra nuovo dispositivo
+        await setDoc(deviceRef, {
+          deviceName,
+          deviceInfo,
+          active: true,
+          createdAt: serverTimestamp(),
+          lastActivity: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        
+        return {
+          success: true,
+          message: `Dispositivo ${deviceName} registrato con successo`
+        };
+      }
+    } catch (error) {
+      console.error("Error registering device:", error);
+      throw new Error(`Errore nella registrazione del dispositivo: ${error.message}`);
+    }
+  },
+
+  /**
+   * Sincronizza record offline
+   */
+  async syncOfflineRecords(offlineRecords) {
+    const results = {
+      total: offlineRecords.length,
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+    
+    for (const record of offlineRecords) {
+      try {
+        if (record.type === 'clockIn') {
+          await this.clockIn(record.userId, record.scanInfo);
+        } else if (record.type === 'clockOut') {
+          await this.clockOut(record.userId, record.scanInfo);
+        }
+        
+        results.success++;
+      } catch (error) {
+        console.error("Error syncing record:", error, record);
+        results.failed++;
+        results.errors.push({
+          record,
+          error: error.message
+        });
+      }
+    }
+    
+    return results;
+  },
+
+  /**
+   * Ottieni statistiche timbrature
+   */
+  async getTimekeepingStats(userId, startDate, endDate) {
+    try {
+      const timekeepingRef = collection(db, "timekeeping");
+      const q = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate),
+        orderBy("date", "desc")
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const records = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const stats = {
+        totalSessions: records.length,
+        completedSessions: records.filter(r => r.status === "completed").length,
+        autoClosedSessions: records.filter(r => r.status === "auto-closed").length,
+        inProgressSessions: records.filter(r => r.status === "in-progress").length,
+        totalHours: 0,
+        totalStandardHours: 0,
+        totalOvertimeHours: 0,
+        sessionsWithLunchBreak: 0,
+        nightShifts: 0,
+        additionalShifts: 0
+      };
+      
+      records.forEach(record => {
+        if (record.totalHours) {
+          stats.totalHours += record.totalHours;
+          stats.totalStandardHours += record.standardHours || 0;
+          stats.totalOvertimeHours += record.overtimeHours || 0;
+        }
+        
+        if (record.lunchBreakDeducted) {
+          stats.sessionsWithLunchBreak++;
+        }
+        
+        if (record.clockOutDate && record.clockOutDate !== record.date) {
+          stats.nightShifts++;
+        }
+        
+        if (record.isAdditionalShift) {
+          stats.additionalShifts++;
+        }
+      });
+      
+      return {
+        ...stats,
+        records
+      };
+    } catch (error) {
+      console.error("Error getting timekeeping stats:", error);
+      throw error;
+    }
+  }
+};
+
+export default timekeepingService;
