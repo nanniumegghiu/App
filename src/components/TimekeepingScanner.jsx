@@ -353,31 +353,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
         </div>
       )}
 
-      {/* Istruzioni durante la scansione */}
-      {scanType && isScanning && (
-        <div className="scanning-instructions">
-          <div className="instruction-card scanning">
-            <h3>📷 Scanner Attivo</h3>
-            <p>Modalità: <strong>{scanType === 'in' ? 'INGRESSO' : 'USCITA'}</strong></p>
-            <p>Posiziona il tuo QR code davanti alla camera</p>
-            <div className="timeout-indicator">
-              ⏱️ Tempo rimanente: 30 secondi
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Container scanner */}
       <div className="scanner-container">
         <div id="qr-reader" className="qr-reader"></div>
-        
-        {/* Placeholder quando scanner non attivo */}
-        {!isScanning && !scanResult && !error && (
-          <div className="scanner-placeholder kiosk-placeholder">
-            <div className="placeholder-icon">📱</div>
-            <p>Seleziona <strong>INGRESSO</strong> o <strong>USCITA</strong> per iniziare</p>
-          </div>
-        )}
         
         {/* Indicatore di elaborazione */}
         {isProcessing && (
@@ -414,13 +392,6 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
           >
             🔄 Riprova
           </button>
-        </div>
-      )}
-
-      {/* Info dispositivo (solo per debug, nascosto in produzione) */}
-      {process.env.NODE_ENV === 'development' && deviceId && (
-        <div className="device-debug-info">
-          <small>Device: {deviceId} | Cameras: {cameras.length}</small>
         </div>
       )}
     </div>
