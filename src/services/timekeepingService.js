@@ -469,7 +469,7 @@ const timekeepingService = {
   /**
    * Registra uscita - MODIFICATO per gestire turni notturni e sommatoria
    */
-  async clockOut(userId, scanInfo = {}) => {
+  async clockOut(userId, scanInfo = {}) {
     try {
       console.log(`ClockOut attempt for user: ${userId}`);
       

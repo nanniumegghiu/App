@@ -1,11 +1,11 @@
-// src/components/TimekeepingStatus.jsx - With improved error handling
+// src/components/TimekeepingStatus.jsx - Aggiornato per turni notturni e sommatoria ore
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import timekeepingService from '../services/timekeepingService';
 import './timekeepingStatus.css';
 
 /**
- * Component to display current timekeeping status on the user dashboard
+ * Component to display current timekeeping status with night shift support
  */
 const TimekeepingStatus = () => {
   const [status, setStatus] = useState(null);
@@ -80,32 +80,32 @@ const TimekeepingStatus = () => {
     return `${day}/${month}/${year}`;
   };
   
-  // Calculate elapsed time since clock-in
+  // Calculate elapsed time since clock-in for in-progress status
   const calculateElapsedTime = () => {
     if (!status || !status.clockInTime || status.status !== 'in-progress') {
       return null;
     }
     
     try {
-      // Parse clock-in time
-      const today = new Date();
+      // Parse clock-in time and date
+      const clockInDate = status.clockInDate || status.date;
       const [clockInHours, clockInMinutes] = status.clockInTime.split(':').map(Number);
       
       // Create Date objects for comparison
-      const clockInDate = new Date(today);
-      clockInDate.setHours(clockInHours, clockInMinutes, 0, 0);
+      const clockInDateTime = new Date(clockInDate);
+      clockInDateTime.setHours(clockInHours, clockInMinutes, 0, 0);
       
       // Calculate difference in minutes
-      const diffMs = today - clockInDate;
+      const diffMs = currentTime - clockInDateTime;
       const diffMinutes = Math.floor(diffMs / 60000);
       
       const hours = Math.floor(diffMinutes / 60);
       const minutes = diffMinutes % 60;
       
       return {
-        hours,
-        minutes,
-        totalMinutes: diffMinutes
+        hours: Math.max(0, hours),
+        minutes: Math.max(0, minutes),
+        totalMinutes: Math.max(0, diffMinutes)
       };
     } catch (err) {
       console.error('Error calculating elapsed time:', err);
@@ -150,19 +150,26 @@ const TimekeepingStatus = () => {
     
     switch (status.status) {
       case 'in-progress':
-        return 'In Corso';
+        // Check if it's a night shift (clock-in from yesterday)
+        if (status.clockInDate && status.clockInDate !== status.date) {
+          return 'Turno Notturno in Corso';
+        }
+        return 'Turno in Corso';
       case 'completed':
+        if (status.completedSessions > 1) {
+          return `Giornata Conclusa (${status.completedSessions} turni)`;
+        }
         return 'Giornata Conclusa';
       case 'auto-closed':
         return 'Auto-Chiusa per Mancata Uscita';
       case 'not-started':
-        return 'Nessun Ingresso Registrato';
+        return 'Nessuna Timbratura Oggi';
       default:
         return status.status;
     }
   };
   
-  // Format time as HH:MM AM/PM
+  // Format time as HH:MM
   const formatTimeAMPM = (date) => {
     try {
       let hours = date.getHours();
@@ -175,6 +182,28 @@ const TimekeepingStatus = () => {
     } catch (err) {
       console.error('Error formatting time:', err);
       return '--:--';
+    }
+  };
+  
+  // Check if exit time limit is approaching (within 2 hours)
+  const isExitLimitApproaching = () => {
+    if (!status || status.status !== 'in-progress' || !status.maxExitTime) {
+      return false;
+    }
+    
+    try {
+      const [maxHours, maxMinutes] = status.maxExitTime.split(':').map(Number);
+      const maxExitDate = status.maxExitDate || status.date;
+      
+      const maxExitDateTime = new Date(maxExitDate);
+      maxExitDateTime.setHours(maxHours, maxMinutes, 0, 0);
+      
+      const timeDiff = maxExitDateTime - currentTime;
+      const hoursUntilLimit = timeDiff / (1000 * 60 * 60);
+      
+      return hoursUntilLimit <= 2 && hoursUntilLimit > 0;
+    } catch (err) {
+      return false;
     }
   };
   
@@ -235,7 +264,9 @@ const TimekeepingStatus = () => {
           {status?.status === 'in-progress' && (
             <>
               <div className="time-entry">
-                <div className="time-label">Ingresso:</div>
+                <div className="time-label">
+                  Ingresso {status.clockInDate !== status.date ? `(${formatDate(status.clockInDate)})` : ''}:
+                </div>
                 <div className="time-value">{formatTime(status.clockInTime)}</div>
               </div>
               
@@ -243,6 +274,17 @@ const TimekeepingStatus = () => {
                 <div className="time-label">Trascorse:</div>
                 <div className="time-value">{formatElapsedTime()}</div>
               </div>
+              
+              {/* Exit limit warning for night shifts */}
+              {status.maxExitTime && status.canExitUntil && (
+                <div className={`time-entry ${isExitLimitApproaching() ? 'warning' : ''}`}>
+                  <div className="time-label">Limite uscita:</div>
+                  <div className="time-value">
+                    {status.canExitUntil}
+                    {isExitLimitApproaching() && <span className="warning-indicator"> ⚠️</span>}
+                  </div>
+                </div>
+              )}
               
               <div className="progress-bar-container">
                 <div 
@@ -259,20 +301,25 @@ const TimekeepingStatus = () => {
           
           {(status?.status === 'completed' || status?.status === 'auto-closed') && (
             <>
-              <div className="time-entry">
-                <div className="time-label">Ingresso:</div>
-                <div className="time-value">{formatTime(status.clockInTime)}</div>
-              </div>
-              
-              <div className="time-entry">
-                <div className="time-label">Uscita:</div>
-                <div className="time-value">{formatTime(status.clockOutTime)}</div>
-              </div>
+              {/* Show last session details */}
+              {status.lastSession && (
+                <>
+                  <div className="time-entry">
+                    <div className="time-label">Ultimo Ingresso:</div>
+                    <div className="time-value">{formatTime(status.lastSession.clockIn)}</div>
+                  </div>
+                  
+                  <div className="time-entry">
+                    <div className="time-label">Ultima Uscita:</div>
+                    <div className="time-value">{formatTime(status.lastSession.clockOut)}</div>
+                  </div>
+                </>
+              )}
               
               <div className="time-entry highlighted">
-                <div className="time-label">Totale:</div>
+                <div className="time-label">Totale Ore Oggi:</div>
                 <div className="time-value">
-                  {status.totalHours} 
+                  {status.totalHours || 0}
                   {status.status === 'auto-closed' && <span className="auto-note">(Auto)</span>}
                 </div>
               </div>
@@ -280,14 +327,30 @@ const TimekeepingStatus = () => {
               <div className="hours-breakdown">
                 <div className="breakdown-item">
                   <span className="breakdown-label">Standard:</span>
-                  <span className="breakdown-value">{status.standardHours}</span>
+                  <span className="breakdown-value">{status.standardHours || 0}</span>
                 </div>
                 
                 <div className="breakdown-item">
                   <span className="breakdown-label">Straordinario:</span>
-                  <span className="breakdown-value">{status.overtimeHours}</span>
+                  <span className="breakdown-value">{status.overtimeHours || 0}</span>
                 </div>
+                
+                {status.completedSessions > 1 && (
+                  <div className="breakdown-item">
+                    <span className="breakdown-label">Turni:</span>
+                    <span className="breakdown-value">{status.completedSessions}</span>
+                  </div>
+                )}
               </div>
+              
+              {/* Multiple sessions info */}
+              {status.completedSessions > 1 && (
+                <div className="multiple-sessions-info">
+                  <p className="info-text">
+                    📊 Ore totali da {status.completedSessions} turni completati oggi
+                  </p>
+                </div>
+              )}
             </>
           )}
           
@@ -299,6 +362,31 @@ const TimekeepingStatus = () => {
           )}
         </div>
       </div>
+      
+      {/* Night shift info */}
+      {status?.status === 'in-progress' && status.clockInDate !== status.date && (
+        <div className="night-shift-info">
+          <div className="info-badge night-shift">
+            🌙 Turno Notturno
+          </div>
+          <p className="info-text">
+            Iniziato ieri alle {formatTime(status.clockInTime)}. 
+            {status.canExitUntil && ` Puoi uscire ${status.canExitUntil}.`}
+          </p>
+        </div>
+      )}
+      
+      {/* Exit limit approaching warning */}
+      {isExitLimitApproaching() && (
+        <div className="exit-warning">
+          <div className="warning-badge">
+            ⚠️ Limite Uscita Vicino
+          </div>
+          <p className="warning-text">
+            Ricordati di timbrare l'uscita entro {status.canExitUntil}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -238,6 +238,114 @@
   background-color: var(--secondary);
 }
 
+/* Stili aggiuntivi da aggiungere a timekeepingStatus.css */
+
+/* Night shift indicator */
+.night-shift-info {
+  margin-top: 15px;
+  padding: 12px;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border-radius: 8px;
+  color: white;
+  text-align: center;
+}
+
+.info-badge.night-shift {
+  display: inline-block;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.info-text {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Exit warning */
+.exit-warning {
+  margin-top: 15px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  border-radius: 8px;
+  color: white;
+  text-align: center;
+  animation: warning-pulse 2s infinite;
+}
+
+@keyframes warning-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.warning-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.warning-text {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Warning indicator for approaching limits */
+.warning-indicator {
+  color: var(--warning);
+  font-weight: bold;
+  animation: blink-warning 1.5s infinite;
+}
+
+@keyframes blink-warning {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.5;
+  }
+}
+
+/* Multiple sessions info */
+.multiple-sessions-info {
+  margin-top: 15px;
+  padding: 10px;
+  background: rgba(52, 152, 219, 0.1);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 5px 5px 0;
+}
+
+.multiple-sessions-info .info-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* Enhanced time entry warning style */
+.time-entry.warning {
+  background-color: rgba(243, 156, 18, 0.1);
+  border-left: 3px solid var(--warning);
+  padding-left: 12px;
+}
+
+.time-entry.warning .time-value {
+  color: var(--warning);
+  font-weight: bold;
+}
+
 /* Responsive adjustments */
 @media (max-width: 576px) {
   .timekeeping-status-card {
