@@ -1,4 +1,4 @@
-// src/services/timekeepingService.js - Versione completa modificata
+// src/services/timekeepingService.js - Versione con supporto turni multi-data
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -12,7 +12,8 @@ import {
   where, 
   serverTimestamp, 
   Timestamp, 
-  limit
+  limit,
+  orderBy
 } from 'firebase/firestore';
 
 /**
@@ -104,16 +105,17 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
 };
 
 /**
- * Calcola le ore lavorative considerando le nuove regole
+ * Calcola le ore lavorative per turni multi-data
+ * Restituisce ore divise per data
  */
-const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
+const calculateMultiDayWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
   const [inHours, inMinutes] = clockInTime.split(':').map(Number);
   const [outHours, outMinutes] = clockOutTime.split(':').map(Number);
   
   let inTotalMinutes = inHours * 60 + inMinutes;
   let outTotalMinutes = outHours * 60 + outMinutes;
   
-  // Se uscita è il giorno dopo, aggiungi 24 ore
+  // Se uscita è il giorno dopo, aggiungi 24 ore all'uscita
   if (clockOutDate !== clockInDate) {
     outTotalMinutes += 1440;
   }
@@ -124,7 +126,7 @@ const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutD
     totalWorkedMinutes += 1440;
   }
   
-  // Controllo pausa pranzo
+  // Calcola pausa pranzo (1 ora se il turno è > 8 ore e attraversa l'orario 12:00-13:00)
   let lunchBreakMinutes = 0;
   const totalHours = totalWorkedMinutes / 60;
   
@@ -138,7 +140,7 @@ const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutD
         lunchBreakMinutes = 60;
       }
     } else {
-      // Giorno successivo
+      // Giorno successivo - controlla se attraversa l'orario pranzo in qualche giorno
       if (inTotalMinutes < lunchEnd || (outTotalMinutes - 1440) > lunchStart) {
         lunchBreakMinutes = 60;
       }
@@ -147,26 +149,234 @@ const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutD
   
   const netWorkedMinutes = totalWorkedMinutes - lunchBreakMinutes;
   
-  // Arrotonda alle mezz'ore
-  let roundedHours = Math.floor(netWorkedMinutes / 60);
-  const remainingMinutes = netWorkedMinutes % 60;
+  // Distribuzione delle ore per data
+  const workDistribution = [];
   
-  if (remainingMinutes >= 30) {
-    roundedHours += 1;
+  if (clockInDate === clockOutDate) {
+    // Stesso giorno - nessuna distribuzione necessaria
+    let roundedHours = Math.floor(netWorkedMinutes / 60);
+    const remainingMinutes = netWorkedMinutes % 60;
+    
+    if (remainingMinutes >= 30) {
+      roundedHours += 1;
+    }
+    
+    const standardHours = Math.min(8, roundedHours);
+    const overtimeHours = Math.max(0, roundedHours - 8);
+    
+    workDistribution.push({
+      date: clockInDate,
+      totalMinutes: netWorkedMinutes,
+      totalHours: roundedHours,
+      standardHours,
+      overtimeHours,
+      notes: `Turno ${clockInTime}-${clockOutTime}`
+    });
+  } else {
+    // Turno multi-data - distribuisci le ore
+    const startDate = new Date(clockInDate);
+    const endDate = new Date(clockOutDate);
+    
+    let remainingMinutes = netWorkedMinutes;
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate && remainingMinutes > 0) {
+      const dateString = currentDate.toISOString().split('T')[0];
+      let dayMinutes = 0;
+      
+      if (currentDate.getTime() === startDate.getTime()) {
+        // Primo giorno - calcola minuti dalla partenza alla mezzanotte
+        const minutesToMidnight = 1440 - inTotalMinutes;
+        dayMinutes = Math.min(remainingMinutes, minutesToMidnight);
+      } else if (currentDate.getTime() === endDate.getTime()) {
+        // Ultimo giorno - tutti i minuti rimanenti
+        dayMinutes = remainingMinutes;
+      } else {
+        // Giorni intermedi - 24 ore complete (se ci sono abbastanza minuti)
+        dayMinutes = Math.min(remainingMinutes, 1440);
+      }
+      
+      // Arrotonda alle mezz'ore
+      let roundedHours = Math.floor(dayMinutes / 60);
+      const remainingDayMinutes = dayMinutes % 60;
+      
+      if (remainingDayMinutes >= 30) {
+        roundedHours += 1;
+      }
+      
+      // Calcola standard e straordinario per questo giorno
+      const standardHours = Math.min(8, roundedHours);
+      const overtimeHours = Math.max(0, roundedHours - 8);
+      
+      if (roundedHours > 0) {
+        let notes = `Turno multi-data ${clockInTime}-${clockOutTime}`;
+        
+        if (currentDate.getTime() === startDate.getTime()) {
+          notes += ` (inizio ${clockInTime})`;
+        } else if (currentDate.getTime() === endDate.getTime()) {
+          notes += ` (fine ${clockOutTime})`;
+        } else {
+          notes += ` (giorno intermedio)`;
+        }
+        
+        workDistribution.push({
+          date: dateString,
+          totalMinutes: dayMinutes,
+          totalHours: roundedHours,
+          standardHours,
+          overtimeHours,
+          notes
+        });
+      }
+      
+      remainingMinutes -= dayMinutes;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
   
-  const standardHours = Math.min(8, roundedHours);
-  const overtimeHours = Math.max(0, roundedHours - 8);
+  // Calcola totali
+  const totalRoundedHours = workDistribution.reduce((sum, day) => sum + day.totalHours, 0);
+  const totalStandardHours = workDistribution.reduce((sum, day) => sum + day.standardHours, 0);
+  const totalOvertimeHours = workDistribution.reduce((sum, day) => sum + day.overtimeHours, 0);
   
   return {
     totalMinutesWorked: totalWorkedMinutes,
     netMinutesWorked: netWorkedMinutes,
     lunchBreakMinutes,
-    totalHours: roundedHours,
-    standardHours,
-    overtimeHours,
-    hasLunchBreak: lunchBreakMinutes > 0
+    totalHours: totalRoundedHours,
+    standardHours: totalStandardHours,
+    overtimeHours: totalOvertimeHours,
+    hasLunchBreak: lunchBreakMinutes > 0,
+    workDistribution,
+    isMultiDay: clockInDate !== clockOutDate
   };
+};
+
+/**
+ * Sincronizza con workHours per turni multi-data
+ */
+const syncMultiDayToWorkHours = async (userId, workDistribution) => {
+  const syncResults = [];
+  
+  for (const dayWork of workDistribution) {
+    try {
+      const { date, standardHours, overtimeHours, notes } = dayWork;
+      
+      if (!date || !userId) {
+        console.error("Missing required params in syncMultiDayToWorkHours:", { userId, date });
+        syncResults.push({ date, success: false, error: "Missing params" });
+        continue;
+      }
+      
+      const [year, month, day] = date.split('-');
+      
+      if (!year || !month || !day) {
+        console.error("Invalid date format in syncMultiDayToWorkHours:", date);
+        syncResults.push({ date, success: false, error: "Invalid date format" });
+        continue;
+      }
+      
+      const normalizedMonth = month.replace(/^0+/, '');
+      const workHoursId = `${userId}_${normalizedMonth}_${year}`;
+      const workHoursRef = doc(db, "workHours", workHoursId);
+      
+      try {
+        const workHoursSnap = await getDoc(workHoursRef);
+        
+        if (workHoursSnap.exists()) {
+          const workHoursData = workHoursSnap.data();
+          const entries = workHoursData.entries || [];
+          
+          const entryIndex = entries.findIndex(entry => entry.date === date);
+          
+          if (entryIndex >= 0) {
+            const existingEntry = entries[entryIndex];
+            
+            // Non sovrascrivere entries manuali (M, P, A)
+            if (typeof existingEntry.total === 'string' && ["M", "P", "A"].includes(existingEntry.total)) {
+              syncResults.push({ date, success: false, error: "Manual entry exists" });
+              continue;
+            }
+            
+            // Non sovrascrivere entries amministrative
+            const hasManualEntry = existingEntry.notes?.includes("Manual entry") || 
+                                 existingEntry.notes?.includes("Inserted by admin");
+            
+            if (hasManualEntry) {
+              syncResults.push({ date, success: false, error: "Admin entry exists" });
+              continue;
+            }
+            
+            // Aggiorna l'entry esistente
+            entries[entryIndex] = {
+              ...existingEntry,
+              total: standardHours,
+              overtime: overtimeHours,
+              notes: notes || "Aggiornato dal sistema di timbrature multi-data"
+            };
+            
+            await updateDoc(workHoursRef, {
+              entries,
+              lastUpdated: serverTimestamp()
+            });
+            
+            syncResults.push({ date, success: true, action: "updated" });
+          } else {
+            // Crea nuova entry
+            const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+            const isWeekend = [0, 6].includes(new Date(date).getDay());
+            
+            const newEntry = {
+              date,
+              day: dayOfWeek,
+              total: standardHours,
+              overtime: overtimeHours,
+              notes: notes || "Aggiunto dal sistema di timbrature multi-data",
+              isWeekend
+            };
+            
+            await updateDoc(workHoursRef, {
+              entries: [...entries, newEntry],
+              lastUpdated: serverTimestamp()
+            });
+            
+            syncResults.push({ date, success: true, action: "created" });
+          }
+        } else {
+          // Crea nuovo documento workHours
+          const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+          const isWeekend = [0, 6].includes(new Date(date).getDay());
+          
+          const entry = {
+            date,
+            day: dayOfWeek,
+            total: standardHours,
+            overtime: overtimeHours,
+            notes: notes || "Tramite Timbratura multi-data",
+            isWeekend
+          };
+          
+          await setDoc(workHoursRef, {
+            userId,
+            month: normalizedMonth,
+            year,
+            entries: [entry],
+            lastUpdated: serverTimestamp()
+          });
+          
+          syncResults.push({ date, success: true, action: "created_document" });
+        }
+      } catch (docError) {
+        console.error(`Error working with document ${workHoursId} for date ${date}:`, docError);
+        syncResults.push({ date, success: false, error: docError.message });
+      }
+    } catch (error) {
+      console.error(`Error syncing date ${dayWork.date}:`, error);
+      syncResults.push({ date: dayWork.date, success: false, error: error.message });
+    }
+  }
+  
+  return syncResults;
 };
 
 /**
@@ -187,11 +397,11 @@ const calculateAutoClose = (clockInTime, clockInDate) => {
 };
 
 /**
- * Service per la gestione delle timbrature
+ * Service per la gestione delle timbrature con supporto multi-data
  */
 const timekeepingService = {
   /**
-   * Registra ingresso - INVARIATO
+   * Registra ingresso - MODIFICATO per permettere più ingressi per data
    */
   async clockIn(userId, scanInfo = {}) {
     try {
@@ -222,30 +432,33 @@ const timekeepingService = {
       console.log(`Checking existing records for ${userId} on ${dateString}`);
       
       const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
+      
+      // Controlla se ci sono sessioni in corso (in-progress) per qualsiasi data
+      const activeQuery = query(
         timekeepingRef,
         where("userId", "==", userId),
-        where("date", "==", dateString)
+        where("status", "==", "in-progress")
       );
       
-      const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          const existingRecord = querySnapshot.docs[0].data();
-          console.log(`Found existing record:`, existingRecord);
-          
-          if (existingRecord.clockOutTime && existingRecord.status === "completed") {
-            throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
-          }
-          
-          if (existingRecord.status === "auto-closed") {
-            throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
-          }
-          
-          if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
-            throw new Error(`Hai già timbrato un ingresso alle ${existingRecord.clockInTime}. Timbra l'USCITA per completare la giornata.`);
-          }
-        }
+      const activeSnapshot = await getDocs(activeQuery);
+      
+      if (!activeSnapshot.empty) {
+        const activeRecord = activeSnapshot.docs[0].data();
+        throw new Error(`Hai già un ingresso attivo del ${activeRecord.date} alle ${activeRecord.clockInTime}. Prima devi timbrare l'USCITA.`);
+      }
+      
+      // Controlla se c'è già un record completato per oggi
+      const todayQuery = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("date", "==", dateString),
+        where("status", "in", ["completed", "auto-closed"])
+      );
+      
+      const todaySnapshot = await getDocs(todayQuery);
+      
+      // Se c'è già un turno completato oggi, permetti comunque un nuovo ingresso
+      // (questo permette turni multipli nella stessa giornata)
       
       console.log(`Creating new clock-in record for ${userId}`);
       
@@ -269,6 +482,9 @@ const timekeepingService = {
         year: year.toString(),
         month: month.toString(),
         day: day.toString(),
+        isMultiDay: false,
+        workDistribution: null,
+        shiftNumber: todaySnapshot.size + 1, // Numero del turno per la giornata
         scanInfo: {
           ...scanInfo,
           timestamp: now.toISOString()
@@ -280,10 +496,15 @@ const timekeepingService = {
       const docRef = await addDoc(timekeepingRef, recordData);
       console.log(`Clock-in successful with ID: ${docRef.id}`);
       
+      let message = "Ingresso registrato con successo";
+      if (todaySnapshot.size > 0) {
+        message += ` (Turno #${recordData.shiftNumber} per oggi)`;
+      }
+      
       return {
         id: docRef.id,
         ...recordData,
-        message: "Ingresso registrato con successo",
+        message,
         clockInTime: timeString,
         userName: recordData.userName
       };
@@ -294,7 +515,7 @@ const timekeepingService = {
   },
   
   /**
-   * Registra uscita - MODIFICATO CON NUOVE REGOLE
+   * Registra uscita - MODIFICATO per gestire turni multi-data
    */
   async clockOut(userId, scanInfo = {}) {
     try {
@@ -323,52 +544,18 @@ const timekeepingService = {
       
       const timekeepingRef = collection(db, "timekeeping");
       
-      // Prima cerca nel giorno corrente
-      let activeQuery = query(
+      // Cerca il record in-progress più recente (può essere di oggi o ieri)
+      const activeQuery = query(
         timekeepingRef,
         where("userId", "==", userId),
-        where("date", "==", currentDateString),
-        where("status", "==", "in-progress")
+        where("status", "==", "in-progress"),
+        orderBy("clockInTimestamp", "desc"),
+        limit(1)
       );
       
-      let activeSnapshot = await getDocs(activeQuery);
-      
-      // Se non trova nulla nel giorno corrente, cerca nel giorno precedente
-      if (activeSnapshot.empty) {
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-        
-        activeQuery = query(
-          timekeepingRef,
-          where("userId", "==", userId),
-          where("date", "==", yesterdayString),
-          where("status", "==", "in-progress")
-        );
-        
-        activeSnapshot = await getDocs(activeQuery);
-      }
+      const activeSnapshot = await getDocs(activeQuery);
       
       if (activeSnapshot.empty) {
-        // Verifica se c'è qualche record per oggi
-        const anyQuery = query(
-          timekeepingRef,
-          where("userId", "==", userId),
-          where("date", "==", currentDateString)
-        );
-        
-        const anySnapshot = await getDocs(anyQuery);
-        
-        if (!anySnapshot.empty) {
-          const existingRecord = anySnapshot.docs[0].data();
-          
-          if (existingRecord.status === "completed") {
-            throw new Error(`Hai già timbrato l'uscita oggi alle ${existingRecord.clockOutTime}. Ore lavorate: ${existingRecord.totalHours || 0}`);
-          } else if (existingRecord.status === "auto-closed") {
-            throw new Error("La giornata è stata chiusa automaticamente. Per modifiche contatta l'amministratore.");
-          }
-        }
-        
         throw new Error(`Nessun ingresso attivo trovato. Prima devi timbrare l'INGRESSO.`);
       }
       
@@ -377,7 +564,7 @@ const timekeepingService = {
       const docRef = doc(db, "timekeeping", activeSnapshot.docs[0].id);
       const record = activeSnapshot.docs[0].data();
       
-      // NUOVA VALIDAZIONE: Controlla se l'uscita è nei limiti consentiti
+      // Validazione: Controlla se l'uscita è nei limiti consentiti
       const validation = validateClockOutTime(
         record.clockInTime, 
         record.date, 
@@ -389,8 +576,8 @@ const timekeepingService = {
         throw new Error(validation.reason);
       }
       
-      // NUOVO CALCOLO: Usa le nuove regole per calcolare le ore
-      const workResult = calculateWorkingHours(
+      // NUOVO: Usa il calcolo multi-data
+      const workResult = calculateMultiDayWorkingHours(
         record.clockInTime,
         record.date,
         currentTimeString,
@@ -406,6 +593,8 @@ const timekeepingService = {
         overtimeHours: workResult.overtimeHours,
         lunchBreakDeducted: workResult.hasLunchBreak,
         lunchBreakMinutes: workResult.lunchBreakMinutes,
+        isMultiDay: workResult.isMultiDay,
+        workDistribution: workResult.workDistribution,
         status: "completed",
         scanInfo: {
           ...(record.scanInfo || {}),
@@ -420,20 +609,29 @@ const timekeepingService = {
       await updateDoc(docRef, updateData);
       console.log(`Clock-out successful for record: ${docRef.id}`);
       
-      // Sincronizza con workHours
+      // Sincronizza con workHours (può essere su più date)
       try {
-        await this.syncToWorkHours(userId, record.date, workResult.standardHours, workResult.overtimeHours);
+        const syncResults = await syncMultiDayToWorkHours(userId, workResult.workDistribution);
+        console.log("Multi-day sync results:", syncResults);
       } catch (syncError) {
-        console.error("Error syncing to workHours:", syncError);
+        console.error("Error syncing multi-day to workHours:", syncError);
       }
       
       const userName = userData.nome && userData.cognome ? 
         `${userData.nome} ${userData.cognome}` : userData.email;
       
-      // Messaggio dettagliato con informazioni pausa pranzo
-      let successMessage = `Uscita registrata con successo. Ore lavorate: ${workResult.totalHours}`;
+      // Messaggio dettagliato con informazioni turno multi-data
+      let successMessage = `Uscita registrata con successo. Ore totali: ${workResult.totalHours}`;
+      
       if (workResult.hasLunchBreak) {
         successMessage += ` (pausa pranzo di ${workResult.lunchBreakMinutes} min detratta)`;
+      }
+      
+      if (workResult.isMultiDay) {
+        successMessage += `\nTurno multi-data distribuito su ${workResult.workDistribution.length} giorni`;
+        workResult.workDistribution.forEach(day => {
+          successMessage += `\n- ${day.date}: ${day.totalHours}h (${day.standardHours} std + ${day.overtimeHours} straord.)`;
+        });
       }
       
       return {
@@ -452,7 +650,7 @@ const timekeepingService = {
   },
   
   /**
-   * Auto-chiusura sessioni aperte - MODIFICATO CON NUOVE REGOLE
+   * Auto-chiusura sessioni aperte - MODIFICATO per nuove regole
    */
   async autoCloseOpenSessions(userId) {
     try {
@@ -479,7 +677,7 @@ const timekeepingService = {
             continue;
           }
           
-          // NUOVO: Usa le regole per determinare quando chiudere
+          // Usa le regole per determinare quando chiudere
           const maxExitInfo = calculateMaxExitTime(session.clockInTime, session.date);
           const maxExitDateTime = new Date(`${maxExitInfo.maxExitDate}T${maxExitInfo.maxExitTime}`);
           
@@ -497,6 +695,14 @@ const timekeepingService = {
               overtimeHours: autoCloseData.overtimeHours,
               lunchBreakDeducted: autoCloseData.hasLunchBreak,
               lunchBreakMinutes: 0,
+              isMultiDay: autoCloseData.clockOutDate !== session.date,
+              workDistribution: [{
+                date: autoCloseData.clockOutDate,
+                totalHours: autoCloseData.totalHours,
+                standardHours: autoCloseData.standardHours,
+                overtimeHours: autoCloseData.overtimeHours,
+                notes: autoCloseData.autoClosedReason
+              }],
               status: "auto-closed",
               autoClosedReason: autoCloseData.autoClosedReason,
               updatedAt: serverTimestamp()
@@ -506,7 +712,7 @@ const timekeepingService = {
             
             // Sincronizza con workHours
             try {
-              await this.syncToWorkHours(userId, session.date, autoCloseData.standardHours, autoCloseData.overtimeHours);
+              await syncMultiDayToWorkHours(userId, updateData.workDistribution);
             } catch (syncError) {
               console.error("Error syncing auto-closed session:", syncError);
             }
@@ -534,7 +740,7 @@ const timekeepingService = {
   },
 
   /**
-   * Ottieni stato timbrature di oggi
+   * Ottieni stato timbrature di oggi - MODIFICATO per gestire turni multipli
    */
   async getTodayStatus(userId) {
     try {
@@ -545,13 +751,6 @@ const timekeepingService = {
       const dateString = `${year}-${month}-${day}`;
       
       const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
-        timekeepingRef,
-        where("userId", "==", userId),
-        where("date", "==", dateString)
-      );
-      
-      const querySnapshot = await getDocs(q);
       
       // Auto-chiudi sessioni scadute
       try {
@@ -560,300 +759,13 @@ const timekeepingService = {
         console.error("Error auto-closing sessions:", closeError);
       }
       
-      if (querySnapshot.empty) {
-        return {
-          status: "not-started",
-          message: "Non hai timbrato oggi",
-          date: dateString,
-          timestamp: now.toISOString()
-        };
-      }
-      
-      const record = querySnapshot.docs[0].data();
-      
-      return {
-        id: querySnapshot.docs[0].id,
-        status: record.status,
-        clockInTime: record.clockInTime,
-        clockOutTime: record.clockOutTime,
-        clockOutDate: record.clockOutDate,
-        totalHours: record.totalHours,
-        standardHours: record.standardHours,
-        overtimeHours: record.overtimeHours,
-        lunchBreakDeducted: record.lunchBreakDeducted,
-        lunchBreakMinutes: record.lunchBreakMinutes,
-        date: dateString,
-        message: record.status === "in-progress" 
-          ? "Attualmente al lavoro" 
-          : record.status === "completed"
-            ? "Giornata completata"
-            : "Giornata chiusa automaticamente",
-        timestamp: now.toISOString()
-      };
-    } catch (error) {
-      console.error("Error getting today's status:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Sincronizza con workHours - INVARIATO
-   */
-  async syncToWorkHours(userId, date, standardHours, overtimeHours) {
-    try {
-      if (!date || !userId) {
-        console.error("Missing required params in syncToWorkHours:", { userId, date });
-        return false;
-      }
-      
-      const [year, month, day] = date.split('-');
-      
-      if (!year || !month || !day) {
-        console.error("Invalid date format in syncToWorkHours:", date);
-        return false;
-      }
-      
-      const normalizedMonth = month.replace(/^0+/, '');
-      
-      const workHoursId = `${userId}_${normalizedMonth}_${year}`;
-      const workHoursRef = doc(db, "workHours", workHoursId);
-      
-      try {
-        const workHoursSnap = await getDoc(workHoursRef);
-        
-        if (workHoursSnap.exists()) {
-          const workHoursData = workHoursSnap.data();
-          const entries = workHoursData.entries || [];
-          
-          const entryIndex = entries.findIndex(entry => entry.date === date);
-          
-          if (entryIndex >= 0) {
-            const existingEntry = entries[entryIndex];
-            
-            if (typeof existingEntry.total === 'string' && ["M", "P", "A"].includes(existingEntry.total)) {
-              return false;
-            }
-            
-            const hasManualEntry = existingEntry.notes?.includes("Manual entry") || 
-                                existingEntry.notes?.includes("Inserted by admin");
-            
-            if (hasManualEntry) {
-              return false;
-            }
-            
-            entries[entryIndex] = {
-              ...existingEntry,
-              total: standardHours,
-              overtime: overtimeHours,
-              notes: existingEntry.notes || "Aggiornato dal sistema di timbrature"
-            };
-            
-            await updateDoc(workHoursRef, {
-              entries,
-              lastUpdated: serverTimestamp()
-            });
-          } else {
-            const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
-            const isWeekend = [0, 6].includes(new Date(date).getDay());
-            
-            const newEntry = {
-              date,
-              day: dayOfWeek,
-              total: standardHours,
-              overtime: overtimeHours,
-              notes: "Aggiunto dal sistema di timbrature",
-              isWeekend
-            };
-            
-            await updateDoc(workHoursRef, {
-              entries: [...entries, newEntry],
-              lastUpdated: serverTimestamp()
-            });
-          }
-        } else {
-          const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
-          const isWeekend = [0, 6].includes(new Date(date).getDay());
-          
-          const entry = {
-            date,
-            day: dayOfWeek,
-            total: standardHours,
-            overtime: overtimeHours,
-            notes: "Tramite Timbratura",
-            isWeekend
-          };
-          
-          await setDoc(workHoursRef, {
-            userId,
-            month: normalizedMonth,
-            year,
-            entries: [entry],
-            lastUpdated: serverTimestamp()
-          });
-        }
-      } catch (docError) {
-        console.error(`Error working with document ${workHoursId}:`, docError);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Error syncing to workHours:", error);
-      return false;
-    }
-  },
-
-  /**
-   * Altre funzioni del servizio - INVARIATE
-   */
-  async syncOfflineRecords(offlineRecords) {
-    if (!Array.isArray(offlineRecords) || offlineRecords.length === 0) {
-      return {
-        total: 0,
-        success: 0,
-        failed: 0,
-        errors: []
-      };
-    }
-    
-    const results = {
-      total: offlineRecords.length,
-      success: 0,
-      failed: 0,
-      errors: []
-    };
-    
-    for (const record of offlineRecords) {
-      try {
-        if (!record.userId) {
-          throw new Error("Missing userId in offline record");
-        }
-        
-        if (record.type === 'clockIn') {
-          await this.clockIn(record.userId, {
-            ...record.scanInfo,
-            offline: true,
-            originalTimestamp: record.timestamp
-          });
-        } else if (record.type === 'clockOut') {
-          await this.clockOut(record.userId, {
-            ...record.scanInfo,
-            offline: true,
-            originalTimestamp: record.timestamp
-          });
-        } else {
-          throw new Error(`Unknown record type: ${record.type}`);
-        }
-        
-        results.success++;
-      } catch (error) {
-        results.failed++;
-        results.errors.push({
-          record,
-          error: error.message
-        });
-      }
-    }
-    
-    return results;
-  },
-  
-  async getUserTimekeepingHistory(userId, options = {}) {
-    try {
-      if (!userId) {
-        console.error("Missing userId in getUserTimekeepingHistory");
-        return [];
-      }
-      
-      const { month, year, status } = options;
-      
-      let q = query(
-        collection(db, "timekeeping"),
-        where("userId", "==", userId)
+      // Cerca prima qualsiasi sessione in corso (può essere di ieri)
+      const activeQuery = query(
+        timekeepingRef,
+        where("userId", "==", userId),
+        where("status", "==", "in-progress"),
+        orderBy("clockInTimestamp", "desc"),
+        limit(1)
       );
       
-      if (month) {
-        q = query(q, where("month", "==", month.toString()));
-      }
-      
-      if (year) {
-        q = query(q, where("year", "==", year.toString()));
-      }
-      
-      if (status) {
-        q = query(q, where("status", "==", status));
-      }
-      
-      const querySnapshot = await getDocs(q);
-      
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error("Error getting timekeeping history:", error);
-      return [];
-    }
-  },
-  
-  async registerTimekeepingDevice(deviceId, deviceName, deviceInfo = {}) {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error("You must be logged in to register a device");
-      }
-      
-      const userRef = doc(db, "users", currentUser.uid);
-      const userSnap = await getDoc(userRef);
-      
-      if (!userSnap.exists() || userSnap.data().role !== "admin") {
-        throw new Error("Only administrators can register scanning devices");
-      }
-      
-      const deviceRef = doc(db, "scanDevices", deviceId);
-      const deviceSnap = await getDoc(deviceRef);
-      
-      if (deviceSnap.exists()) {
-        await updateDoc(deviceRef, {
-          deviceName,
-          deviceInfo: {
-            ...deviceSnap.data().deviceInfo,
-            ...deviceInfo
-          },
-          lastUpdated: serverTimestamp(),
-          updatedBy: currentUser.uid
-        });
-        
-        return {
-          id: deviceId,
-          deviceName,
-          updated: true,
-          message: "Device updated successfully"
-        };
-      }
-      
-      await setDoc(deviceRef, {
-        deviceId,
-        deviceName,
-        deviceInfo,
-        active: true,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser.uid,
-        lastUpdated: serverTimestamp(),
-        lastActivity: null
-      });
-      
-      return {
-        id: deviceId,
-        deviceName,
-        created: true,
-        message: "Device registered successfully"
-      };
-    } catch (error) {
-      console.error("Error registering device:", error);
-      throw error;
-    }
-  }
-};
-
-export default timekeepingService;
+      const activeSnapshot = await getDocs(activeQuery);
