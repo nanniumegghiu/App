@@ -1,877 +1,1879 @@
-/* src/components/timekeepingScanner.css - Versione completa e moderna */
+/* src/components/timekeepingScanner.css */
+.timekeeping-scanner {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
 
-/* ========================================
-   VARIABILI CSS E SETUP GLOBALE
-   ======================================== */
-   :root {
-    --primary-color: #3498db;
-    --secondary-color: #2980b9;
-    --success-color: #27ae60;
-    --danger-color: #e74c3c;
-    --warning-color: #f39c12;
-    --info-color: #17a2b8;
-    --light-color: #ecf0f1;
-    --dark-color: #2c3e50;
-    --gray-color: #95a5a6;
-    
-    /* Colori specifici per timekeeping */
-    --entry-color: #27ae60;
-    --exit-color: #e74c3c;
-    --scanner-bg: rgba(255, 255, 255, 0.95);
-    --overlay-bg: rgba(0, 0, 0, 0.8);
-    
-    /* Gradienti moderni */
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-success: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-    --gradient-danger: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-    
-    /* Shadows */
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
-    --shadow-xl: 0 12px 40px rgba(0,0,0,0.25);
-    
-    /* Animazioni */
-    --transition-fast: 0.2s ease;
-    --transition-normal: 0.3s ease;
-    --transition-slow: 0.5s ease;
-    
-    /* Spacing */
-    --space-xs: 0.25rem;
-    --space-sm: 0.5rem;
-    --space-md: 1rem;
-    --space-lg: 1.5rem;
-    --space-xl: 2rem;
-    --space-2xl: 3rem;
-    
-    /* Border radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --radius-2xl: 24px;
-    --radius-full: 50%;
+.scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.scanner-header h2 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.5rem;
+}
+
+.scanner-status {
+  display: flex;
+  gap: 10px;
+}
+
+.offline-badge,
+.pending-badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.offline-badge {
+  background-color: #f39c12;
+  color: white;
+}
+
+.pending-badge {
+  background-color: #3498db;
+  color: white;
+}
+
+.scan-type-selector {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.scan-type-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #f5f5f5;
+  color: #333;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  max-width: 200px;
+}
+
+.scan-type-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.scan-type-btn.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+.scan-type-btn.active:hover {
+  background-color: var(--secondary);
+}
+
+.camera-selector {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.camera-selector label {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.camera-selector select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: white;
+  flex: 1;
+}
+
+.scanner-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.toggle-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--success);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.toggle-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.toggle-btn.active {
+  background-color: var(--danger);
+}
+
+.toggle-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.retry-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--warning);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.retry-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.scanner-container {
+  margin-bottom: 20px;
+}
+
+#qr-reader {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  min-height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Camera issue section */
+.camera-issue {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.camera-issue h3 {
+  color: var(--danger);
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.camera-issue ul {
+  margin-bottom: 15px;
+  padding-left: 20px;
+}
+
+.camera-issue li {
+  margin-bottom: 8px;
+}
+
+/* Customizing the scanner UI */
+#qr-reader__dashboard {
+  background-color: #f8f9fa !important;
+  padding: 10px !important;
+}
+
+#qr-reader__status_span {
+  color: #333 !important;
+  font-size: 0.9rem !important;
+}
+
+#qr-reader video {
+  border-radius: 8px;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+#qr-reader select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  margin: 10px 0;
+  width: 100%;
+}
+
+#qr-reader button {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 10px 15px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  margin: 5px 0 !important;
+}
+
+#qr-reader button:hover {
+  background-color: var(--secondary) !important;
+}
+
+.scanner-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  color: #777;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.placeholder-icon {
+  margin-bottom: 15px;
+  color: #aaa;
+}
+
+.scan-result {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.scan-result.success {
+  background-color: rgba(46, 204, 113, 0.1);
+  border-left: 4px solid var(--success);
+}
+
+.scan-result.error {
+  background-color: rgba(231, 76, 60, 0.1);
+  border-left: 4px solid var(--danger);
+}
+
+.scan-result h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.error-text {
+  color: var(--danger);
+  margin-bottom: 15px;
+}
+
+.continue-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--primary);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+  background-color: var(--secondary);
+}
+
+.user-scan-info {
+  margin-bottom: 15px;
+  text-align: left;
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 10px 15px;
+  border-radius: 5px;
+}
+
+.user-scan-info p {
+  margin: 5px 0;
+}
+
+.offline-note {
+  color: var(--warning);
+  font-style: italic;
+}
+
+.offline-sync-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.offline-sync-section h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--dark);
+}
+
+.sync-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--primary);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.sync-btn:hover {
+  background-color: var(--secondary);
+}
+
+.device-info {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+/* Animation for scanning */
+@keyframes scanningPulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+#qr-reader video {
+  animation: scanningPulse 2s infinite;
+}
+
+/* Stili per il countdown e il riavvio automatico */
+.auto-resume-info {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.countdown-display {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.countdown-display strong {
+  color: #e74c3c;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.manual-resume-btn {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+}
+
+.manual-resume-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.manual-resume-btn:active {
+  transform: translateY(0);
+}
+
+/* Pulsante per avviare lo scanner nel placeholder */
+.start-scan-btn {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 25px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(39, 174, 96, 0.3);
+}
+
+.start-scan-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+}
+
+.start-scan-btn:active {
+  transform: translateY(0);
+}
+
+/* Miglioramenti per i risultati delle scansioni in modalità kiosk */
+.kiosk-mode .scan-result.success {
+  animation: scan-success-pulse 0.6s ease-out;
+}
+
+@keyframes scan-success-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Stili per il countdown visivo */
+.kiosk-mode .countdown-display {
+  font-size: 1.3rem;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.kiosk-mode .countdown-display strong {
+  color: #fff;
+  background: rgba(231, 76, 60, 0.8);
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 1.5rem;
+}
+
+/* Animazione per il countdown */
+.countdown-display strong {
+  animation: countdown-pulse 1s infinite;
+}
+
+@keyframes countdown-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Miglioramenti per il placeholder dello scanner */
+.scanner-placeholder {
+  padding: 40px 20px;
+  text-align: center;
+  border: 2px dashed #e0e0e0;
+  border-radius: 15px;
+  color: #777;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+.kiosk-mode .scanner-placeholder {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(52, 152, 219, 0.3);
+  color: #2c3e50;
+}
+
+.scanner-placeholder .placeholder-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  opacity: 0.6;
+}
+
+.kiosk-mode .scanner-placeholder .placeholder-icon {
+  font-size: 4rem;
+  opacity: 0.8;
+}
+
+.scanner-placeholder p {
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.kiosk-mode .scanner-placeholder p {
+  font-size: 1.3rem;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Stili migliorati per gli errori */
+.scan-result.error {
+  animation: error-shake 0.5s ease-out;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Responsive improvements per modalità kiosk */
+@media (max-width: 768px) {
+  .kiosk-mode .countdown-display {
+    font-size: 1.1rem;
   }
   
-  /* ========================================
-     CONTAINER PRINCIPALE
-     ======================================== */
-  .timekeeping-scanner {
-    position: relative;
+  .kiosk-mode .countdown-display strong {
+    font-size: 1.3rem;
+    padding: 1px 6px;
+  }
+  
+  .manual-resume-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+  
+  .start-scan-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .auto-resume-info {
+    padding: 10px;
+  }
+  
+  .countdown-display {
+    font-size: 1rem;
+  }
+  
+  .kiosk-mode .countdown-display {
+    font-size: 1rem;
+  }
+  
+  .kiosk-mode .countdown-display strong {
+    font-size: 1.2rem;
+  }
+  
+  .manual-resume-btn,
+  .start-scan-btn {
     width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-    background: var(--scanner-bg);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    overflow: hidden;
-    transition: all var(--transition-normal);
-    animation: scannerAppear 0.6s ease-out;
+    margin-top: 10px;
+  }
+}
+
+/* Stili per indicare lo stato di pausa */
+.scanner-paused-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(243, 156, 18, 0.9);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 10;
+}
+
+/* Animazione per l'indicatore di pausa */
+.scanner-paused-indicator {
+  animation: pause-blink 1.5s infinite;
+}
+
+@keyframes pause-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.7;
+  }
+}
+
+/* Stili per l'icona di loading durante l'inizializzazione */
+.scanner-initializing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.scanner-initializing .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(52, 152, 219, 0.3);
+  border-radius: 50%;
+  border-top-color: #3498db;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.kiosk-mode .scanner-initializing {
+  color: #2c3e50;
+}
+
+.kiosk-mode .scanner-initializing .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border-width: 5px;
+}
+
+/* Controlli manuali per modalità kiosk */
+.kiosk-manual-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.manual-control-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.manual-control-btn.start {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  box-shadow: 0 3px 15px rgba(39, 174, 96, 0.3);
+}
+
+.manual-control-btn.stop {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  box-shadow: 0 3px 15px rgba(231, 76, 60, 0.3);
+}
+
+.manual-control-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.manual-control-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Pulsante reset errori */
+.reset-error-btn {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(243, 156, 18, 0.3);
+}
+
+.reset-error-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+}
+
+/* Badge per errori */
+.error-badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  background-color: #e74c3c;
+  color: white;
+}
+
+.error-indicator {
+  color: #e74c3c;
+  font-weight: bold;
+  font-size: 0.9rem;
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Contatore errori */
+.error-count {
+  font-size: 0.9rem;
+  color: #e74c3c;
+  font-weight: bold;
+  margin: 10px 0;
+  text-align: center;
+}
+
+/* Azioni per gli errori */
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.reset-btn {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reset-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+}
+
+/* Info per controllo manuale */
+.manual-resume-info {
+  background: rgba(52, 152, 219, 0.1);
+  border-left: 4px solid #3498db;
+  padding: 15px;
+  margin-top: 15px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.manual-resume-info p {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Responsive per controlli kiosk */
+@media (max-width: 768px) {
+  .kiosk-manual-controls {
+    flex-direction: column;
+    gap: 10px;
   }
   
-  .timekeeping-scanner:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-xl);
-  }
-  
-  /* Modalità kiosk - Design più prominente */
-  .timekeeping-scanner.kiosk-mode {
-    max-width: min(700px, 95vw);
-    min-height: 500px;
-    background: var(--scanner-bg);
-    backdrop-filter: blur(25px);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 
-      var(--shadow-xl), 
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-  
-  /* ========================================
-     HEADER DELLO SCANNER
-     ======================================== */
-  .scanner-header {
-    padding: var(--space-lg) var(--space-xl);
-    background: var(--gradient-primary);
-    color: white;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .scanner-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
+  .manual-control-btn {
     width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    animation: shimmer 3s infinite;
+    min-width: auto;
+    padding: 10px 20px;
+    font-size: 1rem;
   }
   
-  .scanner-header h2 {
-    margin: 0;
-    font-size: clamp(1.5rem, 4vw, 2rem);
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    letter-spacing: -0.025em;
-    position: relative;
-    z-index: 1;
+  .error-actions {
+    flex-direction: column;
+    gap: 8px;
   }
   
-  .scanner-header .subtitle {
-    margin: var(--space-sm) 0 0 0;
-    font-size: clamp(0.9rem, 2.5vw, 1rem);
-    opacity: 0.9;
-    font-weight: 400;
+  .reset-btn,
+  .continue-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .kiosk-manual-controls {
+    padding: 10px;
+    margin: 15px 0;
   }
   
-  /* ========================================
-     SELETTORE TIPO DI SCANSIONE
-     ======================================== */
-  .scan-type-selector {
-    padding: var(--space-xl);
-    display: flex;
-    gap: var(--space-md);
+  .manual-control-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+  
+  .reset-error-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Stili aggiuntivi per modalità normale */
+.scanner-toggle .reset-error-btn {
+  margin-left: 10px;
+}
+
+/* Animazione per l'indicatore di errori consecutivi */
+.scan-result.error {
+  border-left: 5px solid #e74c3c;
+}
+
+.scan-result.error .error-count {
+  background: rgba(231, 76, 60, 0.1);
+  padding: 8px;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+/* Stile per il placeholder quando scanner è fermato manualmente */
+.scanner-placeholder.manual-stop {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, 0.05);
+}
+
+.scanner-placeholder.manual-stop .placeholder-icon {
+  color: #f39c12;
+}
+
+/* Indicatore di stato avanzato */
+.scanner-status .error-badge {
+  animation: blink-error 1.5s infinite;
+}
+
+@keyframes blink-error {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.7;
+  }
+}
+
+/* Aggiungi queste regole CSS al file src/components/timekeepingScanner.css */
+
+/* Indicatori di stato migliorati */
+.scanner-status {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cooldown-badge,
+.cooldown-indicator {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  background-color: #f39c12;
+  color: white;
+  animation: pulse-cooldown 2s infinite;
+}
+
+@keyframes pulse-cooldown {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Contatori errori migliorati */
+.error-count,
+.stable-error-count {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.error-count {
+  color: #e74c3c;
+}
+
+.stable-error-count {
+  color: #d35400;
+  background: rgba(211, 84, 0, 0.1);
+  border-color: rgba(211, 84, 0, 0.3);
+}
+
+/* Miglioramenti per la modalità kiosk */
+.kiosk-mode .scanner-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.kiosk-mode .error-indicator,
+.kiosk-mode .cooldown-indicator {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kiosk-mode .error-indicator {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  animation: blink-warning 1.5s infinite;
+}
+
+.kiosk-mode .cooldown-indicator {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+}
+
+@keyframes blink-warning {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.6;
+  }
+}
+
+/* Controlli manuali migliorati per kiosk */
+.kiosk-manual-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.manual-control-btn {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.manual-control-btn.start {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.manual-control-btn.stop {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.manual-control-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.manual-control-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Reset button migliorato */
+.reset-error-btn {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 12px rgba(243, 156, 18, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.reset-error-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px rgba(243, 156, 18, 0.4);
+}
+
+.reset-error-btn:active {
+  transform: translateY(0);
+}
+
+/* Miglioramenti per risultati errori */
+.scan-result.error {
+  border-left: 5px solid #e74c3c;
+  position: relative;
+}
+
+.scan-result.error::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Azioni errori */
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.continue-btn,
+.reset-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.continue-btn {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.reset-btn {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  box-shadow: 0 3px 10px rgba(243, 156, 18, 0.3);
+}
+
+.reset-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+}
+
+/* Indicatore di pausa per cooldown */
+.scanner-paused-cooldown {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(243, 156, 18, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 15;
+  animation: cooldown-pulse 1.5s infinite;
+}
+
+@keyframes cooldown-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Miglioramenti responsivi */
+@media (max-width: 768px) {
+  .kiosk-manual-controls {
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+  }
+  
+  .manual-control-btn {
+    width: 100%;
+    min-width: auto;
+    padding: 12px 20px;
+    font-size: 1rem;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .continue-btn,
+  .reset-btn {
+    width: 100%;
     justify-content: center;
-    background: rgba(0,0,0,0.02);
-    flex-wrap: wrap;
   }
   
-  .scan-type-btn {
-    flex: 1;
-    min-width: 140px;
-    max-width: 200px;
-    padding: var(--space-lg) var(--space-xl);
-    border: 2px solid transparent;
-    border-radius: var(--radius-lg);
-    font-size: clamp(1rem, 3vw, 1.2rem);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-normal);
-    position: relative;
-    overflow: hidden;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-sm);
-    background: rgba(255, 255, 255, 0.5);
-    color: var(--dark-color);
-    backdrop-filter: blur(10px);
+  .scanner-stats {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .kiosk-manual-controls {
+    padding: 12px;
+    margin: 15px 0;
   }
   
-  .scan-type-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
+  .manual-control-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+  
+  .reset-error-btn {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  
+  .error-count,
+  .stable-error-count {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+}
+
+/* Animazioni di feedback per errori */
+.scan-result.error.shake {
+  animation: error-shake 0.6s ease-in-out;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Indicatore di stabilità scanner */
+.scanner-stability-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  z-index: 20;
+}
+
+.scanner-stability-indicator.stable {
+  background: rgba(46, 204, 113, 0.8);
+}
+
+.scanner-stability-indicator.unstable {
+  background: rgba(231, 76, 60, 0.8);
+  animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Badge per cooldown nella barra di stato normale */
+.cooldown-badge {
+  animation: rotate-cooldown 2s linear infinite;
+}
+
+@keyframes rotate-cooldown {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Stili aggiuntivi per modalità kiosk con scanner in pausa - da aggiungere a timekeepingScanner.css */
+
+/* Istruzioni per modalità kiosk */
+.kiosk-instructions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 40px 20px;
+  min-height: 200px;
+}
+
+.instruction-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  max-width: 500px;
+  width: 100%;
+  animation: instruction-pulse 3s infinite;
+}
+
+@keyframes instruction-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 15px 40px rgba(52, 152, 219, 0.3);
+  }
+}
+
+.instruction-card h3 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.instruction-card p {
+  margin: 15px 0;
+  color: #555;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.instruction-card strong {
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+/* Miglioramenti per i pulsanti di tipo scansione in modalità kiosk */
+.kiosk-mode .scan-type-selector {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.kiosk-mode .scan-type-btn {
+  font-size: 1.4rem;
+  padding: 20px 40px;
+  border-radius: 15px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  min-width: 200px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kiosk-mode .scan-type-btn:not(.active) {
+  background: rgba(255, 255, 255, 0.8);
+  color: #2c3e50;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.kiosk-mode .scan-type-btn:not(.active):hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.kiosk-mode .scan-type-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  transform: scale(1.05);
+}
+
+.kiosk-mode .scan-type-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Animazione di selezione per i pulsanti */
+.kiosk-mode .scan-type-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: button-shine 2s infinite;
+}
+
+@keyframes button-shine {
+  0% {
     left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    transition: left var(--transition-normal);
   }
-  
-  .scan-type-btn:hover::before {
+  100% {
     left: 100%;
   }
-  
-  .scan-type-btn:hover:not(:disabled) {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: var(--shadow-md);
+}
+
+/* Miglioramenti per controlli manuali */
+.kiosk-mode .kiosk-manual-controls {
+  margin: 25px 0;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+/* Informazioni sulla prossima scansione */
+.next-scan-info {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  text-align: center;
+  border-left: 4px solid #3498db;
+}
+
+.next-scan-info p {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+/* Miglioramenti per placeholder scanner */
+.kiosk-mode .scanner-placeholder {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px dashed rgba(52, 152, 219, 0.3);
+  border-radius: 15px;
+  padding: 40px 20px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.kiosk-mode .scanner-placeholder .placeholder-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.kiosk-mode .scanner-placeholder p {
+  font-size: 1.2rem;
+  color: #2c3e50;
+  margin: 10px 0;
+  font-weight: 500;
+}
+
+.kiosk-mode .scanner-placeholder strong {
+  color: #3498db;
+  font-weight: 700;
+}
+
+/* Animazioni per i risultati delle scansioni */
+.kiosk-mode .scan-result.success {
+  animation: scan-success-appear 0.6s ease-out;
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  border: none;
+  color: white;
+  border-radius: 20px;
+  padding: 30px;
+  margin: 20px 0;
+}
+
+@keyframes scan-success-appear {
+  0% {
+    transform: scale(0.8) translateY(20px);
+    opacity: 0;
   }
-  
-  /* Stili specifici per tipo di scansione */
-  .scan-type-btn:first-child {
-    background: linear-gradient(135deg, rgba(39, 174, 96, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%);
-    border-color: rgba(39, 174, 96, 0.2);
-    color: var(--success-color);
+  50% {
+    transform: scale(1.05) translateY(-5px);
+    opacity: 0.9;
   }
-  
-  .scan-type-btn:last-child {
-    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%);
-    border-color: rgba(231, 76, 60, 0.2);
-    color: var(--danger-color);
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
   }
-  
-  /* Stato attivo */
-  .scan-type-btn.active {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: var(--shadow-lg);
-    z-index: 2;
+}
+
+.kiosk-mode .scan-result h4 {
+  font-size: 1.8rem;
+  margin: 0 0 20px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.kiosk-mode .user-scan-info {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 20px 0;
+  backdrop-filter: blur(5px);
+}
+
+.kiosk-mode .user-scan-info p {
+  margin: 10px 0;
+  font-size: 1.1rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Miglioramenti per errori */
+.kiosk-mode .scan-result.error {
+  animation: error-shake 0.5s ease-out;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border-radius: 20px;
+  padding: 30px;
+  margin: 20px 0;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
   }
-  
-  .scan-type-btn.active:first-child {
-    background: var(--gradient-success);
-    color: white;
-    border-color: var(--success-color);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  25% {
+    transform: translateX(-10px);
   }
-  
-  .scan-type-btn.active:last-child {
-    background: var(--gradient-danger);
-    color: white;
-    border-color: var(--danger-color);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  75% {
+    transform: translateX(10px);
   }
-  
-  /* Stato disabilitato */
-  .scan-type-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    filter: grayscale(50%);
-  }
-  
-  /* ========================================
-     CONTAINER DELLO SCANNER
-     ======================================== */
-  .scanner-container {
-    padding: var(--space-xl);
-    min-height: 350px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  
-  /* QR Reader - Stili migliorati */
-  #qr-reader {
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-    background: #000;
-    position: relative;
-  }
-  
-  #qr-reader video {
-    width: 100% !important;
-    height: auto !important;
-    max-height: 300px !important;
-    object-fit: cover !important;
-    border-radius: var(--radius-lg) !important;
-    background: #000;
-  }
-  
-  #qr-reader canvas {
-    border-radius: var(--radius-lg) !important;
-  }
-  
-  /* Overlay di scansione */
-  #qr-reader::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 200px;
-    height: 200px;
-    border: 3px solid rgba(52, 152, 219, 0.8);
-    border-radius: var(--radius-lg);
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    animation: scanOverlay 2s infinite;
-  }
-  
-  /* ========================================
-     PLACEHOLDER E STATI
-     ======================================== */
-  .scanner-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: var(--space-2xl);
-    background: rgba(0,0,0,0.02);
-    border: 2px dashed rgba(0,0,0,0.1);
-    border-radius: var(--radius-lg);
-    min-height: 250px;
-    width: 100%;
-    transition: all var(--transition-normal);
-  }
-  
-  .scanner-placeholder:hover {
-    background: rgba(0,0,0,0.04);
-    border-color: rgba(0,0,0,0.2);
-  }
-  
-  .placeholder-icon {
-    font-size: clamp(3rem, 8vw, 4rem);
-    margin-bottom: var(--space-lg);
-    opacity: 0.7;
-    animation: float 3s ease-in-out infinite;
-  }
-  
-  .scanner-placeholder p {
-    margin: var(--space-sm) 0;
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    color: var(--dark-color);
-    font-weight: 500;
-    line-height: 1.5;
-  }
-  
-  .scanner-placeholder .highlight {
-    color: var(--primary-color);
-    font-weight: 700;
-  }
-  
-  /* ========================================
-     ISTRUZIONI
-     ======================================== */
-  .kiosk-instructions {
-    padding: var(--space-xl);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .scanning-instructions {
-    padding: var(--space-lg) var(--space-xl);
-    background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(52, 152, 219, 0.05) 100%);
-    border-top: 1px solid rgba(52, 152, 219, 0.2);
-  }
-  
+}
+
+/* Responsive per modalità kiosk */
+@media (max-width: 768px) {
   .instruction-card {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(15px);
-    border-radius: var(--radius-xl);
-    padding: var(--space-2xl);
-    text-align: center;
-    box-shadow: var(--shadow-md);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    max-width: 500px;
-    width: 100%;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .instruction-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--gradient-primary);
-  }
-  
-  .instruction-card.scanning {
-    background: linear-gradient(135deg, rgba(39, 174, 96, 0.95) 0%, rgba(46, 204, 113, 0.95) 100%);
-    color: white;
-    animation: pulse 2s infinite;
-  }
-  
-  .instruction-card.scanning::before {
-    background: rgba(255, 255, 255, 0.3);
+    padding: 30px 20px;
+    margin: 20px;
   }
   
   .instruction-card h3 {
-    margin: 0 0 var(--space-lg) 0;
-    font-size: clamp(1rem, 4vw, 1.6rem);
-    font-weight: 700;
-    color: inherit;
-    line-height: 1.3;
+    font-size: 1.5rem;
   }
   
   .instruction-card p {
-    margin: var(--space-md) 0;
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    line-height: 1.6;
-    color: inherit;
-    opacity: 0.9;
+    font-size: 1.1rem;
   }
   
-  .instruction-card .highlight {
-    font-weight: 700;
-    color: var(--primary-color);
+  .kiosk-mode .scan-type-btn {
+    font-size: 1.2rem;
+    padding: 15px 30px;
+    min-width: 160px;
   }
   
-  .instruction-card.scanning .highlight {
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  .kiosk-mode .scan-result h4 {
+    font-size: 1.5rem;
   }
   
-  .instruction-note {
-    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
-    background: rgba(52, 152, 219, 0.1);
-    padding: var(--space-md);
-    border-radius: var(--radius-md);
-    border-left: 4px solid var(--primary-color);
-    margin-top: var(--space-lg) !important;
+  .kiosk-mode .user-scan-info p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .kiosk-instructions {
+    margin: 20px 10px;
+    min-height: 150px;
   }
   
-  .timeout-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-sm);
-    background: rgba(255, 255, 255, 0.2);
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--radius-full);
-    font-weight: 600;
-    font-size: clamp(0.9rem, 2.5vw, 1rem);
-    margin-top: var(--space-md);
-    animation: timeoutBlink 1s infinite alternate;
+  .instruction-card {
+    padding: 20px 15px;
   }
   
-  /* ========================================
-     INDICATORI DI STATO
-     ======================================== */
-  .processing-indicator {
-    display: flex;
+  .instruction-card h3 {
+    font-size: 1.3rem;
+  }
+  
+  .instruction-card p {
+    font-size: 1rem;
+  }
+  
+  .kiosk-mode .scan-type-selector {
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-2xl);
-    text-align: center;
+    gap: 15px;
   }
   
-  .processing-indicator .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(52, 152, 219, 0.2);
-    border-left-color: var(--primary-color);
-    border-radius: var(--radius-full);
-    animation: spin 1s linear infinite;
-    margin-bottom: var(--space-lg);
+  .kiosk-mode .scan-type-btn {
+    font-size: 1.1rem;
+    padding: 12px 25px;
+    min-width: auto;
+    width: 100%;
   }
-  
-  .processing-indicator p {
-    margin: 0;
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    font-weight: 600;
-    color: var(--primary-color);
-    animation: pulse 1.5s infinite;
+}
+
+/* Animazione per quando lo scanner viene attivato */
+.kiosk-mode #qr-reader {
+  animation: scanner-activate 0.5s ease-out;
+}
+
+@keyframes scanner-activate {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
   }
-  
-  /* ========================================
-     ERRORI E MESSAGGI
-     ======================================== */
-  .camera-error {
-    padding: var(--space-2xl);
-    text-align: center;
-    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%);
-    border: 2px solid rgba(231, 76, 60, 0.2);
-    border-radius: var(--radius-lg);
-    margin: var(--space-lg);
-  }
-  
-  .camera-error h3 {
-    margin: 0 0 var(--space-lg) 0;
-    color: var(--danger-color);
-    font-size: clamp(1.2rem, 4vw, 1.4rem);
-    font-weight: 700;
-  }
-  
-  .camera-error p {
-    margin: 0 0 var(--space-lg) 0;
-    color: var(--danger-color);
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    opacity: 0.9;
-  }
-  
-  .retry-btn {
-    background: var(--gradient-danger);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--space-md) var(--space-xl);
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-normal);
-    box-shadow: var(--shadow-sm);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-  
-  .retry-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-  
-  /* ========================================
-     MODALITÀ AMMINISTRATORE
-     ======================================== */
-  .admin-mode-notice {
-    padding: var(--space-xl);
-    text-align: center;
-    background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(52, 152, 219, 0.05) 100%);
-    border: 2px solid rgba(52, 152, 219, 0.2);
-    border-radius: var(--radius-lg);
-    margin: var(--space-lg);
-  }
-  
-  .admin-mode-notice p {
-    margin: var(--space-sm) 0;
-    color: var(--primary-color);
-    font-size: clamp(1rem, 3vw, 1.1rem);
-    font-weight: 500;
-  }
-  
-  /* ========================================
-     NOTIFICHE KIOSK
-     ======================================== */
-  .kiosk-notification-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    pointer-events: none;
-    padding: var(--space-lg);
-  }
-  
-  .kiosk-notification-overlay .notification {
-    pointer-events: all;
-    transform: scale(1.2);
-    font-size: clamp(1.1rem, 3vw, 1.3rem);
-    font-weight: 600;
-    text-align: center;
-    padding: var(--space-xl) var(--space-2xl);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
-    backdrop-filter: blur(20px);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    max-width: 500px;
-    white-space: pre-line;
-    line-height: 1.4;
-  }
-  
-  /* ========================================
-     DEBUG INFO
-     ======================================== */
-  .device-debug-info {
-    position: absolute;
-    bottom: var(--space-sm);
-    right: var(--space-sm);
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-family: monospace;
-    opacity: 0.5;
-    transition: opacity var(--transition-fast);
-  }
-  
-  .device-debug-info:hover {
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
-  
-  /* ========================================
-     PERSONALIZZAZIONI HTML5QRCODE
-     ======================================== */
-  #qr-reader__dashboard_section {
-    display: none !important;
+}
+
+/* Indicatore dello stato dello scanner */
+.scanner-status-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 10;
+}
+
+.scanner-status-indicator.active {
+  background: rgba(46, 204, 113, 0.9);
+}
+
+.scanner-status-indicator.paused {
+  background: rgba(243, 156, 18, 0.9);
+}
+
+.scanner-status-indicator.error {
+  background: rgba(231, 76, 60, 0.9);
+}
+
+/* Miglioramenti per l'accessibilità */
+.kiosk-mode .scan-type-btn:focus {
+  outline: 3px solid rgba(52, 152, 219, 0.6);
+  outline-offset: 3px;
+}
+
+.kiosk-mode .manual-control-btn:focus,
+.kiosk-mode .start-scan-btn:focus {
+  outline: 3px solid rgba(52, 152, 219, 0.6);
+  outline-offset: 2px;
+}
+
+/* Transizioni fluide per cambio di stato */
+.kiosk-mode .scanner-container {
+  transition: all 0.3s ease;
+}
+
+.kiosk-mode .scan-type-selector {
+  transition: all 0.3s ease;
+}
+
+/* Evidenziazione del tipo selezionato */
+.kiosk-mode .scan-type-btn.active {
+  position: relative;
+}
+
+.kiosk-mode .scan-type-btn.active::after {
+  content: '✓';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: white;
+  color: #2c3e50;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Stili per timeout scansione */
+.scan-timeout-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(243, 156, 18, 0.95);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-weight: bold;
+  z-index: 100;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.timeout-countdown {
+  font-size: 1.2rem;
+  margin-top: 10px;
+}
+
+/* Stili per single scan mode */
+.single-scan-indicator {
+  background: rgba(46, 204, 113, 0.9);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 10px 0;
+  text-align: center;
+  animation: pulse-single-scan 2s infinite;
+}
+
+@keyframes pulse-single-scan {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Stili per scanner completato */
+.scan-completed {
+  background: rgba(46, 204, 113, 0.1);
+  border: 2px solid #2ecc71;
+  border-radius: 15px;
+  padding: 30px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.scan-completed h3 {
+  color: #27ae60;
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+}
+
+.scan-completed p {
+  color: #2c3e50;
+  margin: 10px 0;
+  font-size: 1.1rem;
+}
+
+/* Timeout overlay */
+.timeout-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  border-radius: 8px;
+}
+
+.timeout-message {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  max-width: 300px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.timeout-message h4 {
+  color: #e74c3c;
+  margin: 0 0 15px 0;
+  font-size: 1.3rem;
+}
+
+.timeout-message p {
+  color: #666;
+  margin: 10px 0;
+}
+
+.timeout-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.retry-scan-btn {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-scan-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+/* Animazione per countdown timeout */
+.countdown-timeout {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #e74c3c;
+  animation: countdown-urgency 1s infinite;
+}
+
+@keyframes countdown-urgency {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Stili per modalità kiosk con timeout */
+.kiosk-mode .timeout-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.kiosk-mode .timeout-message {
+  padding: 40px;
+  max-width: 400px;
+}
+
+.kiosk-mode .timeout-message h4 {
+  font-size: 1.5rem;
+}
+
+.kiosk-mode .timeout-message p {
+  font-size: 1.1rem;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .timeout-message {
+    padding: 25px;
+    max-width: 280px;
   }
   
-  #qr-reader__status_span {
-    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
-    color: var(--dark-color) !important;
-    font-weight: 500 !important;
-    text-align: center !important;
-    padding: var(--space-sm) !important;
+  .timeout-actions {
+    flex-direction: column;
   }
   
-  #qr-reader select {
-    padding: var(--space-sm) var(--space-md) !important;
-    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
-    border-radius: var(--radius-md) !important;
-    border: 1px solid rgba(0,0,0,0.2) !important;
-    background: white !important;
-    margin: var(--space-sm) 0 !important;
-    width: 100% !important;
-    transition: all var(--transition-fast) !important;
+  .retry-scan-btn {
+    width: 100%;
   }
   
-  #qr-reader select:focus {
-    outline: none !important;
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+  .scan-timeout-indicator {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .timekeeping-scanner {
+    padding: 15px;
   }
   
-  #qr-reader button {
-    padding: var(--space-sm) var(--space-md) !important;
-    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
-    border-radius: var(--radius-md) !important;
-    background: var(--primary-color) !important;
-    color: white !important;
-    border: none !important;
-    cursor: pointer !important;
-    transition: all var(--transition-fast) !important;
-    font-weight: 500 !important;
-    min-height: 44px !important;
-    margin: var(--space-xs) !important;
+  .scanner-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   
-  #qr-reader button:hover {
-    background: var(--secondary-color) !important;
-    transform: translateY(-1px) !important;
+  .scanner-status {
+    width: 100%;
+    justify-content: flex-start;
   }
   
-  /* ========================================
-     ANIMAZIONI
-     ======================================== */
-  @keyframes scannerAppear {
-    0% {
-      opacity: 0;
-      transform: translateY(30px) scale(0.95);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+  .scan-type-selector {
+    flex-direction: column;
   }
   
-  @keyframes shimmer {
-    0% { left: -100%; }
-    50% { left: 100%; }
-    100% { left: 100%; }
+  .scan-type-btn {
+    max-width: 100%;
   }
   
-  @keyframes scanOverlay {
-    0%, 100% {
-      opacity: 0.8;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1.05);
-    }
+  .camera-selector {
+    flex-direction: column;
+    align-items: flex-start;
   }
   
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
+  .camera-selector select {
+    width: 100%;
   }
   
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.8;
-      transform: scale(1.02);
-    }
+  .scanner-toggle {
+    flex-direction: column;
   }
   
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  .toggle-btn, .retry-btn {
+    width: 100%;
   }
   
-  @keyframes timeoutBlink {
-    0% { opacity: 0.8; }
-    100% { opacity: 1; }
+  #qr-reader {
+    max-width: 100%;
   }
   
-  /* ========================================
-     RESPONSIVE DESIGN
-     ======================================== */
-  
-  /* Smartphone portrait */
-  @media (max-width: 576px) and (orientation: portrait) {
-    .timekeeping-scanner {
-      margin: var(--space-sm);
-      border-radius: var(--radius-lg);
-    }
-    
-    .scanner-header {
-      padding: var(--space-lg);
-    }
-    
-    .scan-type-selector {
-      flex-direction: column;
-      padding: var(--space-lg);
-      gap: var(--space-sm);
-    }
-    
-    .scan-type-btn {
-      max-width: none;
-      min-width: auto;
-    }
-    
-    .scanner-container {
-      padding: var(--space-lg);
-      min-height: 300px;
-    }
-    
-    #qr-reader {
-      max-width: 100%;
-    }
-    
-    #qr-reader::after {
-      width: 150px;
-      height: 150px;
-    }
-    
-    .instruction-card {
-      padding: var(--space-xl);
-    }
-    
-    .kiosk-notification-overlay .notification {
-      transform: scale(1);
-      margin: var(--space-md);
-    }
+  .timeout-message {
+    padding: 20px;
+    margin: 10px;
   }
   
-  /* Smartphone landscape */
-  @media (max-width: 896px) and (max-height: 500px) and (orientation: landscape) {
-    .timekeeping-scanner.kiosk-mode {
-      min-height: auto;
-      max-height: 90vh;
-    }
-    
-    .scanner-header {
-      padding: var(--space-md) var(--space-lg);
-    }
-    
-    .scan-type-selector {
-      padding: var(--space-md) var(--space-lg);
-    }
-    
-    .scanner-container {
-      padding: var(--space-md) var(--space-lg);
-      min-height: 200px;
-    }
-    
-    .instruction-card {
-      padding: var(--space-lg);
-    }
+  .scan-completed {
+    padding: 20px;
+    margin: 15px 0;
   }
   
-  /* Tablet */
-  @media (min-width: 577px) and (max-width: 1024px) {
-    .timekeeping-scanner.kiosk-mode {
-      max-width: min(600px, 90vw);
-    }
-    
-    .scan-type-selector {
-      gap: var(--space-lg);
-    }
+  .scan-completed h3 {
+    font-size: 1.3rem;
   }
-  
-  /* Desktop large */
-  @media (min-width: 1025px) {
-    .timekeeping-scanner.kiosk-mode {
-      max-width: 700px;
-    }
-    
-    .scan-type-btn:hover {
-      transform: translateY(-3px) scale(1.05);
-    }
-  }
-  
-  /* ========================================
-     ACCESSIBILITÀ
-     ======================================== */
-  
-  /* Riduzione movimento per utenti sensibili */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-  
-  /* Contrasto elevato */
-  @media (prefers-contrast: high) {
-    .timekeeping-scanner {
-      border: 3px solid var(--dark-color);
-    }
-    
-    .scan-type-btn {
-      border-width: 3px;
-    }
-    
-    .instruction-card {
-      border: 2px solid var(--dark-color);
-    }
-  }
-  
-  /* Dark mode support */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --scanner-bg: rgba(45, 55, 72, 0.95);
-      --dark-color: #e2e8f0;
-      --light-color: #2d3748;
-    }
-    
-    .timekeeping-scanner {
-      background: var(--scanner-bg);
-      color: var(--dark-color);
-    }
-    
-    .scanner-placeholder {
-      background: rgba(255,255,255,0.05);
-      border-color: rgba(255,255,255,0.1);
-    }
-    
-    .instruction-card {
-      background: rgba(45, 55, 72, 0.9);
-      color: var(--dark-color);
-    }
-  }
-  
-  /* ========================================
-     TOUCH E INTERAZIONI
-     ======================================== */
-  
-  /* Assicura dimensioni minime per touch */
-  @media (pointer: coarse) {
-    .scan-type-btn,
-    .retry-btn,
-    #qr-reader button {
-      min-height: 44px !important;
-      min-width: 44px !important;
-    }
-  }
-  
-  /* Previeni zoom su double tap */
-  .timekeeping-scanner * {
-    touch-action: manipulation;
-  }
-  
-  /* ========================================
-     STAMPA
-     ======================================== */
-  @media print {
-    .timekeeping-scanner {
-      box-shadow: none;
-      border: 2px solid #000;
-      background: white;
-    }
-    
-    .scanner-header {
-      background: #f0f0f0 !important;
-      color: #000 !important;
-    }
-    
-    #qr-reader,
-    .scanner-container video,
-    .processing-indicator {
-      display: none;
-    }
-  }
+}

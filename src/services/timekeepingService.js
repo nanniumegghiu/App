@@ -128,7 +128,6 @@ const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutD
   let lunchBreakMinutes = 0;
   const totalHours = totalWorkedMinutes / 60;
   
-  // Applica la pausa pranzo solo se le ore lavorative superano le 8 ore standard
   if (totalHours > 8) {
     const lunchStart = 12 * 60; // 12:00
     const lunchEnd = 13 * 60;   // 13:00
@@ -146,15 +145,14 @@ const calculateWorkingHours = (clockInTime, clockInDate, clockOutTime, clockOutD
     }
   }
   
-  // Calcola le ore lavorative nette dopo la pausa
   const netWorkedMinutes = totalWorkedMinutes - lunchBreakMinutes;
-  const roundedHours = Math.floor(netWorkedMinutes / 60);
-  const remainingMinutes = netWorkedMinutes % 60;
   
   // Arrotonda alle mezz'ore
-  let finalHours = roundedHours;
+  let roundedHours = Math.floor(netWorkedMinutes / 60);
+  const remainingMinutes = netWorkedMinutes % 60;
+  
   if (remainingMinutes >= 30) {
-    finalHours += 1;
+    roundedHours += 1;
   }
   
   const standardHours = Math.min(8, roundedHours);
@@ -236,32 +234,16 @@ const timekeepingService = {
           const existingRecord = querySnapshot.docs[0].data();
           console.log(`Found existing record:`, existingRecord);
           
-          // Check if there's an active session
+          if (existingRecord.clockOutTime && existingRecord.status === "completed") {
+            throw new Error(`Hai già completato la giornata lavorativa. Ingresso: ${existingRecord.clockInTime}, Uscita: ${existingRecord.clockOutTime}`);
+          }
+          
+          if (existingRecord.status === "auto-closed") {
+            throw new Error(`Giornata precedente chiusa automaticamente. Per modifiche contatta l'amministratore.`);
+          }
+          
           if (existingRecord.clockInTime && !existingRecord.clockOutTime && existingRecord.status === "in-progress") {
             throw new Error(`Hai già timbrato un ingresso alle ${existingRecord.clockInTime}. Timbra l'USCITA per completare la giornata.`);
-          }
-
-          // Check if there's a completed session
-          if (existingRecord.clockOutTime) {
-            // Convert times to minutes for comparison
-            const [outHours, outMinutes] = existingRecord.clockOutTime.split(':').map(Number);
-            const [inHours, inMinutes] = timeString.split(':').map(Number);
-            
-            const outTotalMinutes = outHours * 60 + outMinutes;
-            const inTotalMinutes = inHours * 60 + inMinutes;
-            
-            // Calculate minutes between exit and new entry
-            const minutesBetween = inTotalMinutes - outTotalMinutes;
-            
-            // If new entry is on a different day, calculate minutes from midnight
-            if (minutesBetween < 0) {
-              minutesBetween = inTotalMinutes + (24 * 60 - outTotalMinutes);
-            }
-            
-            // Check if there are at least 4 hours (240 minutes) between exit and new entry
-            if (minutesBetween < 240) {
-              throw new Error(`Devi attendere almeno 4 ore dopo l'uscita precedente (${existingRecord.clockOutTime}) per timbrare un nuovo ingresso.`);
-            }
           }
         }
       
