@@ -215,6 +215,9 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             disableFlip: false
           };
 
+          // Variabile locale per controllo cattura immediata
+          let localCaptured = false;
+
           // Avvia lo scanner
           await html5QrCode.current.start(
             selectedCamera,
@@ -223,25 +226,57 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
             async (decodedText, decodedResult) => {
               console.log('QR Code rilevato:', decodedText);
               
-              // Imposta come catturato per evitare scansioni multiple
-              if (isCaptured) return;
+              // Controllo doppio: stato React e variabile locale
+              if (localCaptured) {
+                console.log('QR già catturato localmente, ignoro questa scansione');
+                return;
+              }
+              
+              // Imposta immediatamente il flag locale per bloccare altre scansioni
+              localCaptured = true;
               setIsCaptured(true);
+              
+              console.log('Prima scansione, processo il QR code');
 
-              // Ferma immediatamente lo scanner
-              await stopScanner();
+              try {
+                // Ferma immediatamente lo scanner PRIMA del processamento
+                if (html5QrCode.current) {
+                  console.log('Fermando scanner...');
+                  await html5QrCode.current.stop();
+                  html5QrCode.current = null;
+                  console.log('Scanner fermato');
+                }
 
-              // Processa la scansione
-              await processQRCode(decodedText, type);
+                // Processa la scansione
+                await processQRCode(decodedText, type);
+                
+                // Reset completo degli stati
+                setTimeout(() => {
+                  console.log('Reset finale degli stati');
+                  setIsScanning(false);
+                  setIsCaptured(false);
+                  setScanType('');
+                }, 100);
+
+              } catch (processError) {
+                console.error('Errore durante il processamento:', processError);
+                // Reset in caso di errore
+                localCaptured = false;
+                setIsCaptured(false);
+                setScanType('');
+                setIsScanning(false);
+              }
             },
             // Callback errore (ignoriamo gli errori di non rilevamento)
             (errorMessage) => {
-              // Ignora errori comuni di non rilevamento
+              // Ignora errori comuni di non rilevamento - non loggare
             }
           );
 
           // Imposta timeout per chiusura automatica
           timeoutRef.current = setTimeout(async () => {
-            if (!isCaptured) {
+            console.log('Timeout scanner - nessuna scansione effettuata');
+            if (!localCaptured) {
               await stopScanner();
               setScanType('');
               showNotification('Timeout scansione - Seleziona nuovamente il tipo di timbratura', 'warning');
@@ -262,7 +297,7 @@ const TimekeepingScanner = ({ isAdmin = false, deviceId = '', kioskMode = false 
       setScanType('');
       showNotification('Errore avvio scanner. Riprova.', 'error');
     }
-  }, [selectedCamera, isCaptured, stopScanner, showNotification, processQRCode]);
+  }, [selectedCamera, stopScanner, showNotification, processQRCode]);
 
   // Gestisce la selezione del tipo di scansione
   const handleScanTypeSelection = useCallback((type) => {
