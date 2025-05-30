@@ -1,4 +1,4 @@
-// src/services/timekeepingService.js - Versione con supporto turni multi-data
+// src/services/timekeepingService.js - Versione con auto-chiusura turni > 18 ore
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -59,16 +59,13 @@ const calculateMaxExitTime = (clockInTime, clockInDate) => {
   };
 };
 
-// Modifica per il file src/services/timekeepingService.js
-// Sostituisci la funzione validateClockOutTime esistente con questa versione corretta
-
 /**
- * Controlla se l'orario di uscita è valido - CORRETTO per turni normali
+ * Controlla se l'orario di uscita è valido - MODIFICATO per auto-chiusura > 18 ore
  */
 const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
   const maxExitInfo = calculateMaxExitTime(clockInTime, clockInDate);
   
-  // NUOVO: Calcola la durata del turno in ore
+  // Calcola la durata del turno in ore
   const [inHours, inMinutes] = clockInTime.split(':').map(Number);
   const [outHours, outMinutes] = clockOutTime.split(':').map(Number);
   
@@ -85,7 +82,6 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
   
   console.log(`Validazione turno: ${clockInTime} (${clockInDate}) → ${clockOutTime} (${clockOutDate})`);
   console.log(`Durata turno: ${durationHours.toFixed(2)} ore`);
-  console.log(`Limite calcolato: ${maxExitInfo.maxExitTime} del ${maxExitInfo.maxExitDate}`);
   
   // REGOLA 1: Turno troppo corto (meno di 1 minuto) - sempre invalido
   if (durationMinutes < 1) {
@@ -96,16 +92,46 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
     };
   }
   
-  // REGOLA 2: Turno troppo lungo (più di 18 ore) - sempre invalido
+  // REGOLA 2: NUOVA LOGICA - Turno > 18 ore → Auto-chiusura a 8 ore
   if (durationHours > 18) {
+    // Calcola l'orario di auto-chiusura (ingresso + 8 ore)
+    const autoCloseMinutes = inTotalMinutes + (8 * 60); // +8 ore
+    
+    let autoCloseDate = clockInDate;
+    let autoCloseTotalMinutes = autoCloseMinutes;
+    
+    // Se supera la mezzanotte, passa al giorno successivo
+    if (autoCloseMinutes >= 1440) {
+      const nextDate = new Date(clockInDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+      const year = nextDate.getFullYear();
+      const month = String(nextDate.getMonth() + 1).padStart(2, '0');
+      const day = String(nextDate.getDate()).padStart(2, '0');
+      autoCloseDate = `${year}-${month}-${day}`;
+      autoCloseTotalMinutes = autoCloseMinutes - 1440;
+    }
+    
+    const autoCloseHours = Math.floor(autoCloseTotalMinutes / 60);
+    const autoCloseMin = autoCloseTotalMinutes % 60;
+    const autoCloseTime = `${String(autoCloseHours).padStart(2, '0')}:${String(autoCloseMin).padStart(2, '0')}`;
+    
     return {
       isValid: false,
-      reason: `Durata turno troppo lunga: ${durationHours.toFixed(1)} ore. Massimo 18 ore.`,
+      autoClose: true, // Flag per indicare auto-chiusura
+      reason: `Turno troppo lungo (${durationHours.toFixed(1)} ore). Auto-chiuso a 8 ore lavorative.`,
+      autoCloseData: {
+        clockOutTime: autoCloseTime,
+        clockOutDate: autoCloseDate,
+        totalHours: 8,
+        standardHours: 8,
+        overtimeHours: 0,
+        autoClosedReason: `Auto-chiuso: turno superiore a 18 ore (${durationHours.toFixed(1)}h). Limitato a 8 ore standard.`
+      },
       maxExitInfo
     };
   }
   
-  // REGOLA 3: Turno normale stesso giorno (meno di 12 ore) - sempre valido
+  // REGOLA 3: Turno normale stesso giorno (≤ 12 ore) - sempre valido
   if (clockInDate === clockOutDate && durationHours <= 12) {
     console.log(`Turno normale stesso giorno: ${durationHours.toFixed(2)} ore - VALIDO`);
     return {
@@ -115,7 +141,7 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
     };
   }
   
-  // REGOLA 4: Per turni lunghi o multi-giorno, applica le regole originali
+  // REGOLA 4: Per turni lunghi ma ≤ 18 ore, applica le regole originali
   
   // Controlla se la data di uscita è corretta secondo le regole
   if (clockOutDate !== maxExitInfo.maxExitDate) {
@@ -134,7 +160,7 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
     }
   }
   
-  // Controlla se l'orario di uscita è entro il limite (solo per turni molto lunghi)
+  // Controlla se l'orario di uscita è entro il limite
   const [outHoursFinal, outMinutesFinal] = clockOutTime.split(':').map(Number);
   const [maxHours, maxMinutes] = maxExitInfo.maxExitTime.split(':').map(Number);
   
@@ -156,6 +182,85 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
     isValid: true,
     reason: null,
     maxExitInfo
+  };
+};
+
+/**
+ * Calcola distribuzione multi-giorno per auto-chiusura (sempre 8 ore standard)
+ */
+const calculateAutoCloseMultiDay = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
+  const [inHours, inMinutes] = clockInTime.split(':').map(Number);
+  const [outHours, outMinutes] = clockOutTime.split(':').map(Number);
+  
+  let inTotalMinutes = inHours * 60 + inMinutes;
+  let outTotalMinutes = outHours * 60 + outMinutes;
+  
+  // Se uscita è il giorno dopo, aggiungi 24 ore all'uscita
+  if (clockOutDate !== clockInDate) {
+    outTotalMinutes += 1440;
+  }
+  
+  const totalWorkedMinutes = 480; // Sempre 8 ore = 480 minuti
+  
+  // Distribuzione delle ore per data (sempre 8 ore standard totali)
+  const workDistribution = [];
+  
+  if (clockInDate === clockOutDate) {
+    // Stesso giorno - tutte le 8 ore in un giorno
+    workDistribution.push({
+      date: clockInDate,
+      totalMinutes: totalWorkedMinutes,
+      totalHours: 8,
+      standardHours: 8,
+      overtimeHours: 0,
+      notes: `Auto-chiuso: turno limitato a 8 ore standard (${clockInTime}-${clockOutTime})`
+    });
+  } else {
+    // Turno multi-data - distribuisci le 8 ore
+    const startDate = new Date(clockInDate);
+    const endDate = new Date(clockOutDate);
+    
+    // Calcola quante ore nel primo giorno (dalla partenza alla mezzanotte)
+    const minutesToMidnight = 1440 - inTotalMinutes;
+    const hoursFirstDay = Math.min(8, Math.floor(minutesToMidnight / 60));
+    const hoursSecondDay = 8 - hoursFirstDay;
+    
+    // Primo giorno
+    if (hoursFirstDay > 0) {
+      workDistribution.push({
+        date: clockInDate,
+        totalMinutes: hoursFirstDay * 60,
+        totalHours: hoursFirstDay,
+        standardHours: hoursFirstDay,
+        overtimeHours: 0,
+        notes: `Auto-chiuso: turno multi-data limitato a 8h std (inizio ${clockInTime})`
+      });
+    }
+    
+    // Secondo giorno
+    if (hoursSecondDay > 0) {
+      workDistribution.push({
+        date: clockOutDate,
+        totalMinutes: hoursSecondDay * 60,
+        totalHours: hoursSecondDay,
+        standardHours: hoursSecondDay,
+        overtimeHours: 0,
+        notes: `Auto-chiuso: turno multi-data limitato a 8h std (fine ${clockOutTime})`
+      });
+    }
+  }
+  
+  return {
+    totalMinutesWorked: totalWorkedMinutes,
+    netMinutesWorked: totalWorkedMinutes,
+    lunchBreakMinutes: 0, // Nessuna pausa pranzo per turni auto-chiusi a 8h
+    totalHours: 8,
+    standardHours: 8,
+    overtimeHours: 0,
+    hasLunchBreak: false,
+    workDistribution,
+    isMultiDay: clockInDate !== clockOutDate,
+    isAutoClose: true
   };
 };
 
@@ -259,7 +364,7 @@ const calculateMultiDayWorkingHours = (clockInTime, clockInDate, clockOutTime, c
         roundedHours += 1;
       }
       
-      // Calcola standard e straordinario per questo giorno
+      // Calcola standard e straordinario per questo giorno - LOGICA CORRETTA
       const standardHours = Math.min(8, roundedHours);
       const overtimeHours = Math.max(0, roundedHours - 8);
       
@@ -485,7 +590,7 @@ const calculateAutoClose = (clockInTime, clockInDate) => {
 };
 
 /**
- * Service per la gestione delle timbrature con supporto multi-data
+ * Service per la gestione delle timbrature con supporto multi-data e auto-chiusura
  */
 const timekeepingService = {
   /**
@@ -601,12 +706,9 @@ const timekeepingService = {
       throw error;
     }
   },
-  
-  // Modifica per il file src/services/timekeepingService.js
-// Sostituisci la funzione clockOut esistente con questa versione corretta
 
 /**
- * Registra uscita - MODIFICATO per evitare errori di indice
+ * Registra uscita - MODIFICATO per gestire auto-chiusura > 18 ore
  */
 async clockOut(userId, scanInfo = {}) {
   try {
@@ -668,7 +770,7 @@ async clockOut(userId, scanInfo = {}) {
     
     const docRef = doc(db, "timekeeping", record.id);
     
-    // Validazione: Controlla se l'uscita è nei limiti consentiti
+    // NUOVA VALIDAZIONE: Controlla se il turno supera le 18 ore
     const validation = validateClockOutTime(
       record.clockInTime, 
       record.date, 
@@ -676,39 +778,103 @@ async clockOut(userId, scanInfo = {}) {
       currentDateString
     );
     
-    if (!validation.isValid) {
+    let updateData;
+    let workResult;
+    let successMessage;
+    
+    if (!validation.isValid && validation.autoClose) {
+      // CASO AUTO-CHIUSURA: Turno > 18 ore
+      console.log(`Auto-closing long shift: ${validation.reason}`);
+      
+      const autoCloseData = validation.autoCloseData;
+      
+      // Usa il calcolo specifico per auto-chiusura
+      workResult = calculateAutoCloseMultiDay(
+        record.clockInTime,
+        record.date,
+        autoCloseData.clockOutTime,
+        autoCloseData.clockOutDate
+      );
+      
+      updateData = {
+        clockOutTime: autoCloseData.clockOutTime,
+        clockOutDate: autoCloseData.clockOutDate,
+        clockOutTimestamp: serverTimestamp(),
+        totalHours: workResult.totalHours,
+        standardHours: workResult.standardHours,
+        overtimeHours: workResult.overtimeHours,
+        lunchBreakDeducted: workResult.hasLunchBreak,
+        lunchBreakMinutes: workResult.lunchBreakMinutes,
+        isMultiDay: workResult.isMultiDay,
+        workDistribution: workResult.workDistribution,
+        status: "auto-closed",
+        autoClosedReason: autoCloseData.autoClosedReason,
+        scanInfo: {
+          ...(record.scanInfo || {}),
+          clockOut: {
+            ...scanInfo,
+            timestamp: now.toISOString(),
+            originalTime: currentTimeString,
+            originalDate: currentDateString,
+            autoClosedTo: autoCloseData.clockOutTime,
+            autoClosedDate: autoCloseData.clockOutDate
+          }
+        },
+        updatedAt: serverTimestamp()
+      };
+      
+      successMessage = `⚠️ TURNO AUTO-CHIUSO: Durata eccessiva rilevata.\n` +
+                      `Orario effettivo: ${record.clockInTime} → ${currentTimeString}\n` +
+                      `Orario registrato: ${record.clockInTime} → ${autoCloseData.clockOutTime}\n` +
+                      `Ore assegnate: 8 ore standard (nessuno straordinario)`;
+      
+    } else if (!validation.isValid) {
+      // CASO NORMALE: Errore di validazione
       throw new Error(validation.reason);
+    } else {
+      // CASO NORMALE: Turno valido
+      workResult = calculateMultiDayWorkingHours(
+        record.clockInTime,
+        record.date,
+        currentTimeString,
+        currentDateString
+      );
+      
+      updateData = {
+        clockOutTime: currentTimeString,
+        clockOutDate: currentDateString,
+        clockOutTimestamp: serverTimestamp(),
+        totalHours: workResult.totalHours,
+        standardHours: workResult.standardHours,
+        overtimeHours: workResult.overtimeHours,
+        lunchBreakDeducted: workResult.hasLunchBreak,
+        lunchBreakMinutes: workResult.lunchBreakMinutes,
+        isMultiDay: workResult.isMultiDay,
+        workDistribution: workResult.workDistribution,
+        status: "completed",
+        scanInfo: {
+          ...(record.scanInfo || {}),
+          clockOut: {
+            ...scanInfo,
+            timestamp: now.toISOString()
+          }
+        },
+        updatedAt: serverTimestamp()
+      };
+      
+      successMessage = `Uscita registrata con successo. Ore totali: ${workResult.totalHours}`;
+      
+      if (workResult.hasLunchBreak) {
+        successMessage += ` (pausa pranzo di ${workResult.lunchBreakMinutes} min detratta)`;
+      }
+      
+      if (workResult.isMultiDay) {
+        successMessage += `\nTurno multi-data distribuito su ${workResult.workDistribution.length} giorni`;
+        workResult.workDistribution.forEach(day => {
+          successMessage += `\n- ${day.date}: ${day.totalHours}h (${day.standardHours} std + ${day.overtimeHours} straord.)`;
+        });
+      }
     }
-    
-    // NUOVO: Usa il calcolo multi-data
-    const workResult = calculateMultiDayWorkingHours(
-      record.clockInTime,
-      record.date,
-      currentTimeString,
-      currentDateString
-    );
-    
-    const updateData = {
-      clockOutTime: currentTimeString,
-      clockOutDate: currentDateString,
-      clockOutTimestamp: serverTimestamp(),
-      totalHours: workResult.totalHours,
-      standardHours: workResult.standardHours,
-      overtimeHours: workResult.overtimeHours,
-      lunchBreakDeducted: workResult.hasLunchBreak,
-      lunchBreakMinutes: workResult.lunchBreakMinutes,
-      isMultiDay: workResult.isMultiDay,
-      workDistribution: workResult.workDistribution,
-      status: "completed",
-      scanInfo: {
-        ...(record.scanInfo || {}),
-        clockOut: {
-          ...scanInfo,
-          timestamp: now.toISOString()
-        }
-      },
-      updatedAt: serverTimestamp()
-    };
     
     await updateDoc(docRef, updateData);
     console.log(`Clock-out successful for record: ${docRef.id}`);
@@ -724,27 +890,14 @@ async clockOut(userId, scanInfo = {}) {
     const userName = userData.nome && userData.cognome ? 
       `${userData.nome} ${userData.cognome}` : userData.email;
     
-    // Messaggio dettagliato con informazioni turno multi-data
-    let successMessage = `Uscita registrata con successo. Ore totali: ${workResult.totalHours}`;
-    
-    if (workResult.hasLunchBreak) {
-      successMessage += ` (pausa pranzo di ${workResult.lunchBreakMinutes} min detratta)`;
-    }
-    
-    if (workResult.isMultiDay) {
-      successMessage += `\nTurno multi-data distribuito su ${workResult.workDistribution.length} giorni`;
-      workResult.workDistribution.forEach(day => {
-        successMessage += `\n- ${day.date}: ${day.totalHours}h (${day.standardHours} std + ${day.overtimeHours} straord.)`;
-      });
-    }
-    
     return {
       id: docRef.id,
       ...record,
       ...updateData,
       userName,
       message: successMessage,
-      workCalculation: workResult
+      workCalculation: workResult,
+      isAutoClose: validation.autoClose || false
     };
     
   } catch (error) {
@@ -752,99 +905,6 @@ async clockOut(userId, scanInfo = {}) {
     throw error;
   }
 },
-  
-  /**
-   * Auto-chiusura sessioni aperte - MODIFICATO per nuove regole
-   */
-  async autoCloseOpenSessions(userId) {
-    try {
-      console.log(`Auto-closing open sessions for user: ${userId}`);
-      
-      const timekeepingRef = collection(db, "timekeeping");
-      const q = query(
-        timekeepingRef,
-        where("userId", "==", userId),
-        where("status", "==", "in-progress"),
-        limit(50)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const closedSessions = [];
-      const now = new Date();
-      
-      for (const docSnap of querySnapshot.docs) {
-        try {
-          const session = docSnap.data();
-          
-          if (!session.date || !session.clockInTime) {
-            console.error("Session missing date or clockInTime:", docSnap.id);
-            continue;
-          }
-          
-          // Usa le regole per determinare quando chiudere
-          const maxExitInfo = calculateMaxExitTime(session.clockInTime, session.date);
-          const maxExitDateTime = new Date(`${maxExitInfo.maxExitDate}T${maxExitInfo.maxExitTime}`);
-          
-          // Se il tempo limite è passato, chiudi automaticamente
-          if (now > maxExitDateTime) {
-            const docRef = doc(db, "timekeeping", docSnap.id);
-            const autoCloseData = calculateAutoClose(session.clockInTime, session.date);
-            
-            const updateData = {
-              clockOutTime: autoCloseData.clockOutTime,
-              clockOutDate: autoCloseData.clockOutDate,
-              clockOutTimestamp: Timestamp.fromDate(maxExitDateTime),
-              totalHours: autoCloseData.totalHours,
-              standardHours: autoCloseData.standardHours,
-              overtimeHours: autoCloseData.overtimeHours,
-              lunchBreakDeducted: autoCloseData.hasLunchBreak,
-              lunchBreakMinutes: 0,
-              isMultiDay: autoCloseData.clockOutDate !== session.date,
-              workDistribution: [{
-                date: autoCloseData.clockOutDate,
-                totalHours: autoCloseData.totalHours,
-                standardHours: autoCloseData.standardHours,
-                overtimeHours: autoCloseData.overtimeHours,
-                notes: autoCloseData.autoClosedReason
-              }],
-              status: "auto-closed",
-              autoClosedReason: autoCloseData.autoClosedReason,
-              updatedAt: serverTimestamp()
-            };
-            
-            await updateDoc(docRef, updateData);
-            
-            // Sincronizza con workHours
-            try {
-              await syncMultiDayToWorkHours(userId, updateData.workDistribution);
-            } catch (syncError) {
-              console.error("Error syncing auto-closed session:", syncError);
-            }
-            
-            closedSessions.push({
-              id: docSnap.id,
-              ...session,
-              ...updateData
-            });
-            
-            console.log(`Auto-closed session: ${docSnap.id} - ${session.clockInTime} to ${autoCloseData.clockOutTime}`);
-          }
-          
-        } catch (sessionError) {
-          console.error("Error processing session for auto-close:", sessionError, docSnap.id);
-        }
-      }
-      
-      return closedSessions;
-      
-    } catch (error) {
-      console.error("Error during auto-closing sessions:", error);
-      return [];
-    }
-  },
-
-  // Modifica per il file src/services/timekeepingService.js
-// Sostituisci la funzione getTodayStatus esistente con questa versione corretta
 
 /**
  * Ottieni stato timbrature di oggi - MODIFICATO per evitare errori di indice
