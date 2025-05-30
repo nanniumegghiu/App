@@ -1,266 +1,627 @@
-/* src/components/timekeepingStatus.css */
+/* src/components/TimekeepingStatus.css - Design Moderno e Intuitivo */
+
 .timekeeping-status-card {
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  padding: 20px;
-  margin-bottom: 20px;
-  transition: all 0.3s ease;
-  border-left: 5px solid transparent;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 25px;
+  margin-bottom: 25px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.timekeeping-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57);
+  background-size: 300% 100%;
+  animation: gradient-flow 3s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 .timekeeping-status-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* Status specific styling */
+/* Varianti per diversi stati */
 .timekeeping-status-card.status-in-progress {
-  border-left-color: var(--primary);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.timekeeping-status-card.status-in-progress::before {
+  background: linear-gradient(90deg, #4ecdc4, #44a08d);
+  animation: pulse-progress 2s ease-in-out infinite;
+}
+
+@keyframes pulse-progress {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .timekeeping-status-card.status-completed {
-  border-left-color: var(--success);
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.timekeeping-status-card.status-completed::before {
+  background: linear-gradient(90deg, #00b09b, #96c93d);
 }
 
 .timekeeping-status-card.status-auto-closed {
-  border-left-color: var(--warning);
+  background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+}
+
+.timekeeping-status-card.status-auto-closed::before {
+  background: linear-gradient(90deg, #ff9a9e, #fecfef);
 }
 
 .timekeeping-status-card.status-not-started {
-  border-left-color: #95a5a6;
+  background: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);
+  opacity: 0.9;
 }
 
+.timekeeping-status-card.status-not-started::before {
+  background: linear-gradient(90deg, #74b9ff, #0984e3);
+}
+
+/* Stati speciali */
 .timekeeping-status-card.loading {
+  background: linear-gradient(135deg, #e3e3e3 0%, #d6d6d6 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  gap: 15px;
+  gap: 20px;
+  color: #666;
 }
 
 .timekeeping-status-card.error {
-  border-left-color: var(--danger);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: white;
 }
 
+/* Spinner */
 .card-spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  border-top-color: var(--primary);
+  border-top-color: white;
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
+/* Header */
 .status-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 25px;
+  position: relative;
 }
 
 .status-header h3 {
   margin: 0;
-  color: var(--dark);
-  font-size: 1.2rem;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-header h3::before {
+  content: '⏰';
+  font-size: 1.2em;
+  animation: rotate-clock 4s linear infinite;
+}
+
+@keyframes rotate-clock {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .current-time {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--dark);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: time-pulse 2s ease-in-out infinite;
 }
 
+@keyframes time-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Warning status */
+.status-warning {
+  padding: 12px 16px;
+  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.15);
+  border-left: 4px solid #f39c12;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+  backdrop-filter: blur(5px);
+  animation: warning-blink 2s ease-in-out infinite;
+}
+
+@keyframes warning-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* Content */
 .status-content {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  color: white;
 }
 
 .status-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 10px;
+  text-align: center;
+  margin-bottom: 25px;
 }
 
 .status-badge {
   display: inline-block;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 5px;
+  padding: 12px 24px;
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
 }
 
-.status-in-progress .status-badge {
-  background-color: rgba(52, 152, 219, 0.2);
-  color: var(--primary);
+.status-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: badge-shine 3s infinite;
 }
 
-.status-completed .status-badge {
-  background-color: rgba(46, 204, 113, 0.2);
-  color: var(--success);
-}
-
-.status-auto-closed .status-badge {
-  background-color: rgba(243, 156, 18, 0.2);
-  color: var(--warning);
-}
-
-.status-not-started .status-badge {
-  background-color: rgba(149, 165, 166, 0.2);
-  color: #7f8c8d;
+@keyframes badge-shine {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 .status-date {
   font-size: 0.9rem;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
 }
 
+/* Time details */
 .time-details {
-  margin-top: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .time-entry {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-entry:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateX(5px);
 }
 
 .time-entry.highlighted {
-  background-color: rgba(52, 152, 219, 0.1);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  animation: highlight-pulse 2s ease-in-out infinite;
 }
 
-.status-completed .time-entry.highlighted,
-.status-auto-closed .time-entry.highlighted {
-  background-color: rgba(46, 204, 113, 0.1);
+@keyframes highlight-pulse {
+  0%, 100% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+  50% { box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2); }
 }
 
 .time-label {
-  color: #666;
-  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-label::before {
+  content: '•';
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.2em;
 }
 
 .time-value {
-  font-weight: 500;
-  color: var(--dark);
-}
-
-.hours-breakdown {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 10px;
-  padding: 8px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
-}
-
-.breakdown-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.breakdown-label {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.breakdown-value {
-  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark);
+  color: white;
+  text-align: right;
+  font-size: 1rem;
 }
 
+/* Progress bar */
 .progress-bar-container {
-  height: 8px;
-  background-color: #eee;
-  border-radius: 4px;
-  margin: 10px 0;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  margin: 15px 0;
   overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .progress-bar {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s ease;
+  border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(45deg, 
+    rgba(255, 255, 255, 0.2) 25%, 
+    transparent 25%, 
+    transparent 50%, 
+    rgba(255, 255, 255, 0.2) 50%, 
+    rgba(255, 255, 255, 0.2) 75%, 
+    transparent 75%, 
+    transparent);
+  background-size: 20px 20px;
+  animation: progress-stripes 1s linear infinite;
+}
+
+@keyframes progress-stripes {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 0; }
+}
+
+/* Hours breakdown */
+.hours-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.breakdown-item {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.breakdown-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.breakdown-label {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.breakdown-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Special info sections */
+.shift-info,
+.multi-day-info,
+.auto-close-info {
+  margin: 15px 0;
+  padding: 15px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: info-appear 0.5s ease-out;
+}
+
+@keyframes info-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.shift-info {
+  background: rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.multi-day-info {
+  background: rgba(52, 152, 219, 0.2);
+  border-color: rgba(52, 152, 219, 0.4);
+  text-align: center;
+}
+
+.auto-close-info {
+  background: rgba(243, 156, 18, 0.2);
+  border-color: rgba(243, 156, 18, 0.4);
+}
+
+.multi-day-info strong,
+.auto-close-info strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.multi-day-info p,
+.auto-close-info p {
+  margin: 8px 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Auto note */
 .auto-note {
-  margin-left: 5px;
   font-size: 0.8rem;
-  color: var(--warning);
+  color: rgba(255, 255, 255, 0.7);
   font-style: italic;
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
+/* Not started message */
 .not-started-message {
   text-align: center;
-  padding: 20px;
-  color: #666;
+  padding: 30px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.not-started-message p {
+  margin: 10px 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
 }
 
 .hint {
   font-size: 0.9rem;
   font-style: italic;
-  margin-top: 10px;
-  color: #95a5a6;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
+.hint::before {
+  content: '💡';
+  animation: hint-glow 2s ease-in-out infinite;
+}
+
+@keyframes hint-glow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Error state */
 .status-error {
-  padding: 20px;
   text-align: center;
-  color: var(--danger);
+  padding: 20px;
+  color: white;
 }
 
 .retry-btn {
-  background-color: var(--primary);
+  background: rgba(255, 255, 255, 0.2);
   color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 8px 16px;
-  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 15px;
+  font-size: 0.95rem;
 }
 
 .retry-btn:hover {
-  background-color: var(--secondary);
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-/* Responsive adjustments */
-@media (max-width: 576px) {
+/* Responsive design */
+@media (max-width: 768px) {
   .timekeeping-status-card {
-    padding: 15px;
+    margin: 15px;
+    padding: 20px;
+    border-radius: 15px;
   }
   
   .status-header {
     flex-direction: column;
+    gap: 15px;
     align-items: flex-start;
-    gap: 10px;
+  }
+  
+  .status-header h3 {
+    font-size: 1.3rem;
   }
   
   .current-time {
     align-self: flex-end;
+    font-size: 1.1rem;
+    padding: 6px 12px;
   }
   
   .hours-breakdown {
-    flex-direction: column;
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
   
   .breakdown-item {
-    flex-direction: row;
-    justify-content: space-between;
+    padding: 12px;
+  }
+  
+  .breakdown-value {
+    font-size: 1.2rem;
+  }
+  
+  .time-entry {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 15px;
+  }
+  
+  .time-value {
+    text-align: left;
+    font-size: 0.95rem;
+  }
+  
+  .status-badge {
+    font-size: 1rem;
+    padding: 10px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .timekeeping-status-card {
+    margin: 10px;
+    padding: 15px;
+  }
+  
+  .status-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .current-time {
+    font-size: 1rem;
+  }
+  
+  .time-details {
+    padding: 15px;
+  }
+  
+  .breakdown-value {
+    font-size: 1.1rem;
+  }
+  
+  .not-started-message {
+    padding: 20px 15px;
+  }
+}
+
+/* Dark theme compatibility */
+@media (prefers-color-scheme: dark) {
+  .timekeeping-status-card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+  
+  .timekeeping-status-card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .timekeeping-status-card {
+    border: 2px solid white;
+  }
+  
+  .time-entry,
+  .breakdown-item {
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  .status-badge {
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .timekeeping-status-card,
+  .time-entry,
+  .breakdown-item,
+  .retry-btn {
+    transition: none;
+  }
+  
+  .card-spinner,
+  .status-header h3::before,
+  .current-time,
+  .status-warning,
+  .badge-shine,
+  .highlight-pulse,
+  .progress-stripes,
+  .hint::before {
+    animation: none;
+  }
+  
+  .timekeeping-status-card:hover,
+  .time-entry:hover,
+  .breakdown-item:hover,
+  .retry-btn:hover {
+    transform: none;
   }
 }
