@@ -1,3 +1,4 @@
+// src/components/TimesheetTable.jsx - Versione con calendario completo del mese
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -13,6 +14,36 @@ const TimesheetTable = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Funzione per generare tutti i giorni del mese
+  const generateCompleteMonth = (month, year) => {
+    const normalizedMonth = parseInt(month.toString().replace(/^prev-/, '').replace(/^0+/, ''));
+    const normalizedYear = parseInt(year);
+    
+    const daysInMonth = new Date(normalizedYear, normalizedMonth, 0).getDate();
+    const entries = [];
+    const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(normalizedYear, normalizedMonth - 1, day);
+      const dayOfWeek = date.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      
+      const dateStr = `${normalizedYear}-${normalizedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      
+      entries.push({
+        date: dateStr,
+        day: dayNames[dayOfWeek],
+        total: 0, // Default vuoto
+        overtime: 0, // Default vuoto
+        notes: "",
+        isWeekend: isWeekend,
+        hasData: false // Flag per indicare se ha dati reali
+      });
+    }
+    
+    return entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
   // Carica i dati delle ore quando cambia il mese selezionato
   useEffect(() => {
     const fetchTimesheet = async () => {
@@ -22,31 +53,31 @@ const TimesheetTable = ({
       try {
         console.log(`TimesheetTable: Caricamento timesheet per month=${selectedMonth}, year=${selectedYear}`);
         
-        // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
+        // Normalizza il mese
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
-        
         console.log(`TimesheetTable: Mese normalizzato=${normalizedMonth}`);
         
-        // Prova prima a cercare con il mese senza zero iniziale
+        // Genera tutti i giorni del mese
+        const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
+        
+        // Prova a caricare i dati esistenti
+        let existingData = null;
+        
+        // Tentativo 1: ID documento senza zero iniziale
         let docId = `${auth.currentUser.uid}_${normalizedMonth}_${selectedYear}`;
         console.log(`TimesheetTable: Tentativo 1 - docId=${docId}`);
         
-        // Recupera direttamente il documento dalla collezione workHours
         const docRef = doc(db, "workHours", docId);
         const docSnap = await getDoc(docRef);
-        
-        // Se non trova il documento, prova con il mese con zero iniziale
-        let entriesData = null;
         
         if (docSnap.exists()) {
           console.log(`TimesheetTable: Documento trovato con ID ${docId}`);
           const data = docSnap.data();
-          
           if (data.entries && Array.isArray(data.entries)) {
-            entriesData = data.entries;
+            existingData = data.entries;
           }
         } else {
-          // Prova con il mese con zero iniziale (es. "04" invece di "4")
+          // Tentativo 2: ID documento con zero iniziale
           const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
           const altDocId = `${auth.currentUser.uid}_${formattedMonth}_${selectedYear}`;
           
@@ -59,15 +90,14 @@ const TimesheetTable = ({
             if (altDocSnap.exists()) {
               console.log(`TimesheetTable: Documento alternativo trovato con ID ${altDocId}`);
               const altData = altDocSnap.data();
-              
               if (altData.entries && Array.isArray(altData.entries)) {
-                entriesData = altData.entries;
+                existingData = altData.entries;
               }
             }
           }
           
-          if (!entriesData) {
-            // Se entrambi i tentativi falliscono, prova con una query più generica
+          // Tentativo 3: Query generale se i tentativi precedenti falliscono
+          if (!existingData) {
             console.log(`TimesheetTable: Tentativo 3 - Query generale`);
             const workHoursRef = collection(db, "workHours");
             const q = query(
@@ -80,18 +110,15 @@ const TimesheetTable = ({
             console.log(`TimesheetTable: Query generale ha trovato ${querySnapshot.size} documenti`);
             
             if (!querySnapshot.empty) {
-              // Cerca un documento che potrebbe corrispondere al mese
               for (const doc of querySnapshot.docs) {
                 const data = doc.data();
-                console.log(`TimesheetTable: Documento trovato con month=${data.month}, confronto con ${normalizedMonth} o ${normalizedMonth.padStart(2, '0')}`);
+                console.log(`TimesheetTable: Documento trovato con month=${data.month}, confronto con ${normalizedMonth}`);
                 
-                // Normalizza entrambi i mesi per il confronto
                 const docMonth = data.month.toString().replace(/^0+/, '');
-                
                 if (docMonth === normalizedMonth) {
                   console.log(`TimesheetTable: Corrispondenza trovata`);
                   if (data.entries && Array.isArray(data.entries)) {
-                    entriesData = data.entries;
+                    existingData = data.entries;
                     break;
                   }
                 }
@@ -100,36 +127,46 @@ const TimesheetTable = ({
           }
         }
         
-        if (entriesData) {
-          console.log(`TimesheetTable: Dati trovati - ${entriesData.length} entries`);
-          // Assicurati che ogni entry abbia il campo 'overtime'
-          const entriesWithOvertime = entriesData.map(entry => ({
-            ...entry,
-            overtime: entry.overtime !== undefined ? entry.overtime : 0
-          }));
+        // Merge dei dati esistenti con il calendario completo
+        if (existingData && existingData.length > 0) {
+          console.log(`TimesheetTable: Merge di ${existingData.length} entries esistenti`);
           
-          // Ordina le entries per data
-          const sortedEntries = [...entriesWithOvertime].sort((a, b) => {
-            return new Date(a.date) - new Date(b.date);
+          // Crea una mappa dei dati esistenti per data
+          const existingDataMap = {};
+          existingData.forEach(entry => {
+            if (entry.date) {
+              existingDataMap[entry.date] = {
+                ...entry,
+                overtime: entry.overtime !== undefined ? entry.overtime : 0,
+                hasData: true
+              };
+            }
           });
           
-          setData(sortedEntries);
+          // Merge con il calendario completo
+          const mergedData = completeMonthData.map(dayEntry => {
+            const existingEntry = existingDataMap[dayEntry.date];
+            if (existingEntry) {
+              return existingEntry;
+            }
+            return dayEntry;
+          });
+          
+          setData(mergedData);
         } else {
-          console.log(`TimesheetTable: Nessun dato trovato, generando giorni completi (inclusi weekend)`);
-          // Generare giorni completi, inclusi weekend
-          const month = parseInt(normalizedMonth);
-          const emptyEntries = generateCompleteMonthDays(month, parseInt(selectedYear));
-          setData(emptyEntries);
+          console.log(`TimesheetTable: Nessun dato esistente, usando calendario vuoto`);
+          setData(completeMonthData);
         }
         
         setError(null);
       } catch (err) {
         console.error("TimesheetTable: Errore nel caricamento timesheet:", err);
         setError("Impossibile caricare le ore lavorative. Riprova più tardi.");
+        
+        // In caso di errore, mostra comunque il calendario completo
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
-        const month = parseInt(normalizedMonth);
-        const emptyEntries = generateCompleteMonthDays(month, parseInt(selectedYear));
-        setData(emptyEntries);
+        const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
+        setData(completeMonthData);
       } finally {
         setIsLoading(false);
       }
@@ -138,31 +175,6 @@ const TimesheetTable = ({
     fetchTimesheet();
   }, [selectedMonth, selectedYear]);
 
-  // Funzione per generare tutti i giorni di un mese, inclusi weekend
-  const generateCompleteMonthDays = (month, year) => {
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const entries = [];
-    const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
-      const dayOfWeek = date.getDay(); // 0-6 (Domenica-Sabato)
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
-      const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      entries.push({
-        date: dateStr,
-        day: dayNames[dayOfWeek],
-        total: 0,
-        overtime: 0, // Aggiungi campo overtime
-        notes: "",
-        isWeekend: isWeekend // Aggiungiamo questa proprietà per identificare il weekend
-      });
-    }
-    
-    return entries;
-  };
-
   // Ottieni il nome del mese dalla selezione
   const getMonthName = (monthValue) => {
     const months = [
@@ -170,7 +182,6 @@ const TimesheetTable = ({
       "Maggio", "Giugno", "Luglio", "Agosto", 
       "Settembre", "Ottobre", "Novembre", "Dicembre"
     ];
-    // Rimuovi eventuali prefissi e zeri iniziali
     const normalizedMonth = monthValue.toString().replace(/^prev-/, '').replace(/^0+/, '');
     const monthIndex = parseInt(normalizedMonth) - 1;
     return months[monthIndex] || '';
@@ -207,13 +218,16 @@ const TimesheetTable = ({
             <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P</span> - Permesso
           </div>
           <div>
+            <span style={{ color: '#9b59b6', fontWeight: 'bold' }}>F</span> - Ferie
+          </div>
+          <div>
             <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
           </div>
           <div>
-            <span>8</span> - Ore standard
+            <span>8</span> - Ore standard (max)
           </div>
           <div>
-            <span style={{ color: '#3498db' }}>2</span> - Ore straordinario
+            <span style={{ color: '#3498db' }}>2</span> - Ore straordinario (max 12)
           </div>
         </div>
       </div>
@@ -221,15 +235,26 @@ const TimesheetTable = ({
   };
 
   // Funzione per formattare e colorare il valore delle ore o stato
-  const formatTotalWithOvertime = (total, overtime) => {
+  const formatTotalWithOvertime = (total, overtime, hasData) => {
     // Gestisci le lettere speciali
     if (total === "M") {
       return <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M (Malattia)</span>;
     } else if (total === "P") {
       return <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P (Permesso)</span>;
+    } else if (total === "F") {
+      return <span style={{ color: '#9b59b6', fontWeight: 'bold' }}>F (Ferie)</span>;
     } else if (total === "A") {
       return <span style={{ color: '#000000', fontWeight: 'bold' }}>A (Assenza)</span>;
     } else {
+      // Per i giorni senza dati, mostra solo trattini
+      if (!hasData && total === 0 && overtime === 0) {
+        return (
+          <div style={{ color: '#999', fontStyle: 'italic' }}>
+            <div>-</div>
+          </div>
+        );
+      }
+      
       // Prepara una visualizzazione completa delle ore
       const standardHours = total > 0 ? total : '-';
       const overtimeHours = overtime > 0 ? overtime : '-';
@@ -251,7 +276,7 @@ const TimesheetTable = ({
   const calculateTotalHours = () => {
     const standardHours = data.reduce((total, entry) => {
       // Se il valore è una lettera speciale, non sommare
-      if (["M", "P", "A"].includes(entry.total)) {
+      if (["M", "P", "F", "A"].includes(entry.total)) {
         return total;
       }
       return total + (parseInt(entry.total) || 0);
@@ -259,7 +284,7 @@ const TimesheetTable = ({
     
     const overtimeHours = data.reduce((total, entry) => {
       // Somma solo le ore di straordinario per i giorni lavorati
-      if (!["M", "P", "A"].includes(entry.total)) {
+      if (!["M", "P", "F", "A"].includes(entry.total)) {
         return total + (parseInt(entry.overtime) || 0);
       }
       return total;
@@ -345,8 +370,8 @@ const TimesheetTable = ({
               </div>
             )}
             
-            {/* Aggiungi la legenda solo se ci sono dati */}
-            {data.length > 0 && <TimesheetLegend />}
+            {/* Aggiungi la legenda */}
+            <TimesheetLegend />
             
             <div className="table-responsive">
               <table id="timesheet-table">
@@ -371,7 +396,8 @@ const TimesheetTable = ({
                       <tr 
                         key={entry.date}
                         ref={el => rowRef && rowRef(entry.date, el)}
-                        className={`${highlightedRow === entry.date ? 'error' : ''} ${entry.isWeekend ? 'weekend-row' : ''}`}
+                        className={`${highlightedRow === entry.date ? 'error' : ''} ${entry.isWeekend ? 'weekend-row' : ''} ${!entry.hasData ? 'no-data-row' : ''}`}
+                        style={!entry.hasData ? { backgroundColor: '#fafafa' } : {}}
                       >
                         <td>{formatDate(entry.date)}</td>
                         <td>
@@ -387,7 +413,7 @@ const TimesheetTable = ({
                             }}>Weekend</span>
                           )}
                         </td>
-                        <td>{formatTotalWithOvertime(entry.total, entry.overtime)}</td>
+                        <td>{formatTotalWithOvertime(entry.total, entry.overtime, entry.hasData)}</td>
                         <td>{entry.notes || '-'}</td>
                         <td>
                           <button 

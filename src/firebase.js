@@ -360,83 +360,55 @@ export const updateReportStatus = async (reportId, newStatus) => {
   }
 };
 
-// Funzione ottimizzata per salvare le ore lavorative con supporto per lettere speciali e straordinario
 export const saveWorkHours = async (userId, month, year, entries) => {
-  console.log("saveWorkHours: Tentativo di salvare le ore lavorative con i seguenti parametri:");
-  console.log("userId:", userId);
-  console.log("month:", month);
-  console.log("year:", year);
-  console.log("entries:", entries);
-  
-  // Validazione parametri
-  if (!userId) throw new Error("userId è obbligatorio");
-  if (!month) throw new Error("month è obbligatorio");
-  if (!year) throw new Error("year è obbligatorio");
-  if (!Array.isArray(entries)) throw new Error("entries deve essere un array");
-  
   try {
-    // Normalizza il mese (rimuovi eventuali prefissi e zeri iniziali)
-    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    console.log(`saveWorkHours: userId=${userId}, month=${month}, year=${year}`);
+    console.log(`Entries da salvare:`, entries.length);
     
-    // Se il mese è vuoto dopo la normalizzazione, usa il valore originale
-    if (!normalizedMonth) normalizedMonth = month;
+    // Normalizza il mese
+    const normalizedMonth = month.toString().replace(/^0+/, '');
     
-    console.log(`saveWorkHours: Mese normalizzato=${normalizedMonth}`);
+    // ID del documento
+    const docId = `${userId}_${normalizedMonth}_${year}`;
+    const docRef = doc(db, "workHours", docId);
     
-    // Normalizza i dati per assicurarsi che siano nel formato corretto
-    const normalizedEntries = entries.map(entry => {
-      // Controlla se il valore è una delle lettere speciali (M, P, A)
-      const isSpecialLetter = ["M", "P", "A"].includes(entry.total);
+    // MIGLIORAMENTO: Prepara le entries per il salvataggio con gestione lettere speciali
+    const processedEntries = entries.map(entry => {
+      // Gestisci i valori speciali
+      let totalValue = entry.total;
+      
+      // Se è una lettera speciale (M, P, F, A), mantienila come stringa
+      if (["M", "P", "F", "A"].includes(entry.total)) {
+        totalValue = entry.total;
+      } else {
+        // Altrimenti converti in numero
+        totalValue = parseInt(entry.total) || 0;
+      }
       
       return {
         date: entry.date,
         day: entry.day,
-        // Se è una lettera speciale, conservala come stringa, altrimenti converti in intero
-        total: isSpecialLetter ? entry.total : (parseInt(entry.total) || 0),
-        // Aggiungi il campo overtime (ore straordinarie)
-        overtime: isSpecialLetter ? 0 : (parseInt(entry.overtime) || 0), // Se è un giorno speciale, nessuno straordinario
+        total: totalValue,
+        overtime: parseInt(entry.overtime) || 0,
         notes: entry.notes || "",
         isWeekend: entry.isWeekend || false
       };
     });
     
-    // Crea un documento ID combinando utente, mese e anno
-    const docId = `${userId}_${normalizedMonth}_${year}`;
-    console.log("saveWorkHours: ID documento", docId);
-    
-    const workHoursRef = doc(db, "workHours", docId);
-    
-    // Dati da salvare
-    const workHoursData = {
+    // Salva il documento
+    await setDoc(docRef, {
       userId,
       month: normalizedMonth,
-      year,
-      entries: normalizedEntries,
+      year: year.toString(),
+      entries: processedEntries,
       lastUpdated: serverTimestamp()
-    };
-    
-    console.log("saveWorkHours: dati da salvare", {
-      userId, 
-      month: normalizedMonth, 
-      year, 
-      entriesCount: normalizedEntries.length
     });
     
-    // Controlla se il documento esiste già
-    const docSnap = await getDoc(workHoursRef);
+    console.log(`WorkHours salvate con successo: ${docId}`);
+    return { success: true, docId };
     
-    if (docSnap.exists()) {
-      console.log("saveWorkHours: Aggiornamento documento esistente");
-      await updateDoc(workHoursRef, workHoursData);
-    } else {
-      console.log("saveWorkHours: Creazione nuovo documento");
-      await setDoc(workHoursRef, workHoursData);
-    }
-    
-    console.log("saveWorkHours: Salvataggio completato con successo");
-    return true;
   } catch (error) {
-    console.error("saveWorkHours: Errore durante il salvataggio", error);
+    console.error("Errore nel salvataggio delle ore lavorative:", error);
     throw error;
   }
 };
@@ -488,134 +460,159 @@ export const getWorkHours = async (userId, month, year) => {
   }
 };
 
+// 1. SOSTITUIRE la funzione getUserWorkHoursByMonth esistente con questa versione:
+
 export const getUserWorkHoursByMonth = async (userId, month, year) => {
   try {
+    console.log(`getUserWorkHoursByMonth: userId=${userId}, month=${month}, year=${year}`);
+    
     // Normalizza il mese
-    let normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
-    if (!normalizedMonth) normalizedMonth = month;
+    const normalizedMonth = month.toString().replace(/^prev-/, '').replace(/^0+/, '');
+    const monthInt = parseInt(normalizedMonth);
+    const yearInt = parseInt(year);
     
-    // Formato con zero iniziale
-    const paddedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
-    
-    console.log(`getUserWorkHoursByMonth: cercando documento per userId=${userId}, normalizedMonth=${normalizedMonth}, paddedMonth=${paddedMonth}, year=${year}`);
-    
-    // Primo tentativo: crea un documento ID con il mese normalizzato
-    const docId = `${userId}_${normalizedMonth}_${year}`;
-    console.log(`getUserWorkHoursByMonth: Tentativo 1 - ID documento=${docId}`);
-    
-    const workHoursRef = doc(db, "workHours", docId);
-    const docSnap = await getDoc(workHoursRef);
-    
-    if (docSnap.exists()) {
-      console.log(`getUserWorkHoursByMonth: documento trovato con ID=${docId}`);
-      const data = docSnap.data();
-      
-      // Assicurati che tutte le entries abbiano il campo overtime
-      if (data.entries && Array.isArray(data.entries)) {
-        data.entries = data.entries.map(entry => ({
-          ...entry,
-          overtime: entry.overtime !== undefined ? entry.overtime : 0
-        }));
+    // NUOVA FUNZIONE: Genera il calendario completo del mese
+    const generateCompleteMonth = (month, year) => {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const entries = [];
+      const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day);
+        const dayOfWeek = date.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        
+        entries.push({
+          date: dateStr,
+          day: dayNames[dayOfWeek],
+          total: 0,
+          overtime: 0,
+          notes: "",
+          isWeekend: isWeekend,
+          hasData: false
+        });
       }
       
+      return entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+    };
+    
+    // Genera il calendario completo
+    const completeMonth = generateCompleteMonth(monthInt, yearInt);
+    
+    // Cerca i dati esistenti (mantieni la logica esistente di ricerca)
+    let existingData = null;
+    
+    // Tentativo 1: ID documento senza zero iniziale
+    const docId = `${userId}_${normalizedMonth}_${year}`;
+    console.log(`Tentativo 1: docId=${docId}`);
+    
+    const docRef = doc(db, "workHours", docId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      console.log(`Documento trovato: ${docId}`);
+      const data = docSnap.data();
+      if (data.entries && Array.isArray(data.entries)) {
+        existingData = data.entries;
+      }
+    } else {
+      // Tentativo 2: ID documento con zero iniziale
+      const formattedMonth = normalizedMonth.length === 1 ? normalizedMonth.padStart(2, '0') : normalizedMonth;
+      const altDocId = `${userId}_${formattedMonth}_${year}`;
+      
+      console.log(`Tentativo 2: altDocId=${altDocId}`);
+      
+      if (altDocId !== docId) {
+        const altDocRef = doc(db, "workHours", altDocId);
+        const altDocSnap = await getDoc(altDocRef);
+        
+        if (altDocSnap.exists()) {
+          console.log(`Documento alternativo trovato: ${altDocId}`);
+          const altData = altDocSnap.data();
+          if (altData.entries && Array.isArray(altData.entries)) {
+            existingData = altData.entries;
+          }
+        }
+      }
+      
+      // Tentativo 3: Query generale
+      if (!existingData) {
+        console.log(`Tentativo 3: Query generale`);
+        const workHoursRef = collection(db, "workHours");
+        const q = query(
+          workHoursRef, 
+          where("userId", "==", userId),
+          where("year", "==", year)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        console.log(`Query generale: ${querySnapshot.size} documenti trovati`);
+        
+        if (!querySnapshot.empty) {
+          for (const doc of querySnapshot.docs) {
+            const data = doc.data();
+            const docMonth = data.month.toString().replace(/^0+/, '');
+            
+            if (docMonth === normalizedMonth) {
+              console.log(`Corrispondenza trovata per mese ${docMonth}`);
+              if (data.entries && Array.isArray(data.entries)) {
+                existingData = data.entries;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // NUOVA LOGICA: Merge dei dati esistenti con il calendario completo
+    if (existingData && existingData.length > 0) {
+      console.log(`Merge di ${existingData.length} entries esistenti con calendario completo`);
+      
+      // Crea una mappa dei dati esistenti
+      const existingDataMap = {};
+      existingData.forEach(entry => {
+        if (entry.date) {
+          existingDataMap[entry.date] = {
+            ...entry,
+            overtime: entry.overtime !== undefined ? entry.overtime : 0,
+            hasData: true
+          };
+        }
+      });
+      
+      // Merge con il calendario completo
+      const mergedEntries = completeMonth.map(dayEntry => {
+        const existingEntry = existingDataMap[dayEntry.date];
+        if (existingEntry) {
+          return existingEntry;
+        }
+        return dayEntry;
+      });
+      
       return {
-        id: docSnap.id,
-        ...data
+        userId,
+        month: normalizedMonth,
+        year,
+        entries: mergedEntries,
+        lastUpdated: new Date().toISOString()
+      };
+    } else {
+      console.log(`Nessun dato esistente, restituisco calendario vuoto`);
+      
+      return {
+        userId,
+        month: normalizedMonth,
+        year,
+        entries: completeMonth,
+        lastUpdated: new Date().toISOString()
       };
     }
     
-    // Secondo tentativo: prova con il mese con zero iniziale se diverso
-    if (paddedMonth !== normalizedMonth) {
-      const altDocId = `${userId}_${paddedMonth}_${year}`;
-      console.log(`getUserWorkHoursByMonth: Tentativo 2 - ID documento=${altDocId}`);
-      
-      const altWorkHoursRef = doc(db, "workHours", altDocId);
-      const altDocSnap = await getDoc(altWorkHoursRef);
-      
-      if (altDocSnap.exists()) {
-        console.log(`getUserWorkHoursByMonth: documento trovato con ID=${altDocId}`);
-        const altData = altDocSnap.data();
-        
-        // Assicurati che tutte le entries abbiano il campo overtime
-        if (altData.entries && Array.isArray(altData.entries)) {
-          altData.entries = altData.entries.map(entry => ({
-            ...entry,
-            overtime: entry.overtime !== undefined ? entry.overtime : 0
-          }));
-        }
-        
-        return {
-          id: altDocSnap.id,
-          ...altData
-        };
-      }
-    }
-    
-    // Terzo tentativo: esegui una query più generica
-    console.log("getUserWorkHoursByMonth: Tentativo 3 - Query generale");
-    const workHoursCollection = collection(db, "workHours");
-    const q = query(
-      workHoursCollection, 
-      where("userId", "==", userId),
-      where("year", "==", year)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    console.log(`getUserWorkHoursByMonth: Query generale ha trovato ${querySnapshot.size} documenti`);
-    
-    if (!querySnapshot.empty) {
-      // Cerca un documento che corrisponda al mese
-      for (const doc of querySnapshot.docs) {
-        const data = doc.data();
-        console.log(`Documento trovato con month=${data.month}, confronto con ${normalizedMonth}`);
-        
-        // Normalizza entrambi per il confronto
-        const docMonth = data.month.toString().replace(/^0+/, '');
-        
-        if (docMonth === normalizedMonth) {
-          console.log(`getUserWorkHoursByMonth: Corrispondenza trovata in query generale`);
-          
-          // Assicurati che tutte le entries abbiano il campo overtime
-          if (data.entries && Array.isArray(data.entries)) {
-            data.entries = data.entries.map(entry => ({
-              ...entry,
-              overtime: entry.overtime !== undefined ? entry.overtime : 0
-            }));
-          }
-          
-          return {
-            id: doc.id,
-            ...data
-          };
-        }
-      }
-    }
-    
-    console.log("getUserWorkHoursByMonth: nessun documento trovato in tutti i tentativi");
-    return null;
   } catch (error) {
-    console.error("getUserWorkHoursByMonth: Errore nel recupero delle ore lavorative:", error);
-    throw error;
-  }
-};
-
-export const getUserWorkHours = async (userId) => {
-  console.log(`getUserWorkHours: Caricamento di tutte le ore lavorative per userId=${userId}`);
-  
-  try {
-    // Ottieni tutte le ore lavorative di un utente
-    const workHoursRef = collection(db, "workHours");
-    const q = query(workHoursRef, where("userId", "==", userId));
-    
-    const querySnapshot = await getDocs(q);
-    console.log(`getUserWorkHours: ${querySnapshot.size} documenti trovati`);
-    
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error("getUserWorkHours: Errore nel recupero delle ore lavorative:", error);
+    console.error("Errore nel recupero delle ore lavorative:", error);
     throw error;
   }
 };
