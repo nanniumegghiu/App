@@ -25,7 +25,16 @@ const AdminWorkHoursForm = ({ onSave, onCancel, initialData }) => {
         const usersList = usersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        })).sort((a, b) => {
+          // Prima gli admin, poi gli altri utenti
+          if (a.role === 'admin' && b.role !== 'admin') return -1;
+          if (a.role !== 'admin' && b.role === 'admin') return 1;
+          
+          // All'interno dello stesso gruppo, ordina per nome
+          const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+          const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+          return aName.localeCompare(bName);
+        });
         
         setUsers(usersList);
       } catch (err) {
@@ -161,10 +170,12 @@ const AdminWorkHoursForm = ({ onSave, onCancel, initialData }) => {
               >
                 <option value="">Seleziona utente</option>
                 {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.nome} {user.cognome} ({user.email})
-                  </option>
-                ))}
+  <option key={user.id} value={user.id}>
+    {user.role === 'admin' && '👑 '}
+    {user.nome} {user.cognome} ({user.email})
+    {user.role === 'admin' && ' - Admin'}
+  </option>
+))}
               </select>
               {errors.userId && <div className="error-text">{errors.userId}</div>}
             </div>

@@ -1309,6 +1309,13 @@ async getTodayStatus(userId) {
   }
 },
 
+/**
+ * NUOVA FUNZIONE ESPOSTA: Auto-chiude sessioni scadute
+ */
+async autoCloseOpenSessions(userId) {
+  return await autoCloseOpenSessions(userId);
+},
+
   /**
    * Registra un dispositivo per la scansione
    */

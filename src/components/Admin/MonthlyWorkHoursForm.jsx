@@ -23,7 +23,16 @@ const MonthlyWorkHoursForm = ({ onSave, onCancel, selectedMonth, selectedYear, s
         const users = usersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        })).sort((a, b) => {
+          // Prima gli admin, poi gli altri utenti
+          if (a.role === 'admin' && b.role !== 'admin') return -1;
+          if (a.role !== 'admin' && b.role === 'admin') return 1;
+          
+          // All'interno dello stesso gruppo, ordina per nome
+          const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+          const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+          return aName.localeCompare(bName);
+        });
         
         const foundUser = users.find(user => user.id === selectedUser);
         if (foundUser) {

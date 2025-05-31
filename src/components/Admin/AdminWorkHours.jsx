@@ -2,17 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { db, saveWorkHours } from '../../firebase';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+const generateYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  return [currentYear, currentYear - 1, currentYear - 2].sort((a, b) => b - a);
+};
 
 const AdminWorkHours = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [timeEntries, setTimeEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-
+ 
   // Carica la lista degli utenti al montaggio del componente
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -26,9 +30,19 @@ const AdminWorkHours = () => {
             id: doc.id,
             ...doc.data()
           }))
-          .filter(user => user.role !== "admin"); // Esclude gli amministratori
+ // Ordina per ruolo (admin prima) e poi per nome
+.sort((a, b) => {
+ // Prima gli admin, poi gli altri utenti
+  if (a.role === 'admin' && b.role !== 'admin') return -1;
+  if (a.role !== 'admin' && b.role === 'admin') return 1;
+  
+  // All'interno dello stesso gruppo, ordina per nome
+  const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+  const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+  return aName.localeCompare(bName);
+  });
         
-        console.log(`${usersList.length} utenti caricati`);
+  console.log(`${usersList.length} utenti caricati (inclusi ${usersList.filter(u => u.role === 'admin').length} admin)`);
         setEmployees(usersList);
       } catch (error) {
         console.error("Errore nel caricamento degli utenti:", error);
@@ -361,10 +375,12 @@ const AdminWorkHours = () => {
           >
             <option value="">-- Seleziona un dipendente --</option>
             {employees.map(employee => (
-              <option key={employee.id} value={employee.id}>
-                {employee.nome} {employee.cognome} ({employee.email})
-              </option>
-            ))}
+  <option key={employee.id} value={employee.id}>
+    {employee.role === 'admin' && '👑 '}
+    {employee.nome} {employee.cognome} ({employee.email})
+    {employee.role === 'admin' && ' - Admin'}
+  </option>
+))}
           </select>
         </div>
         
@@ -393,8 +409,9 @@ const AdminWorkHours = () => {
             onChange={handleYearChange}
             className="form-control"
           >
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
+            {generateYearOptions().map(year => (
+              <option key={year} value={year.toString()}>{year}</option>
+            ))}
           </select>
         </div>
       </div>

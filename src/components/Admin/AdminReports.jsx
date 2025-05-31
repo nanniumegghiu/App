@@ -7,11 +7,18 @@ const AdminReports = () => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [debugInfo, setDebugInfo] = useState(null);
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    return [currentYear, currentYear - 1, currentYear - 2].sort((a, b) => b - a);
+  };
+  const handleYearChange = (e) => {
+    setSelectedYear(e.target.value);
+  };
 
   // Carica la lista degli utenti
   useEffect(() => {
@@ -19,9 +26,19 @@ const AdminReports = () => {
       setIsLoading(true);
       try {
         const allUsers = await getAllUsers();
-        // Filtra solo gli utenti non-admin (opzionale)
-        const nonAdminUsers = allUsers.filter(user => user.role !== 'admin');
-        setUsers(nonAdminUsers);
+// Ordina gli utenti: prima gli admin, poi per nome
+const sortedUsers = allUsers.sort((a, b) => {
+  // Prima gli admin, poi gli altri utenti
+  if (a.role === 'admin' && b.role !== 'admin') return -1;
+  if (a.role !== 'admin' && b.role === 'admin') return 1;
+  
+  // All'interno dello stesso gruppo, ordina per nome
+  const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+  const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+  return aName.localeCompare(bName);
+});
+
+setUsers(sortedUsers);
       } catch (error) {
         console.error("Errore nel caricamento degli utenti:", error);
         showNotification("Errore nel caricamento degli utenti", "error");
@@ -549,12 +566,14 @@ const AdminReports = () => {
               className="form-control"
               disabled={isGenerating}
             >
-              <option value="all">Tutti i dipendenti</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email}
-                </option>
-              ))}
+              <option value="all">Tutti i dipendenti (inclusi admin)</option>
+{users.map(user => (
+  <option key={user.id} value={user.id}>
+    {user.role === 'admin' && '👑 '}
+    {user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email}
+    {user.role === 'admin' && ' - Admin'}
+  </option>
+))}
             </select>
           </div>
           
@@ -578,16 +597,11 @@ const AdminReports = () => {
           
           <div className="form-group">
             <label htmlFor="year-select">Anno:</label>
-            <select 
-              id="year-select" 
-              value={selectedYear} 
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="form-control"
-              disabled={isGenerating}
-            >
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-            </select>
+            <select id="year-select" value={selectedYear} onChange={handleYearChange}>
+  {generateYearOptions().map(year => (
+    <option key={year} value={year.toString()}>{year}</option>
+  ))}
+</select>
           </div>
         </div>
         

@@ -3,12 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
+// Funzione per ottenere l'anno corrente
+const getCurrentYear = () => {
+  return new Date().getFullYear().toString();
+};
+
 const TimesheetTable = ({ 
   selectedMonth, 
   onReportError, 
   highlightedRow, 
   rowRef,
-  selectedYear = "2025" 
+  selectedYear = getCurrentYear() 
 }) => {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
