@@ -1,4 +1,4 @@
-// src/services/timekeepingService.js - Versione con auto-chiusura turni > 18 ore
+// src/services/timekeepingService.js - Versione con auto-chiusura corretta
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -60,7 +60,312 @@ const calculateMaxExitTime = (clockInTime, clockInDate) => {
 };
 
 /**
- * Controlla se l'orario di uscita è valido - MODIFICATO per auto-chiusura > 18 ore
+ * Calcola l'orario di auto-chiusura (ingresso + 8 ore)
+ */
+const calculateAutoCloseTime = (clockInTime, clockInDate) => {
+  const [inHours, inMinutes] = clockInTime.split(':').map(Number);
+  const inTotalMinutes = inHours * 60 + inMinutes;
+  
+  // Aggiungi 8 ore (480 minuti)
+  const autoCloseMinutes = inTotalMinutes + 480;
+  
+  let autoCloseDate = clockInDate;
+  let finalMinutes = autoCloseMinutes;
+  
+  // Se supera la mezzanotte (1440 minuti), passa al giorno successivo
+  if (autoCloseMinutes >= 1440) {
+    const nextDate = new Date(clockInDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    
+    const year = nextDate.getFullYear();
+    const month = String(nextDate.getMonth() + 1).padStart(2, '0');
+    const day = String(nextDate.getDate()).padStart(2, '0');
+    autoCloseDate = `${year}-${month}-${day}`;
+    
+    finalMinutes = autoCloseMinutes - 1440;
+  }
+  
+  const autoCloseHours = Math.floor(finalMinutes / 60);
+  const autoCloseMin = finalMinutes % 60;
+  const autoCloseTime = `${String(autoCloseHours).padStart(2, '0')}:${String(autoCloseMin).padStart(2, '0')}`;
+  
+  return {
+    clockOutTime: autoCloseTime,
+    clockOutDate: autoCloseDate,
+    totalHours: 8,
+    standardHours: 8,
+    overtimeHours: 0,
+    autoClosedReason: `Auto-chiuso: superato limite orario. Assegnate 8 ore standard (${clockInTime} + 8h = ${autoCloseTime})`
+  };
+};
+
+/**
+ * NUOVA FUNZIONE: Auto-chiude le sessioni scadute
+ * Chiude immediatamente quando si supera l'orario limite (non 24h dopo)
+ */
+const autoCloseOpenSessions = async (userId) => {
+  try {
+    console.log(`[AutoClose] Controllo sessioni scadute per user: ${userId}`);
+    
+    const now = new Date();
+    const timekeepingRef = collection(db, "timekeeping");
+    
+    // Trova tutte le sessioni in corso per l'utente
+    const activeQuery = query(
+      timekeepingRef,
+      where("userId", "==", userId),
+      where("status", "==", "in-progress")
+    );
+    
+    const activeSnapshot = await getDocs(activeQuery);
+    console.log(`[AutoClose] Trovate ${activeSnapshot.size} sessioni attive`);
+    
+    if (activeSnapshot.empty) {
+      console.log(`[AutoClose] Nessuna sessione attiva da controllare`);
+      return { processed: 0, closed: 0 };
+    }
+    
+    let processedCount = 0;
+    let closedCount = 0;
+    
+    for (const docSnap of activeSnapshot.docs) {
+      const record = docSnap.data();
+      processedCount++;
+      
+      console.log(`[AutoClose] Controllo sessione ${docSnap.id}: ${record.date} ${record.clockInTime}`);
+      
+      // Calcola il limite di uscita per questa sessione
+      const maxExitInfo = calculateMaxExitTime(record.clockInTime, record.date);
+      
+      // Crea l'oggetto DateTime del limite
+      const limitDateTime = new Date(`${maxExitInfo.maxExitDate}T${maxExitInfo.maxExitTime}:00`);
+      
+      console.log(`[AutoClose] Limite calcolato: ${maxExitInfo.maxExitDate} ${maxExitInfo.maxExitTime}`);
+      console.log(`[AutoClose] Ora attuale: ${now.toISOString()}, Limite: ${limitDateTime.toISOString()}`);
+      
+      // NUOVA LOGICA: Chiudi immediatamente se abbiamo superato il limite
+      if (now > limitDateTime) {
+        console.log(`[AutoClose] LIMITE SUPERATO! Auto-chiudo la sessione ${docSnap.id}`);
+        
+        // Calcola orario auto-chiusura (ingresso + 8 ore)
+        const autoCloseData = calculateAutoCloseTime(record.clockInTime, record.date);
+        
+        // Prepara dati di aggiornamento
+        const updateData = {
+          clockOutTime: autoCloseData.clockOutTime,
+          clockOutDate: autoCloseData.clockOutDate,
+          clockOutTimestamp: serverTimestamp(),
+          totalHours: autoCloseData.totalHours,
+          standardHours: autoCloseData.standardHours,
+          overtimeHours: autoCloseData.overtimeHours,
+          lunchBreakDeducted: false, // Nessuna pausa per 8 ore esatte
+          lunchBreakMinutes: 0,
+          isMultiDay: autoCloseData.clockOutDate !== record.date,
+          workDistribution: [{
+            date: record.date,
+            totalMinutes: 480, // 8 ore = 480 minuti
+            totalHours: 8,
+            standardHours: 8,
+            overtimeHours: 0,
+            notes: `Auto-chiuso: ${record.clockInTime} + 8h = ${autoCloseData.clockOutTime}`
+          }],
+          status: "auto-closed",
+          autoClosedReason: autoCloseData.autoClosedReason,
+          autoClosedAt: serverTimestamp(),
+          autoCloseInfo: {
+            originalLimit: `${maxExitInfo.maxExitDate} ${maxExitInfo.maxExitTime}`,
+            autoClosedAt: now.toISOString(),
+            calculatedExitTime: `${autoCloseData.clockOutDate} ${autoCloseData.clockOutTime}`,
+            hoursAssigned: 8
+          },
+          updatedAt: serverTimestamp()
+        };
+        
+        // Se il turno attraversa più giorni, distribuisci le ore
+        if (autoCloseData.clockOutDate !== record.date) {
+          updateData.workDistribution = calculateMultiDayDistribution(
+            record.clockInTime, 
+            record.date, 
+            autoCloseData.clockOutTime, 
+            autoCloseData.clockOutDate
+          );
+        }
+        
+        // Aggiorna il record
+        const docRef = doc(db, "timekeeping", docSnap.id);
+        await updateDoc(docRef, updateData);
+        
+        // Sincronizza con workHours
+        try {
+          await syncToWorkHours(userId, updateData.workDistribution);
+          console.log(`[AutoClose] Sincronizzazione workHours completata per sessione ${docSnap.id}`);
+        } catch (syncError) {
+          console.error(`[AutoClose] Errore sincronizzazione workHours:`, syncError);
+        }
+        
+        closedCount++;
+        console.log(`[AutoClose] Sessione ${docSnap.id} auto-chiusa con successo`);
+      } else {
+        console.log(`[AutoClose] Sessione ${docSnap.id} ancora entro i limiti`);
+      }
+    }
+    
+    console.log(`[AutoClose] Completato: ${processedCount} sessioni controllate, ${closedCount} auto-chiuse`);
+    return { processed: processedCount, closed: closedCount };
+    
+  } catch (error) {
+    console.error("[AutoClose] Errore durante l'auto-chiusura:", error);
+    throw error;
+  }
+};
+
+/**
+ * Calcola distribuzione multi-giorno per auto-chiusura (sempre 8 ore totali)
+ */
+const calculateMultiDayDistribution = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
+  const workDistribution = [];
+  
+  if (clockInDate === clockOutDate) {
+    // Stesso giorno - tutte le 8 ore in un giorno
+    workDistribution.push({
+      date: clockInDate,
+      totalMinutes: 480, // 8 ore
+      totalHours: 8,
+      standardHours: 8,
+      overtimeHours: 0,
+      notes: `Auto-chiuso: ${clockInTime} + 8h = ${clockOutTime} (stesso giorno)`
+    });
+  } else {
+    // Turno multi-giorno - distribuisci le 8 ore
+    const [inHours, inMinutes] = clockInTime.split(':').map(Number);
+    const inTotalMinutes = inHours * 60 + inMinutes;
+    
+    // Calcola ore nel primo giorno (dalla partenza alla mezzanotte)
+    const minutesToMidnight = 1440 - inTotalMinutes;
+    const hoursFirstDay = Math.min(8, Math.floor(minutesToMidnight / 60));
+    const hoursSecondDay = 8 - hoursFirstDay;
+    
+    // Primo giorno
+    if (hoursFirstDay > 0) {
+      workDistribution.push({
+        date: clockInDate,
+        totalMinutes: hoursFirstDay * 60,
+        totalHours: hoursFirstDay,
+        standardHours: hoursFirstDay,
+        overtimeHours: 0,
+        notes: `Auto-chiuso: turno multi-giorno - parte 1 (${hoursFirstDay}h)`
+      });
+    }
+    
+    // Secondo giorno
+    if (hoursSecondDay > 0) {
+      workDistribution.push({
+        date: clockOutDate,
+        totalMinutes: hoursSecondDay * 60,
+        totalHours: hoursSecondDay,
+        standardHours: hoursSecondDay,
+        overtimeHours: 0,
+        notes: `Auto-chiuso: turno multi-giorno - parte 2 (${hoursSecondDay}h)`
+      });
+    }
+  }
+  
+  return workDistribution;
+};
+
+/**
+ * Sincronizza le ore con workHours (versione semplificata per auto-chiusura)
+ */
+const syncToWorkHours = async (userId, workDistribution) => {
+  for (const dayWork of workDistribution) {
+    try {
+      const { date, standardHours, overtimeHours, notes } = dayWork;
+      const [year, month, day] = date.split('-');
+      
+      const normalizedMonth = month.replace(/^0+/, '');
+      const workHoursId = `${userId}_${normalizedMonth}_${year}`;
+      const workHoursRef = doc(db, "workHours", workHoursId);
+      
+      const workHoursSnap = await getDoc(workHoursRef);
+      
+      if (workHoursSnap.exists()) {
+        const workHoursData = workHoursSnap.data();
+        const entries = workHoursData.entries || [];
+        
+        const entryIndex = entries.findIndex(entry => entry.date === date);
+        
+        if (entryIndex >= 0) {
+          // Aggiorna entry esistente - SOMMA le ore (regola 8h max standard per giorno)
+          const existingEntry = entries[entryIndex];
+          
+          // Non sovrascrivere entries manuali
+          if (typeof existingEntry.total === 'string' && ["M", "P", "A", "F"].includes(existingEntry.total)) {
+            continue;
+          }
+          
+          const currentStandard = parseInt(existingEntry.total) || 0;
+          const currentOvertime = parseInt(existingEntry.overtime) || 0;
+          const totalCurrent = currentStandard + currentOvertime;
+          const totalNew = standardHours + overtimeHours;
+          const grandTotal = totalCurrent + totalNew;
+          
+          // Applica regola 8h standard max per giornata
+          const finalStandard = Math.min(8, grandTotal);
+          const finalOvertime = Math.max(0, grandTotal - 8);
+          
+          entries[entryIndex] = {
+            ...existingEntry,
+            total: finalStandard,
+            overtime: finalOvertime,
+            notes: existingEntry.notes ? `${existingEntry.notes} + ${notes}` : notes
+          };
+        } else {
+          // Crea nuova entry
+          const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+          const isWeekend = [0, 6].includes(new Date(date).getDay());
+          
+          entries.push({
+            date,
+            day: dayOfWeek,
+            total: standardHours,
+            overtime: overtimeHours,
+            notes: notes,
+            isWeekend
+          });
+        }
+        
+        await updateDoc(workHoursRef, {
+          entries,
+          lastUpdated: serverTimestamp()
+        });
+      } else {
+        // Crea nuovo documento
+        const dayOfWeek = new Date(date).toLocaleDateString('it-IT', { weekday: 'long' });
+        const isWeekend = [0, 6].includes(new Date(date).getDay());
+        
+        await setDoc(workHoursRef, {
+          userId,
+          month: normalizedMonth,
+          year,
+          entries: [{
+            date,
+            day: dayOfWeek,
+            total: standardHours,
+            overtime: overtimeHours,
+            notes: notes,
+            isWeekend
+          }],
+          lastUpdated: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error(`Errore sincronizzazione workHours per ${dayWork.date}:`, error);
+    }
+  }
+};
+
+/**
+ * Controlla se l'orario di uscita è valido
  */
 const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDate) => {
   const maxExitInfo = calculateMaxExitTime(clockInTime, clockInDate);
@@ -74,7 +379,7 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
   
   // Se uscita è il giorno dopo, aggiungi 24 ore
   if (clockOutDate !== clockInDate) {
-    outTotalMinutes += 1440; // 24 ore in minuti
+    outTotalMinutes += 1440;
   }
   
   const durationMinutes = outTotalMinutes - inTotalMinutes;
@@ -83,7 +388,7 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
   console.log(`Validazione turno: ${clockInTime} (${clockInDate}) → ${clockOutTime} (${clockOutDate})`);
   console.log(`Durata turno: ${durationHours.toFixed(2)} ore`);
   
-  // REGOLA 1: Turno troppo corto (meno di 1 minuto) - sempre invalido
+  // Turno troppo corto
   if (durationMinutes < 1) {
     return {
       isValid: false,
@@ -92,39 +397,16 @@ const validateClockOutTime = (clockInTime, clockInDate, clockOutTime, clockOutDa
     };
   }
   
-  // REGOLA 2: NUOVA LOGICA - Turno > 18 ore → Auto-chiusura a 8 ore
+  // Turno troppo lungo (>18 ore) → Auto-chiusura a 8 ore
   if (durationHours > 18) {
-    // Calcola l'orario di auto-chiusura (ingresso + 8 ore)
-    const autoCloseMinutes = inTotalMinutes + (8 * 60); // +8 ore
-    
-    let autoCloseDate = clockInDate;
-    let autoCloseTotalMinutes = autoCloseMinutes;
-    
-    // Se supera la mezzanotte, passa al giorno successivo
-    if (autoCloseMinutes >= 1440) {
-      const nextDate = new Date(clockInDate);
-      nextDate.setDate(nextDate.getDate() + 1);
-      const year = nextDate.getFullYear();
-      const month = String(nextDate.getMonth() + 1).padStart(2, '0');
-      const day = String(nextDate.getDate()).padStart(2, '0');
-      autoCloseDate = `${year}-${month}-${day}`;
-      autoCloseTotalMinutes = autoCloseMinutes - 1440;
-    }
-    
-    const autoCloseHours = Math.floor(autoCloseTotalMinutes / 60);
-    const autoCloseMin = autoCloseTotalMinutes % 60;
-    const autoCloseTime = `${String(autoCloseHours).padStart(2, '0')}:${String(autoCloseMin).padStart(2, '0')}`;
+    const autoCloseData = calculateAutoCloseTime(clockInTime, clockInDate);
     
     return {
       isValid: false,
-      autoClose: true, // Flag per indicare auto-chiusura
-      reason: `Turno troppo lungo (${durationHours.toFixed(1)} ore). Auto-chiuso a 8 ore lavorative.`,
+      autoClose: true,
+      reason: `Turno troppo lungo (${durationHours.toFixed(1)} ore). Auto-chiuso a 8 ore standard.`,
       autoCloseData: {
-        clockOutTime: autoCloseTime,
-        clockOutDate: autoCloseDate,
-        totalHours: 8,
-        standardHours: 8,
-        overtimeHours: 0,
+        ...autoCloseData,
         autoClosedReason: `Auto-chiuso: turno superiore a 18 ore (${durationHours.toFixed(1)}h). Limitato a 8 ore standard.`
       },
       maxExitInfo
