@@ -1,7 +1,9 @@
-// src/components/Admin/AdminWorkHours.jsx - Con calendario completo del mese
+// src/components/Admin/AdminWorkHours.jsx - Con evidenziazione festività
 import React, { useState, useEffect } from 'react';
 import { db, saveWorkHours } from '../../firebase';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+import { getDayInfo, getMonthHolidays } from '../../utils/holidaysUtils';
+
 const generateYearOptions = () => {
   const currentYear = new Date().getFullYear();
   return [currentYear, currentYear - 1, currentYear - 2].sort((a, b) => b - a);
@@ -13,6 +15,7 @@ const AdminWorkHours = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [timeEntries, setTimeEntries] = useState([]);
+  const [monthHolidays, setMonthHolidays] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
@@ -30,19 +33,16 @@ const AdminWorkHours = () => {
             id: doc.id,
             ...doc.data()
           }))
- // Ordina per ruolo (admin prima) e poi per nome
-.sort((a, b) => {
- // Prima gli admin, poi gli altri utenti
-  if (a.role === 'admin' && b.role !== 'admin') return -1;
-  if (a.role !== 'admin' && b.role === 'admin') return 1;
-  
-  // All'interno dello stesso gruppo, ordina per nome
-  const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
-  const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
-  return aName.localeCompare(bName);
-  });
+          .sort((a, b) => {
+            if (a.role === 'admin' && b.role !== 'admin') return -1;
+            if (a.role !== 'admin' && b.role === 'admin') return 1;
+            
+            const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+            const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+            return aName.localeCompare(bName);
+          });
         
-  console.log(`${usersList.length} utenti caricati (inclusi ${usersList.filter(u => u.role === 'admin').length} admin)`);
+        console.log(`${usersList.length} utenti caricati (inclusi ${usersList.filter(u => u.role === 'admin').length} admin)`);
         setEmployees(usersList);
       } catch (error) {
         console.error("Errore nel caricamento degli utenti:", error);
@@ -55,7 +55,18 @@ const AdminWorkHours = () => {
     fetchEmployees();
   }, []);
 
-  // Funzione per generare tutti i giorni del mese con dati vuoti
+  // Carica le festività quando cambiano mese/anno
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      const monthInt = parseInt(selectedMonth);
+      const yearInt = parseInt(selectedYear);
+      const holidays = getMonthHolidays(monthInt, yearInt);
+      setMonthHolidays(holidays);
+      console.log(`Festività trovate per ${selectedMonth}/${selectedYear}:`, holidays);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  // Funzione per generare tutti i giorni del mese con dati vuoti e info festività
   const generateCompleteMonthDays = (month, year) => {
     const monthInt = parseInt(month);
     const yearInt = parseInt(year);
@@ -64,19 +75,21 @@ const AdminWorkHours = () => {
     const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(yearInt, monthInt - 1, day);
-      const dayOfWeek = date.getDay(); // 0-6 (Domenica-Sabato)
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
       const dateStr = `${yearInt}-${monthInt.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      const dayInfo = getDayInfo(dateStr);
+      
       entries.push({
         date: dateStr,
-        day: dayNames[dayOfWeek],
-        total: "", // Vuoto inizialmente - può essere numero o lettera speciale
-        overtime: 0, // Default 0
+        day: dayNames[dayInfo.dayOfWeek],
+        total: "",
+        overtime: 0,
         notes: "",
-        isWeekend: isWeekend,
-        hasData: false // Flag per indicare se ha dati reali o è generato
+        isWeekend: dayInfo.isWeekend,
+        isHoliday: dayInfo.isHoliday,
+        holidayName: dayInfo.holidayName,
+        isNonWorkingDay: dayInfo.isNonWorkingDay,
+        dayType: dayInfo.dayType,
+        hasData: false
       });
     }
     
@@ -93,14 +106,11 @@ const AdminWorkHours = () => {
       console.log(`Caricamento ore: dipendente=${selectedEmployee}, mese=${selectedMonth}, anno=${selectedYear}`);
       setIsLoading(true);
       try {
-        // Genera tutti i giorni del mese
         const completeMonthData = generateCompleteMonthDays(selectedMonth, selectedYear);
         
-        // Costruisci l'ID del documento
         const docId = `${selectedEmployee}_${selectedMonth}_${selectedYear}`;
         console.log(`Cercando documento con ID: ${docId}`);
         
-        // Tenta di recuperare direttamente il documento
         const docRef = doc(db, "workHours", docId);
         const docSnap = await getDoc(docRef);
         
@@ -109,7 +119,6 @@ const AdminWorkHours = () => {
           const data = docSnap.data();
           
           if (data.entries && data.entries.length > 0) {
-            // Merge dei dati esistenti con il calendario completo
             const existingDataMap = {};
             data.entries.forEach(entry => {
               if (entry.date) {
@@ -121,18 +130,19 @@ const AdminWorkHours = () => {
               }
             });
             
-            // Merge con il calendario completo
             const mergedData = completeMonthData.map(dayEntry => {
               const existingEntry = existingDataMap[dayEntry.date];
               if (existingEntry) {
-                return existingEntry;
+                return {
+                  ...dayEntry, // Mantieni le info su weekend/festività
+                  ...existingEntry // Sovrascrivi con i dati esistenti
+                };
               }
               return dayEntry;
             });
             
             setTimeEntries(mergedData);
           } else {
-            // Documento esiste ma senza entries
             setTimeEntries(completeMonthData);
           }
         } else {
@@ -143,7 +153,6 @@ const AdminWorkHours = () => {
         console.error("Errore nel caricamento delle ore lavorative:", error);
         showNotification("Errore nel caricamento delle ore lavorative", "error");
         
-        // In caso di errore, mostra comunque il calendario completo
         const completeMonthData = generateCompleteMonthDays(selectedMonth, selectedYear);
         setTimeEntries(completeMonthData);
       } finally {
@@ -169,12 +178,10 @@ const AdminWorkHours = () => {
     setSelectedYear(e.target.value);
   };
 
-  // Gestisce l'input delle ore totali o le lettere speciali (M, P, F, A)
+  // Gestisce l'input delle ore totali o le lettere speciali
   const handleTotalHoursChange = (index, value) => {
-    // Accetta lettere speciali: M, P, F, A (maiuscole o minuscole)
     const validLetters = ["M", "P", "F", "A", "m", "p", "f", "a"];
     
-    // Se è una delle lettere speciali, la salva in formato maiuscolo
     if (validLetters.includes(value)) {
       const updatedEntries = [...timeEntries];
       updatedEntries[index].total = value.toUpperCase();
@@ -183,7 +190,6 @@ const AdminWorkHours = () => {
       return;
     }
     
-    // Se il valore è vuoto, mantieni vuoto
     if (value === "") {
       const updatedEntries = [...timeEntries];
       updatedEntries[index].total = "";
@@ -192,15 +198,12 @@ const AdminWorkHours = () => {
       return;
     }
     
-    // Altrimenti tratta il valore come un numero
     let totalHours = parseInt(value);
     
-    // Controlli di validità per i numeri
     if (isNaN(totalHours)) {
-      return; // Non aggiornare se non è un numero valido
+      return;
     }
     
-    // Limita il valore a un range ragionevole (0-8 ore)
     totalHours = Math.max(0, Math.min(8, totalHours));
     
     const updatedEntries = [...timeEntries];
@@ -211,7 +214,6 @@ const AdminWorkHours = () => {
 
   // Gestisce l'input delle ore di straordinario
   const handleOvertimeChange = (index, value) => {
-    // Se il valore è vuoto, imposta a 0
     if (value === "") {
       const updatedEntries = [...timeEntries];
       updatedEntries[index].overtime = 0;
@@ -219,15 +221,12 @@ const AdminWorkHours = () => {
       return;
     }
     
-    // Tratta il valore come un numero
     let overtimeHours = parseInt(value);
     
-    // Controlli di validità per i numeri
     if (isNaN(overtimeHours)) {
-      return; // Non aggiornare se non è un numero valido
+      return;
     }
     
-    // Limita il valore a un range ragionevole (0-12 ore di straordinario)
     overtimeHours = Math.max(0, Math.min(12, overtimeHours));
     
     const updatedEntries = [...timeEntries];
@@ -238,11 +237,11 @@ const AdminWorkHours = () => {
 
   // Restituisce il colore del testo in base al valore
   const getTotalValueColor = (total) => {
-    if (total === "M") return "#e74c3c"; // Rosso per Malattia
-    if (total === "P") return "#2ecc71"; // Verde per Permesso
-    if (total === "F") return "#9b59b6"; // Viola per Ferie
-    if (total === "A") return "#000000"; // Nero per Assenza
-    return ""; // Default (nessun colore speciale)
+    if (total === "M") return "#e74c3c";
+    if (total === "P") return "#2ecc71";
+    if (total === "F") return "#9b59b6";
+    if (total === "A") return "#000000";
+    return "";
   };
 
   // Gestisce l'input delle note
@@ -255,6 +254,35 @@ const AdminWorkHours = () => {
     setTimeEntries(updatedEntries);
   };
 
+  // Ottiene la classe CSS per la riga in base al tipo di giorno
+  const getRowClass = (entry) => {
+    const classes = [];
+    
+    if (entry.isHoliday) {
+      classes.push('holiday-row');
+    } else if (entry.isWeekend) {
+      classes.push('weekend-row');
+    }
+    
+    if (!entry.hasData) {
+      classes.push('no-data-row');
+    }
+    
+    return classes.join(' ');
+  };
+
+  // Ottiene lo stile inline per la riga
+  const getRowStyle = (entry) => {
+    if (entry.isHoliday) {
+      return { backgroundColor: '#fff3cd', borderLeft: '4px solid #f0ad4e' };
+    } else if (entry.isWeekend) {
+      return { backgroundColor: '#f8f9fa' };
+    } else if (!entry.hasData) {
+      return { backgroundColor: '#fafafa' };
+    }
+    return {};
+  };
+
   // Salva le ore lavorative nel database
   const handleSaveWorkHours = async () => {
     if (!selectedEmployee || !selectedMonth) {
@@ -263,18 +291,15 @@ const AdminWorkHours = () => {
     }
     
     console.log("Inizio salvataggio ore lavorative");
-    console.log("Dati da salvare:", timeEntries);
     
     setIsSaving(true);
     try {
-      // Prepara le entries per il salvataggio - include tutti i giorni
       const entriesForSaving = timeEntries.map(entry => {
-        // Per i valori M, P, F, A mantieni la stringa, altrimenti converti in intero
         let totalValue;
         if (["M", "P", "F", "A"].includes(entry.total)) {
           totalValue = entry.total;
         } else if (entry.total === "" || entry.total === null || entry.total === undefined) {
-          totalValue = 0; // Giorni vuoti diventano 0
+          totalValue = 0;
         } else {
           totalValue = parseInt(entry.total) || 0;
         }
@@ -285,14 +310,14 @@ const AdminWorkHours = () => {
           total: totalValue,
           overtime: parseInt(entry.overtime) || 0,
           notes: entry.notes || "",
-          isWeekend: entry.isWeekend || false
+          isWeekend: entry.isWeekend || false,
+          isHoliday: entry.isHoliday || false,
+          holidayName: entry.holidayName || null
         };
       });
       
-      // Utilizza la funzione saveWorkHours importata da firebase.js
       await saveWorkHours(selectedEmployee, selectedMonth, selectedYear, entriesForSaving);
       
-      // Aggiorna lo stato locale - marca tutti come aventi dati
       const updatedEntries = timeEntries.map(entry => ({
         ...entry,
         hasData: true
@@ -312,8 +337,8 @@ const AdminWorkHours = () => {
   // Funzione di utilità per impostare valori in massa
   const setBulkValue = (value, type = 'total') => {
     const updatedEntries = timeEntries.map(entry => {
-      // Non sovrascrivere i weekend se non specificato
-      if (entry.isWeekend && type === 'total') {
+      // Non sovrascrivere weekend e festività se non specificato
+      if ((entry.isWeekend || entry.isHoliday) && type === 'total') {
         return entry;
       }
       
@@ -332,7 +357,6 @@ const AdminWorkHours = () => {
   const showNotification = (message, type) => {
     setNotification({ show: true, message, type });
     
-    // Nascondi la notifica dopo 3 secondi
     setTimeout(() => {
       setNotification({ show: false, message: '', type: '' });
     }, 3000);
@@ -375,12 +399,12 @@ const AdminWorkHours = () => {
           >
             <option value="">-- Seleziona un dipendente --</option>
             {employees.map(employee => (
-  <option key={employee.id} value={employee.id}>
-    {employee.role === 'admin' && '👑 '}
-    {employee.nome} {employee.cognome} ({employee.email})
-    {employee.role === 'admin' && ' - Admin'}
-  </option>
-))}
+              <option key={employee.id} value={employee.id}>
+                {employee.role === 'admin' && '👑 '}
+                {employee.nome} {employee.cognome} ({employee.email})
+                {employee.role === 'admin' && ' - Admin'}
+              </option>
+            ))}
           </select>
         </div>
         
@@ -428,7 +452,7 @@ const AdminWorkHours = () => {
                 backgroundColor: '#f8f9fa', 
                 borderRadius: '5px' 
               }}>
-                <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Legenda lettere speciali:</h4>
+                <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Legenda:</h4>
                 <div className="legend-items" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                   <div className="legend-item">
                     <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M</span> - Malattia
@@ -442,13 +466,15 @@ const AdminWorkHours = () => {
                   <div className="legend-item">
                     <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
                   </div>
-                </div>
-                <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#666' }}>
-                  Le ore standard sono limitate a un massimo di 8. Le ore extra vanno inserite come straordinario (max 12).
+                  <div className="legend-item">
+                    <span style={{ backgroundColor: '#f8f9fa', padding: '2px 4px', borderRadius: '3px' }}>Grigio</span> - Weekend
+                  </div>
+                  <div className="legend-item">
+                    <span style={{ backgroundColor: '#fff3cd', padding: '2px 4px', borderRadius: '3px', borderLeft: '3px solid #f0ad4e' }}>Giallo</span> - Festività
+                  </div>
                 </div>
               </div>
 
-              {/* Azioni rapide */}
               <div className="bulk-actions" style={{ 
                 marginBottom: '15px', 
                 padding: '10px', 
@@ -464,7 +490,7 @@ const AdminWorkHours = () => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => setBulkValue(8, 'total')}
                 >
-                  8 ore per tutti i giorni lavorativi
+                  8 ore per giorni lavorativi
                 </button>
                 <button 
                   type="button" 
@@ -503,24 +529,33 @@ const AdminWorkHours = () => {
                     timeEntries.map((entry, index) => (
                       <tr 
                         key={entry.date}
-                        className={entry.isWeekend ? 'weekend-row' : ''}
-                        style={{
-                          backgroundColor: entry.isWeekend ? '#f8f9fa' : 
-                                         !entry.hasData ? '#fafafa' : 'white'
-                        }}
+                        className={getRowClass(entry)}
+                        style={getRowStyle(entry)}
                       >
                         <td>{entry.date.split('-').reverse().join('/')}</td>
                         <td>
                           {entry.day}
                           {entry.isWeekend && (
                             <span className="badge badge-weekend" style={{
-                              backgroundColor: '#f8d7da',
-                              color: '#721c24',
+                              backgroundColor: '#6c757d',
+                              color: 'white',
                               padding: '2px 6px',
                               borderRadius: '4px',
                               fontSize: '0.75rem',
                               marginLeft: '6px'
                             }}>Weekend</span>
+                          )}
+                          {entry.isHoliday && (
+                            <span className="badge badge-holiday" style={{
+                              backgroundColor: '#f0ad4e',
+                              color: 'white',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              marginLeft: '6px'
+                            }} title={entry.holidayName}>
+                              🎉 {entry.holidayName}
+                            </span>
                           )}
                         </td>
                         <td>
@@ -535,7 +570,7 @@ const AdminWorkHours = () => {
                               fontWeight: ["M", "P", "F", "A"].includes(entry.total) ? 'bold' : 'normal',
                               width: '100px'
                             }}
-                            placeholder={entry.isWeekend ? "-" : "0-8 o M/P/F/A"}
+                            placeholder={entry.isNonWorkingDay ? "-" : "0-8 o M/P/F/A"}
                             title="Inserisci un valore tra 0 e 8 o una lettera speciale (M=Malattia, P=Permesso, F=Ferie, A=Assenza)"
                           />
                         </td>

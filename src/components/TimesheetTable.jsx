@@ -1,7 +1,8 @@
-// src/components/TimesheetTable.jsx - Versione con calendario completo del mese
+// src/components/TimesheetTable.jsx - Versione con evidenziazione festività
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getDayInfo, getMonthHolidays } from '../utils/holidaysUtils';
 
 // Funzione per ottenere l'anno corrente
 const getCurrentYear = () => {
@@ -16,10 +17,22 @@ const TimesheetTable = ({
   selectedYear = getCurrentYear() 
 }) => {
   const [data, setData] = useState([]);
+  const [monthHolidays, setMonthHolidays] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Funzione per generare tutti i giorni del mese
+  // Carica le festività quando cambiano mese/anno
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      const normalizedMonth = parseInt(selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, ''));
+      const yearInt = parseInt(selectedYear);
+      const holidays = getMonthHolidays(normalizedMonth, yearInt);
+      setMonthHolidays(holidays);
+      console.log(`Festività trovate per ${normalizedMonth}/${yearInt}:`, holidays);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  // Funzione per generare tutti i giorni del mese con info festività
   const generateCompleteMonth = (month, year) => {
     const normalizedMonth = parseInt(month.toString().replace(/^prev-/, '').replace(/^0+/, ''));
     const normalizedYear = parseInt(year);
@@ -29,20 +42,21 @@ const TimesheetTable = ({
     const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(normalizedYear, normalizedMonth - 1, day);
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
       const dateStr = `${normalizedYear}-${normalizedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      const dayInfo = getDayInfo(dateStr);
       
       entries.push({
         date: dateStr,
-        day: dayNames[dayOfWeek],
-        total: 0, // Default vuoto
-        overtime: 0, // Default vuoto
+        day: dayNames[dayInfo.dayOfWeek],
+        total: 0,
+        overtime: 0,
         notes: "",
-        isWeekend: isWeekend,
-        hasData: false // Flag per indicare se ha dati reali
+        isWeekend: dayInfo.isWeekend,
+        isHoliday: dayInfo.isHoliday,
+        holidayName: dayInfo.holidayName,
+        isNonWorkingDay: dayInfo.isNonWorkingDay,
+        dayType: dayInfo.dayType,
+        hasData: false
       });
     }
     
@@ -58,14 +72,11 @@ const TimesheetTable = ({
       try {
         console.log(`TimesheetTable: Caricamento timesheet per month=${selectedMonth}, year=${selectedYear}`);
         
-        // Normalizza il mese
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         console.log(`TimesheetTable: Mese normalizzato=${normalizedMonth}`);
         
-        // Genera tutti i giorni del mese
         const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
         
-        // Prova a caricare i dati esistenti
         let existingData = null;
         
         // Tentativo 1: ID documento senza zero iniziale
@@ -136,7 +147,6 @@ const TimesheetTable = ({
         if (existingData && existingData.length > 0) {
           console.log(`TimesheetTable: Merge di ${existingData.length} entries esistenti`);
           
-          // Crea una mappa dei dati esistenti per data
           const existingDataMap = {};
           existingData.forEach(entry => {
             if (entry.date) {
@@ -148,11 +158,13 @@ const TimesheetTable = ({
             }
           });
           
-          // Merge con il calendario completo
           const mergedData = completeMonthData.map(dayEntry => {
             const existingEntry = existingDataMap[dayEntry.date];
             if (existingEntry) {
-              return existingEntry;
+              return {
+                ...dayEntry, // Mantieni le info su weekend/festività
+                ...existingEntry // Sovrascrivi con i dati esistenti
+              };
             }
             return dayEntry;
           });
@@ -168,7 +180,6 @@ const TimesheetTable = ({
         console.error("TimesheetTable: Errore nel caricamento timesheet:", err);
         setError("Impossibile caricare le ore lavorative. Riprova più tardi.");
         
-        // In caso di errore, mostra comunque il calendario completo
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
         setData(completeMonthData);
@@ -204,6 +215,39 @@ const TimesheetTable = ({
     return dateStr;
   };
 
+  // Ottiene la classe CSS per la riga in base al tipo di giorno
+  const getRowClass = (entry) => {
+    const classes = [];
+    
+    if (highlightedRow === entry.date) {
+      classes.push('error');
+    }
+    
+    if (entry.isHoliday) {
+      classes.push('holiday-row');
+    } else if (entry.isWeekend) {
+      classes.push('weekend-row');
+    }
+    
+    if (!entry.hasData) {
+      classes.push('no-data-row');
+    }
+    
+    return classes.join(' ');
+  };
+
+  // Ottiene lo stile inline per la riga
+  const getRowStyle = (entry) => {
+    if (entry.isHoliday) {
+      return { backgroundColor: '#fff3cd', borderLeft: '4px solid #f0ad4e' };
+    } else if (entry.isWeekend) {
+      return { backgroundColor: '#f8f9fa' };
+    } else if (!entry.hasData) {
+      return { backgroundColor: '#fafafa' };
+    }
+    return {};
+  };
+
   // Componente di legenda per le lettere speciali e le ore
   const TimesheetLegend = () => {
     return (
@@ -233,6 +277,12 @@ const TimesheetTable = ({
           </div>
           <div>
             <span style={{ color: '#3498db' }}>2</span> - Ore straordinario (max 12)
+          </div>
+          <div>
+            <span style={{ backgroundColor: '#f8f9fa', padding: '2px 4px', borderRadius: '3px' }}>Grigio</span> - Weekend
+          </div>
+          <div>
+            <span style={{ backgroundColor: '#fff3cd', padding: '2px 4px', borderRadius: '3px', borderLeft: '3px solid #f0ad4e' }}>Giallo</span> - Festività
           </div>
         </div>
       </div>
@@ -280,7 +330,6 @@ const TimesheetTable = ({
   // Calcola il totale delle ore, incluse le ore di straordinario
   const calculateTotalHours = () => {
     const standardHours = data.reduce((total, entry) => {
-      // Se il valore è una lettera speciale, non sommare
       if (["M", "P", "F", "A"].includes(entry.total)) {
         return total;
       }
@@ -288,7 +337,6 @@ const TimesheetTable = ({
     }, 0);
     
     const overtimeHours = data.reduce((total, entry) => {
-      // Somma solo le ore di straordinario per i giorni lavorati
       if (!["M", "P", "F", "A"].includes(entry.total)) {
         return total + (parseInt(entry.overtime) || 0);
       }
@@ -302,37 +350,32 @@ const TimesheetTable = ({
   const canReportError = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // getMonth() restituisce 0-11
+    const currentMonth = today.getMonth() + 1;
     const currentDay = today.getDate();
     
-    // Normalizza il mese selezionato
     const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
     const selectedMonthNum = parseInt(normalizedMonth);
     const selectedYearNum = parseInt(selectedYear);
     
-    // Calcola il mese successivo a quello selezionato
     let nextMonth = selectedMonthNum + 1;
     let nextYear = selectedYearNum;
     
-    // Se il mese selezionato è dicembre, il mese successivo è gennaio dell'anno dopo
     if (nextMonth > 12) {
       nextMonth = 1;
       nextYear += 1;
     }
     
-    // Controlla se oggi è oltre il giorno 5 del mese successivo
     if (
       (currentYear > nextYear) || 
       (currentYear === nextYear && currentMonth > nextMonth) ||
       (currentYear === nextYear && currentMonth === nextMonth && currentDay > 5)
     ) {
-      return false; // Non è più possibile segnalare errori
+      return false;
     }
     
-    return true; // È ancora possibile segnalare errori
+    return true;
   };
 
-  // Verifica se è possibile segnalare errori
   const isErrorReportingEnabled = canReportError();
 
   return (
@@ -375,7 +418,6 @@ const TimesheetTable = ({
               </div>
             )}
             
-            {/* Aggiungi la legenda */}
             <TimesheetLegend />
             
             <div className="table-responsive">
@@ -401,21 +443,33 @@ const TimesheetTable = ({
                       <tr 
                         key={entry.date}
                         ref={el => rowRef && rowRef(entry.date, el)}
-                        className={`${highlightedRow === entry.date ? 'error' : ''} ${entry.isWeekend ? 'weekend-row' : ''} ${!entry.hasData ? 'no-data-row' : ''}`}
-                        style={!entry.hasData ? { backgroundColor: '#fafafa' } : {}}
+                        className={getRowClass(entry)}
+                        style={getRowStyle(entry)}
                       >
                         <td>{formatDate(entry.date)}</td>
                         <td>
                           {entry.day}
                           {entry.isWeekend && (
                             <span className="badge badge-weekend" style={{
-                              backgroundColor: '#f8d7da',
-                              color: '#721c24',
+                              backgroundColor: '#6c757d',
+                              color: 'white',
                               padding: '2px 6px',
                               borderRadius: '4px',
                               fontSize: '0.75rem',
                               marginLeft: '6px'
                             }}>Weekend</span>
+                          )}
+                          {entry.isHoliday && (
+                            <span className="badge badge-holiday" style={{
+                              backgroundColor: '#f0ad4e',
+                              color: 'white',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              marginLeft: '6px'
+                            }} title={entry.holidayName}>
+                              🎉 {entry.holidayName}
+                            </span>
                           )}
                         </td>
                         <td>{formatTotalWithOvertime(entry.total, entry.overtime, entry.hasData)}</td>
