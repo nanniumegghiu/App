@@ -1,6 +1,10 @@
-// src/components/Admin/AdminLeaveRequests.jsx - Aggiornato con sincronizzazione workHours
+// src/components/Admin/AdminLeaveRequests.jsx - Aggiornato con eliminazione e desincronizzazione
 import React, { useState, useEffect } from 'react';
-import { getAllLeaveRequests, updateLeaveRequestStatusWithSync } from '../../firebase'; // Usa la nuova funzione
+import { 
+  getAllLeaveRequests, 
+  updateLeaveRequestStatusWithSync, 
+  deleteApprovedRequestWithDesync 
+} from '../../firebase';
 import Notification from '../Notification';
 
 const AdminLeaveRequests = () => {
@@ -27,6 +31,11 @@ const AdminLeaveRequests = () => {
   const [adminNotes, setAdminNotes] = useState('');
   const [showNotesForm, setShowNotesForm] = useState(false);
   const [processingRequest, setProcessingRequest] = useState(false);
+  
+  // Stato per la gestione dell'eliminazione
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Carica tutte le richieste al montaggio del componente
   useEffect(() => {
@@ -191,6 +200,78 @@ const AdminLeaveRequests = () => {
       });
     } finally {
       setProcessingRequest(false);
+    }
+  };
+  
+  // Mostra la conferma di eliminazione
+  const showDeleteConfirmation = (request) => {
+    setRequestToDelete(request);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Gestisce l'eliminazione di una richiesta approvata
+  const handleDeleteRequest = async () => {
+    if (!requestToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      console.log('Eliminazione richiesta approvata:', requestToDelete);
+      
+      // Mostra notifica di elaborazione
+      setNotification({
+        show: true,
+        message: 'Eliminazione in corso... desincronizzazione dal calendario ore',
+        type: 'info'
+      });
+      
+      // Elimina la richiesta con desincronizzazione automatica
+      const deleteResult = await deleteApprovedRequestWithDesync(requestToDelete.id);
+      
+      console.log('Richiesta eliminata:', deleteResult);
+      
+      // Rimuovi la richiesta dalla lista
+      setRequests(prevRequests => 
+        prevRequests.filter(req => req.id !== requestToDelete.id)
+      );
+      
+      // Chiudi il dialog di conferma
+      setShowDeleteConfirm(false);
+      setRequestToDelete(null);
+      
+      // Prepara il messaggio di successo
+      let successMessage = 'Richiesta eliminata con successo';
+      
+      if (deleteResult.desyncResult) {
+        if (deleteResult.desyncResult.success) {
+          successMessage += `\n✅ Calendario ore ripristinato automaticamente (${deleteResult.desyncResult.datesDesynchronized} date ripristinate)`;
+        } else {
+          successMessage += '\n⚠️ Attenzione: errore nella desincronizzazione automatica del calendario ore. Verifica manualmente.';
+        }
+      }
+      
+      // Mostra notifica di successo
+      setNotification({
+        show: true,
+        message: successMessage,
+        type: 'success'
+      });
+      
+      // Nascondi la notifica dopo 6 secondi
+      setTimeout(() => {
+        setNotification(prev => ({ ...prev, show: false }));
+      }, 6000);
+      
+    } catch (err) {
+      console.error('Errore nell\'eliminazione della richiesta:', err);
+      
+      setNotification({
+        show: true,
+        message: `Errore nell'eliminazione della richiesta: ${err.message}`,
+        type: 'error'
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
   
@@ -416,6 +497,24 @@ const AdminLeaveRequests = () => {
         </ul>
       </div>
       
+      {/* Info box sull'eliminazione e desincronizzazione */}
+      <div className="delete-info-box" style={{
+        backgroundColor: '#fff3cd',
+        border: '1px solid #ffeaa7',
+        borderRadius: '6px',
+        padding: '15px',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '20px', marginRight: '10px' }}>🗑️</span>
+          <strong>Eliminazione Richieste Approvate</strong>
+        </div>
+        <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
+          Puoi eliminare richieste già approvate. Il sistema ripristinerà automaticamente il calendario ore 
+          rimuovendo le lettere speciali (F, P, M) dalle date interessate e riportandole allo stato vuoto.
+        </p>
+      </div>
+      
       {isLoading ? (
         <div className="loading">Caricamento richieste in corso...</div>
       ) : error ? (
@@ -494,23 +593,52 @@ const AdminLeaveRequests = () => {
                           <button 
                             className="btn btn-success btn-sm"
                             onClick={() => showNotes(request, 'approved')}
-                            disabled={processingRequest}
+                            disabled={processingRequest || isDeleting}
                           >
                             {processingRequest ? 'Elaborazione...' : 'Approva'}
                           </button>
                           <button 
                             className="btn btn-danger btn-sm"
                             onClick={() => showNotes(request, 'rejected')}
-                            disabled={processingRequest}
+                            disabled={processingRequest || isDeleting}
                           >
                             Rifiuta
+                          </button>
+                        </div>
+                      ) : request.status === 'approved' ? (
+                        <div className="action-buttons">
+                          <button 
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => showNotes(request, request.status)}
+                            disabled={processingRequest || isDeleting}
+                            style={{ marginBottom: '5px', width: '100%' }}
+                          >
+                            Modifica note
+                          </button>
+                          <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={() => showDeleteConfirmation(request)}
+                            disabled={processingRequest || isDeleting}
+                            style={{ width: '100%' }}
+                            title="Elimina richiesta e desincronizza dal calendario ore"
+                          >
+                            {isDeleting && requestToDelete?.id === request.id ? (
+                              <>
+                                <span style={{ marginRight: '5px' }}>⏳</span>
+                                Eliminazione...
+                              </>
+                            ) : (
+                              <>
+                                🗑️ Elimina
+                              </>
+                            )}
                           </button>
                         </div>
                       ) : (
                         <button 
                           className="btn btn-secondary btn-sm"
                           onClick={() => showNotes(request, request.status)}
-                          disabled={processingRequest}
+                          disabled={processingRequest || isDeleting}
                         >
                           Modifica note
                         </button>
@@ -634,6 +762,101 @@ const AdminLeaveRequests = () => {
                 className="btn btn-secondary"
                 onClick={() => setShowNotesForm(false)}
                 disabled={processingRequest}
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Dialog di conferma eliminazione */}
+      {showDeleteConfirm && requestToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4>🗑️ Conferma Eliminazione</h4>
+              <button 
+                className="modal-close"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="delete-warning" style={{
+                backgroundColor: '#f8d7da',
+                border: '1px solid #f5c6cb',
+                borderRadius: '4px',
+                padding: '15px',
+                marginBottom: '15px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '24px', marginRight: '10px' }}>⚠️</span>
+                  <strong>Attenzione: Operazione Irreversibile</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '14px', color: '#721c24' }}>
+                  Stai per eliminare definitivamente questa richiesta approvata. Il sistema eseguirà automaticamente:
+                </p>
+                <ul style={{ margin: '10px 0 0 30px', fontSize: '14px', color: '#721c24' }}>
+                  <li>Eliminazione della richiesta dal database</li>
+                  <li>Rimozione automatica delle lettere speciali dal calendario ore</li>
+                  <li>Ripristino delle date interessate allo stato vuoto</li>
+                  {requestToDelete.fileUrl && <li>Eliminazione del certificato medico allegato</li>}
+                </ul>
+              </div>
+              
+              <div className="request-info">
+                <h5>Dettagli richiesta da eliminare:</h5>
+                <p><strong>Dipendente:</strong> {requestToDelete.userName || requestToDelete.userEmail}</p>
+                <p><strong>Tipo:</strong> {getRequestTypeName(requestToDelete.type)}</p>
+                <p>
+                  <strong>Data:</strong> {formatDate(requestToDelete.dateFrom)}
+                  {requestToDelete.dateTo && ` - ${formatDate(requestToDelete.dateTo)}`}
+                </p>
+                <p><strong>Dettagli:</strong> {getRequestDetails(requestToDelete)}</p>
+                {requestToDelete.adminNotes && (
+                  <p><strong>Note admin:</strong> {requestToDelete.adminNotes}</p>
+                )}
+              </div>
+              
+              <div className="desync-info" style={{
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: '4px',
+                padding: '12px',
+                marginTop: '15px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '16px', marginRight: '8px' }}>🔄</span>
+                  <strong>Desincronizzazione Automatica</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  Le date precedentemente sincronizzate verranno automaticamente ripristinate 
+                  allo stato vuoto nel calendario ore.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-danger"
+                onClick={handleDeleteRequest}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="spinner" style={{ marginRight: '8px' }}>⏳</span>
+                    Eliminazione e desincronizzazione...
+                  </>
+                ) : (
+                  '🗑️ Elimina Definitivamente'
+                )}
+              </button>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
               >
                 Annulla
               </button>

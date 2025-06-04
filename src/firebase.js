@@ -1398,6 +1398,358 @@ export const updateLeaveRequestStatusWithSync = async (requestId, status, adminN
   }
 };
 
+// src/firebase.js - Aggiungi queste nuove funzioni
+
+/**
+ * Elimina una richiesta approvata e desincronizza i dati dal workHours
+ * @param {string} requestId - ID della richiesta da eliminare
+ * @returns {Promise<Object>} - Risultato dell'operazione
+ */
+export const deleteApprovedRequestWithDesync = async (requestId) => {
+  try {
+    console.log(`deleteApprovedRequestWithDesync: Avvio eliminazione per requestId=${requestId}`);
+    
+    if (!requestId) throw new Error("requestId obbligatorio");
+    
+    const requestRef = doc(db, "leaveRequests", requestId);
+    
+    // Verifica che la richiesta esista
+    const requestDoc = await getDoc(requestRef);
+    if (!requestDoc.exists()) {
+      throw new Error(`Richiesta con ID ${requestId} non trovata`);
+    }
+    
+    const requestData = requestDoc.data();
+    console.log("Dati richiesta da eliminare:", requestData);
+    
+    // Solo le richieste approvate possono essere eliminate con desincronizzazione
+    if (requestData.status !== 'approved') {
+      throw new Error("Solo le richieste approvate possono essere eliminate con desincronizzazione");
+    }
+    
+    // Esegui la desincronizzazione dal workHours PRIMA di eliminare la richiesta
+    let desyncResult = null;
+    
+    try {
+      console.log("Avvio desincronizzazione dal workHours...");
+      desyncResult = await desyncApprovedRequestFromWorkHours(requestData);
+      console.log("Desincronizzazione completata:", desyncResult);
+    } catch (desyncError) {
+      console.error("Errore durante la desincronizzazione:", desyncError);
+      // Non bloccare l'eliminazione, ma registra l'errore
+      desyncResult = {
+        success: false,
+        message: `Errore desincronizzazione: ${desyncError.message}`,
+        error: desyncError.message
+      };
+    }
+    
+    // Elimina la richiesta dal database
+    await deleteDoc(requestRef);
+    console.log(`Richiesta ${requestId} eliminata con successo`);
+    
+    // Elimina il file associato se presente (per malattie)
+    if (requestData.fileInfo && requestData.fileInfo.fileStoragePath) {
+      try {
+        console.log(`Eliminazione file: ${requestData.fileInfo.fileStoragePath}`);
+        const fileRef = storageRef(firebaseStorage, requestData.fileInfo.fileStoragePath);
+        await storageDeleteObject(fileRef);
+        console.log("File eliminato con successo");
+      } catch (fileError) {
+        console.error("Errore nell'eliminazione del file:", fileError);
+        // Non bloccare l'operazione principale
+      }
+    }
+    
+    return {
+      success: true,
+      message: "Richiesta eliminata con successo",
+      requestData,
+      desyncResult,
+      deletedFiles: requestData.fileInfo ? [requestData.fileInfo.fileStoragePath] : []
+    };
+    
+  } catch (error) {
+    console.error("deleteApprovedRequestWithDesync: Errore:", error);
+    throw error;
+  }
+};
+
+/**
+ * Desincronizza una richiesta approvata dal workHours
+ * @param {Object} requestData - Dati della richiesta da desincronizzare
+ * @returns {Promise<Object>} - Risultato della desincronizzazione
+ */
+const desyncApprovedRequestFromWorkHours = async (requestData) => {
+  try {
+    console.log("desyncApprovedRequestFromWorkHours: Avvio per richiesta:", requestData);
+    
+    if (!requestData.userId) {
+      throw new Error("userId mancante nei dati della richiesta");
+    }
+    
+    // Determina le date da desincronizzare
+    const datesToDesync = [];
+    
+    if (requestData.type === 'permission' && requestData.permissionType === 'daily') {
+      // Permesso giornaliero - solo la data di inizio
+      datesToDesync.push(requestData.dateFrom);
+    } else if (requestData.type === 'vacation') {
+      // Ferie - tutte le date dal dateFrom al dateTo (solo giorni lavorativi)
+      const startDate = new Date(requestData.dateFrom);
+      const endDate = new Date(requestData.dateTo);
+      
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        
+        // Salta i weekend (opzionale, dipende dalla policy aziendale)
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Non domenica e non sabato
+          datesToDesync.push(dateString);
+        }
+      }
+    } else if (requestData.type === 'sickness') {
+      // Malattia - solo la data di inizio (o tutte le date se è un range)
+      datesToDesync.push(requestData.dateFrom);
+      
+      // Se c'è anche una data di fine, aggiungi tutte le date nel range
+      if (requestData.dateTo) {
+        const startDate = new Date(requestData.dateFrom);
+        const endDate = new Date(requestData.dateTo);
+        
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
+          if (!datesToDesync.includes(dateString)) {
+            datesToDesync.push(dateString);
+          }
+        }
+      }
+    } else if (requestData.type === 'permission' && requestData.permissionType === 'hourly') {
+      // Permesso orario - nessuna desincronizzazione automatica
+      console.log("Permesso orario, nessuna desincronizzazione automatica necessaria");
+      return {
+        success: true,
+        message: "Permesso orario: nessuna desincronizzazione automatica necessaria",
+        datesDesynchronized: 0
+      };
+    }
+    
+    console.log(`Date da desincronizzare:`, datesToDesync);
+    
+    if (datesToDesync.length === 0) {
+      return {
+        success: true,
+        message: "Nessuna data da desincronizzare",
+        datesDesynchronized: 0
+      };
+    }
+    
+    // Raggruppa le date per mese/anno per ottimizzare le operazioni
+    const datesByMonth = {};
+    
+    datesToDesync.forEach(dateString => {
+      const [year, month, day] = dateString.split('-');
+      const monthKey = `${requestData.userId}_${month.replace(/^0+/, '')}_${year}`;
+      
+      if (!datesByMonth[monthKey]) {
+        datesByMonth[monthKey] = {
+          userId: requestData.userId,
+          month: month.replace(/^0+/, ''),
+          year,
+          dates: []
+        };
+      }
+      
+      datesByMonth[monthKey].dates.push(dateString);
+    });
+    
+    // Desincronizza ogni mese
+    const desyncResults = [];
+    
+    for (const [monthKey, monthData] of Object.entries(datesByMonth)) {
+      try {
+        const result = await desyncWorkHoursForDates(
+          monthData.userId,
+          monthData.month,
+          monthData.year,
+          monthData.dates,
+          requestData.type
+        );
+        
+        desyncResults.push({
+          monthKey,
+          success: true,
+          ...result
+        });
+      } catch (error) {
+        console.error(`Errore desincronizzazione mese ${monthKey}:`, error);
+        desyncResults.push({
+          monthKey,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    // Verifica risultati
+    const successfulDesyncs = desyncResults.filter(r => r.success);
+    const failedDesyncs = desyncResults.filter(r => !r.success);
+    
+    const totalDesynchronized = successfulDesyncs.reduce((sum, result) => sum + (result.desynchronizedCount || 0), 0);
+    
+    let message = `Desincronizzazione completata: ${totalDesynchronized} date ripristinate`;
+    if (failedDesyncs.length > 0) {
+      message += `, ${failedDesyncs.length} errori`;
+    }
+    
+    return {
+      success: failedDesyncs.length === 0,
+      message,
+      datesDesynchronized: totalDesynchronized,
+      details: {
+        totalDates: datesToDesync.length,
+        successfulDesyncs: successfulDesyncs.length,
+        failedDesyncs: failedDesyncs.length,
+        desyncResults
+      }
+    };
+    
+  } catch (error) {
+    console.error("Errore nella desincronizzazione richiesta:", error);
+    throw error;
+  }
+};
+
+/**
+ * Desincronizza le date specificate dal workHours
+ * @param {string} userId - ID dell'utente
+ * @param {string} month - Mese (senza zero iniziale)
+ * @param {string} year - Anno
+ * @param {Array} dates - Array delle date da desincronizzare
+ * @param {string} requestType - Tipo di richiesta per le note
+ * @returns {Promise<Object>} - Risultato della desincronizzazione
+ */
+const desyncWorkHoursForDates = async (userId, month, year, dates, requestType) => {
+  try {
+    const workHoursId = `${userId}_${month}_${year}`;
+    const workHoursRef = doc(db, "workHours", workHoursId);
+    
+    console.log(`Desincronizzazione workHours: ${workHoursId} per date:`, dates);
+    
+    // Ottieni il documento esistente
+    const workHoursSnap = await getDoc(workHoursRef);
+    
+    if (!workHoursSnap.exists()) {
+      console.log(`Documento workHours ${workHoursId} non esiste, nessuna desincronizzazione necessaria`);
+      return {
+        desynchronizedCount: 0,
+        message: "Documento workHours non trovato, nessuna desincronizzazione necessaria"
+      };
+    }
+    
+    const workHoursData = workHoursSnap.data();
+    let entries = workHoursData.entries || [];
+    
+    console.log(`Documento workHours trovato con ${entries.length} entries`);
+    
+    // Determina i valori di richiesta approvata da cercare nelle note
+    const approvedNoteKeywords = [
+      'approvata',
+      'ferie approvate',
+      'permesso approvato', 
+      'malattia approvata'
+    ];
+    
+    let desynchronizedCount = 0;
+    const conflicts = [];
+    
+    // Desincronizza le entries per le date specificate
+    dates.forEach(dateToDesync => {
+      const entryIndex = entries.findIndex(entry => entry.date === dateToDesync);
+      
+      if (entryIndex >= 0) {
+        const existingEntry = entries[entryIndex];
+        
+        // Controlla se questa entry è stata creata da una richiesta approvata
+        const isFromApprovedRequest = existingEntry.notes && 
+          approvedNoteKeywords.some(keyword => 
+            existingEntry.notes.toLowerCase().includes(keyword.toLowerCase())
+          );
+        
+        // Controlla se il valore corrisponde a una lettera speciale (M, P, F)
+        const isSpecialLetter = ['M', 'P', 'F'].includes(existingEntry.total);
+        
+        if (isFromApprovedRequest || isSpecialLetter) {
+          console.log(`Desincronizzando entry per ${dateToDesync}: ${JSON.stringify(existingEntry)}`);
+          
+          // Ripristina l'entry ai valori predefiniti (giornata vuota)
+          const dayOfWeek = new Date(dateToDesync).toLocaleDateString('it-IT', { weekday: 'long' });
+          const isWeekend = [0, 6].includes(new Date(dateToDesync).getDay());
+          
+          entries[entryIndex] = {
+            date: dateToDesync,
+            day: dayOfWeek,
+            total: 0,
+            overtime: 0,
+            notes: "",
+            isWeekend,
+            hasData: false
+          };
+          
+          desynchronizedCount++;
+        } else {
+          console.warn(`Entry per ${dateToDesync} non sembra essere da richiesta approvata, saltata`);
+          conflicts.push({
+            date: dateToDesync,
+            existingValue: existingEntry.total,
+            existingNotes: existingEntry.notes,
+            reason: "Non creata da richiesta approvata"
+          });
+        }
+      } else {
+        console.warn(`Entry non trovata per data: ${dateToDesync}`);
+        conflicts.push({
+          date: dateToDesync,
+          reason: "Entry non trovata"
+        });
+      }
+    });
+    
+    // Salva il documento aggiornato se ci sono state modifiche
+    if (desynchronizedCount > 0) {
+      await updateDoc(workHoursRef, {
+        entries,
+        lastUpdated: serverTimestamp(),
+        lastDesynchronization: {
+          date: serverTimestamp(),
+          requestType,
+          datesDesynchronized: dates,
+          desynchronizedCount
+        }
+      });
+      
+      console.log(`Desincronizzazione completata: ${desynchronizedCount} date ripristinate`);
+    }
+    
+    return {
+      desynchronizedCount,
+      conflicts,
+      message: `${desynchronizedCount} date desincronizzate con successo`
+    };
+    
+  } catch (error) {
+    console.error("Errore nella desincronizzazione workHours:", error);
+    throw error;
+  }
+};
+
 /**
  * Verifica la connessione a Firebase Storage
  * Utile per debug di problemi di connessione a Storage

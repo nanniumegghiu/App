@@ -1,0 +1,399 @@
+/* src/styles/admin-delete.css - Stili per la funzionalità di eliminazione richieste */
+
+/* Pulsanti di azione per richieste approvate */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.action-buttons .btn {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.action-buttons .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.action-buttons .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Pulsante di eliminazione specifico */
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+/* Info boxes */
+.delete-info-box {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.delete-info-box h4 {
+  margin: 0 0 8px 0;
+  color: #856404;
+  display: flex;
+  align-items: center;
+}
+
+.delete-info-box p {
+  margin: 0;
+  font-size: 14px;
+  color: #856404;
+}
+
+/* Modal di conferma eliminazione */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 20px 20px 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 20px;
+}
+
+.modal-header h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 1.25rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover:not(:disabled) {
+  color: #dc3545;
+}
+
+.modal-body {
+  padding: 0 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Sezioni di avviso */
+.delete-warning {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.delete-warning h5,
+.delete-warning strong {
+  color: #721c24;
+}
+
+.delete-warning p,
+.delete-warning li {
+  color: #721c24;
+  font-size: 14px;
+}
+
+.delete-warning ul {
+  margin: 10px 0 0 30px;
+}
+
+/* Info sulla desincronizzazione */
+.desync-info {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+.desync-info strong {
+  color: #856404;
+}
+
+.desync-info p {
+  color: #856404;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Dettagli richiesta */
+.request-info {
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.request-info h5 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1.1rem;
+}
+
+.request-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.request-info strong {
+  color: #495057;
+}
+
+/* Spinner per operazioni in corso */
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Link certificato */
+.view-certificate-link {
+  display: block;
+  margin-top: 5px;
+  color: #007bff;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.view-certificate-link:hover {
+  text-decoration: underline;
+}
+
+/* Badge di stato */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-approved {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Icone di sincronizzazione */
+.sync-icon {
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.sync-icon.success {
+  color: #28a745;
+}
+
+.sync-icon.error {
+  color: #dc3545;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .action-buttons {
+    min-width: 100px;
+  }
+  
+  .action-buttons .btn {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 15px;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+
+/* Effetti hover per migliorare UX */
+.admin-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Evidenziazione per operazioni in corso */
+.processing-row {
+  background-color: #e3f2fd !important;
+  transition: background-color 0.3s ease;
+}
+
+/* Animazione per notifiche */
+.notification-enter {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.notification-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.notification-exit {
+  opacity: 1;
+}
+
+.notification-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Indicatori di caricamento per tabella */
+.table-loading {
+  position: relative;
+}
+
+.table-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+/* Stili per il form delle note */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-group textarea:disabled {
+  background-color: #e9ecef;
+  opacity: 1;
+}
+
+/* Accessibilità */
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.modal-content:focus {
+  outline: none;
+}
+
+/* Stampa */
+@media print {
+  .modal-overlay {
+    display: none !important;
+  }
+  
+  .action-buttons {
+    display: none !important;
+  }
+}
