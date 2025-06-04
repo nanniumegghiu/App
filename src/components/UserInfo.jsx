@@ -5,7 +5,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import UserQRCode from './UserQRCode';
 import './userQRCode.css';
 import './dashboard.css';
-import './userInfo.css';
 
 const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }) => {
   const [availableMonths, setAvailableMonths] = useState([]);

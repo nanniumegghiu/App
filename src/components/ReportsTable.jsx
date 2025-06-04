@@ -1,52 +1,30 @@
 import React from 'react';
-import './reportsTable.css';
 
 const ReportsTable = ({ reports, selectedMonth, selectedYear, isLoading }) => {
   // Funzione per formattare la data
   const formatDate = (dateString) => {
     if (!dateString) return '';
     
-    let date;
-    
-    // Se è un timestamp di Firebase
-    if (dateString && typeof dateString.toDate === 'function') {
-      date = dateString.toDate();
-    }
-    // Se è già un oggetto Date
-    else if (dateString instanceof Date) {
-      date = dateString;
-    }
-    // Se è una stringa
-    else if (typeof dateString === 'string') {
-      // Se è già in formato italiano (DD/MM/YYYY)
-      if (dateString.includes('/')) {
-        return dateString;
-      }
-      
-      // Se è in formato ISO (YYYY-MM-DD)
-      const parts = dateString.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      
-      // Prova a parsare come data
-      date = new Date(dateString);
-    }
-    // Per altri tipi, prova la conversione
-    else {
-      date = new Date(dateString);
-    }
-    
-    // Se abbiamo un oggetto Date valido, formattalo
-    if (date && !isNaN(date.getTime())) {
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
+    // Se è un oggetto Date, convertilo in stringa
+    if (dateString instanceof Date) {
+      const day = String(dateString.getDate()).padStart(2, '0');
+      const month = String(dateString.getMonth() + 1).padStart(2, '0');
+      const year = dateString.getFullYear();
       return `${day}/${month}/${year}`;
     }
     
-    // Fallback: restituisci il valore originale convertito in stringa
-    return String(dateString);
+    // Se è già in formato italiano (DD/MM/YYYY)
+    if (dateString.includes('/')) {
+      return dateString;
+    }
+    
+    // Se è in formato ISO (YYYY-MM-DD)
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    
+    return dateString;
   };
 
   // Funzione per determinare la classe di colore in base allo stato
@@ -98,14 +76,13 @@ const ReportsTable = ({ reports, selectedMonth, selectedYear, isLoading }) => {
                   <th>Data</th>
                   <th>Descrizione</th>
                   <th>Stato</th>
-                  <th>Note Admin</th>
                   <th>Ultima modifica</th>
                 </tr>
               </thead>
               <tbody>
                 {reports.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center' }}>
+                    <td colSpan="4" style={{ textAlign: 'center' }}>
                       Nessuna segnalazione per {getMonthName(selectedMonth)} {selectedYear}
                     </td>
                   </tr>
@@ -116,44 +93,6 @@ const ReportsTable = ({ reports, selectedMonth, selectedYear, isLoading }) => {
                       <td>{report.description}</td>
                       <td className={getStatusClass(report.status)}>
                         {report.status}
-                      </td>
-                      <td>
-                        {report.adminNotes ? (
-                          <div style={{
-                            backgroundColor: '#e8f5e8',
-                            border: '1px solid #c3e6c3',
-                            borderRadius: '4px',
-                            padding: '8px',
-                            margin: '2px 0'
-                          }}>
-                            <div style={{ 
-                              fontWeight: 'bold', 
-                              fontSize: '0.9em',
-                              color: '#2d5a2d',
-                              marginBottom: '4px'
-                            }}>
-                              📝 Risposta dell'amministratore:
-                            </div>
-                            <div style={{ 
-                              fontSize: '0.9em',
-                              color: '#2d5a2d'
-                            }}>
-                              {report.adminNotes}
-                            </div>
-                            {report.adminNotesDate && (
-                              <div style={{ 
-                                fontSize: '0.75em', 
-                                color: '#6c757d', 
-                                fontStyle: 'italic',
-                                marginTop: '4px'
-                              }}>
-                                {formatDate(report.adminNotesDate)}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          '-'
-                        )}
                       </td>
                       <td>{formatDate(report.lastUpdate)}</td>
                     </tr>

@@ -1,719 +1,1139 @@
-/* ============================================================================
-   IACUZZO CONSTRUCTION GROUP - MAIN STYLESHEET
-   Versione sistemata per evitare conflitti di stile e migliorare la leggibilità
-   ============================================================================ */
+:root {
+  --primary: #3498db;
+  --secondary: #2980b9;
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --light: #f5f5f5;
+  --dark: #2c3e50;
+  --gray: #95a5a6;
+}
 
-/* ============================================================================
-   1. CSS RESET E VARIABILI
-   ============================================================================ */
+/* Reset globale per tutti gli input per evitare testo bianco */
+input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="search"],
+textarea,
+select {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+}
 
-/* CSS Reset */
-* {
+/* Focus states per tutti gli input */
+input:focus,
+textarea:focus,
+select:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Placeholder styles */
+input::placeholder,
+textarea::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Stati di errore */
+input.error,
+textarea.error,
+select.error {
+  border-color: #dc3545 !important;
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Checkbox e radio specifici */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 4px 0 0 !important;
+}
+
+/* Labels */
+label {
+  color: #555 !important;
+  font-weight: 500 !important;
+  margin-bottom: 5px !important;
+  display: block !important;
+}
+
+/* Buttons fix */
+button,
+.btn {
+  font-family: inherit !important;
+  cursor: pointer !important;
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 15px !important;
+}
+
+.form-group label {
+  margin-bottom: 5px !important;
+}
+
+/* Form controls specifici per le classi Bootstrap-like */
+.form-control {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+}
+
+.form-control:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Disabled states */
+input:disabled,
+textarea:disabled,
+select:disabled,
+.form-control:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  border-color: #dee2e6 !important;
+  opacity: 0.65 !important;
+}
+
+/* Error messages */
+.error-message,
+.error-message-field {
+  color: #dc3545 !important;
+  background-color: transparent !important;
+  font-size: 14px !important;
+  margin-top: 5px !important;
+}
+
+/* Admin panel specifics */
+.admin-panel input,
+.admin-panel textarea,
+.admin-panel select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Card components */
+.card input,
+.card textarea,
+.card select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Modal inputs */
+.modal input,
+.modal textarea,
+.modal select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Table inputs */
+table input,
+table textarea,
+table select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Stile per i campi di input con errore */
+input.error {
+  border-color: var(--danger) !important;
+  background-color: rgba(231, 76, 60, 0.05) !important;
+}
+
+/* Messaggi di errore per i singoli campi */
+.error-message-field {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  animation: errorFadeIn 0.3s ease-in;
+}
+
+@keyframes errorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stili per il form di inserimento mensile */
+.monthly-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.monthly-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 25px;
+  width: 90%;
+  max-width: 1000px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.monthly-form h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  color: var(--dark);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.monthly-form-header {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.monthly-form-header p {
   margin: 0;
-  padding: 0;
+}
+
+.monthly-days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.day-card {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.day-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.day-card.day-error {
+  border-color: var(--danger);
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+.day-header {
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.day-date {
+  font-size: 1.1rem;
+  color: var(--dark);
+}
+
+.day-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hours-input-group, .notes-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.hours-input-group label, .notes-input-group label {
+  font-size: 0.9rem;
+  margin-bottom: 3px;
+  color: #555;
+}
+
+.hours-input-group input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.hours-input-group input.error {
+  border-color: var(--danger);
+}
+
+.notes-input-group input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
+
+.bulk-actions {
+  margin: 20px 0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 15px;
+}
+
+.empty-state-message {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.empty-state-action {
+  margin-top: 15px;
+}
+
+.empty-state-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* User info styling */
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.user-info-details h2 {
+  margin: 0 0 5px 0;
+  font-size: 1.4rem;
+  color: var(--dark);
+}
+
+.user-info-details p {
+  margin: 0;
+  color: #666;
+}
+
+.month-selector {
+  display: flex;
+  align-items: center;
+}
+
+.month-selector label {
+  margin-right: 10px;
+  font-weight: 500;
+}
+
+.month-selector select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+/* Stili per il form di amministrazione delle ore */
+.admin-work-hours-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.admin-work-hours-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 25px;
+  width: 90%;
+  max-width: 800px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.admin-work-hours-form h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  color: var(--dark);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  flex: 1 1 200px;
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.form-group input.error,
+.form-group select.error {
+  border-color: var(--danger);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  padding: 10px 20px;
+}
+
+/* Stili per la gestione delle ore lavorative */
+.admin-work-hours {
+  margin-bottom: 30px;
+}
+
+.work-hours-controls {
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  padding: 15px;
+}
+
+.work-hours-controls h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  color: var(--dark);
+}
+
+#admin-work-hours-table th,
+#admin-work-hours-table td {
+  padding: 12px 10px;
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+/* Header styling */
+.site-header {
+  background: linear-gradient(to right, #2c3e50, #3498db);
+  color: white;
+  padding: 15px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info-header {
+  text-align: right;
+}
+
+.user-name, .user-role {
+  margin: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.logout-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Stili per le schede nel pannello amministratore */
+.admin-tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: var(--primary);
+}
+
+.tab-button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Stili per la tabella degli utenti */
+#users-table th,
+#users-table td {
+  padding: 12px 15px;
+}
+
+.role-select {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* Classe di utilità per il margine superiore */
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+/* Notifica con animazione */
+.notification {
+  animation: slideIn 0.3s ease-out forwards;
+  position: relative;
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stili per il pannello admin */
+.admin-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.admin-panel h2 {
+  margin-bottom: 20px;
+  color: var(--dark);
+}
+
+.admin-filters {
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  padding: 15px;
+}
+
+.admin-filters h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  color: var(--dark);
+}
+
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.filter-group label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+/* Stili per la tabella admin */
+#admin-reports-table th,
+#admin-reports-table td {
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+.status-select {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  cursor: pointer;
+}
+
+.status-select.text-success {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.status-select.text-warning {
+  border-color: #f39c12;
+  color: #f39c12;
+}
+
+.status-select.text-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Loading spinner */
+.loading-container,
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.loading-container {
+  min-height: 100vh;
+}
+
+/* Stili per i messaggi di errore */
+.error-message {
+  color: var(--danger);
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.close-error {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* Base styles */
+* {
   box-sizing: border-box;
 }
 
-/* Variabili CSS per consistenza dei colori */
-:root {
-  /* Colori principali */
-  --primary: #3498db;
-  --primary-dark: #2980b9;
-  --primary-light: #5dade2;
-  
-  --secondary: #2c3e50;
-  --secondary-light: #34495e;
-  
-  --success: #27ae60;
-  --success-light: #2ecc71;
-  
-  --warning: #f39c12;
-  --warning-light: #f1c40f;
-  
-  --danger: #e74c3c;
-  --danger-light: #ec7063;
-  
-  --info: #17a2b8;
-  --info-light: #3498db;
-  
-  /* Colori di sfondo */
-  --bg-light: #f8f9fa;
-  --bg-white: #ffffff;
-  --bg-dark: #343a40;
-  
-  /* Colori del testo */
-  --text-primary: #2c3e50;
-  --text-secondary: #6c757d;
-  --text-muted: #95a5a6;
-  --text-white: #ffffff;
-  --text-dark: #343a40;
-  
-  /* Bordi */
-  --border-color: #dee2e6;
-  --border-radius: 4px;
-  --border-radius-lg: 8px;
-  
-  /* Ombre */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
-  
-  /* Transizioni */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
-}
-
-/* ============================================================================
-   2. STILI BASE
-   ============================================================================ */
-
-html {
-  font-size: 16px;
-  scroll-behavior: smooth;
-}
-
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  line-height: 1.6;
-  color: var(--text-primary);
-  background-color: var(--bg-light);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ============================================================================
-   3. TIPOGRAFIA
-   ============================================================================ */
-
-h1, h2, h3, h4, h5, h6 {
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--text-primary);
-}
-
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.75rem; }
-h4 { font-size: 1.5rem; }
-h5 { font-size: 1.25rem; }
-h6 { font-size: 1rem; }
-
-p {
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-}
-
-a {
-  color: var(--primary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-a:hover, a:focus {
-  color: var(--primary-dark);
-  text-decoration: underline;
-}
-
-/* ============================================================================
-   4. LAYOUT PRINCIPALE
-   ============================================================================ */
-
-.App {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f7fa;
+  color: #333;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  flex: 1;
 }
 
-/* Header */
+/* Loading states */
+.loading {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: var(--gray);
+}
+
+.loading-full {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: var(--dark);
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Header styles */
 .header {
-  background: var(--bg-white);
-  border-bottom: 2px solid var(--border-color);
-  padding: 1rem 2rem;
+  background: #f0f0f0;
+  padding: 15px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-sm);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.header h1 {
-  color: var(--primary);
+.app-title h1 {
   margin: 0;
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--dark);
 }
 
-.user-actions {
+.main-nav ul {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.main-nav li {
+  margin-right: 20px;
+}
+
+.main-nav li a {
+  text-decoration: none;
+  color: var(--dark);
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.main-nav li a:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.main-nav li.active a {
+  background-color: var(--primary);
+  color: white;
+}
+
+.user-panel {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  color: var(--text-primary);
 }
 
-.user-actions p {
-  margin: 0;
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-right: 15px;
+}
+
+.user-icon {
+  margin-right: 8px;
+}
+
+.user-name {
   font-weight: 500;
-  color: var(--text-primary);
 }
 
-/* ============================================================================
-   5. COMPONENTI CARD
-   ============================================================================ */
+.logout-btn {
+  background-color: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
+.logout-btn:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* Card styles */
 .card {
-  background: var(--bg-white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 2rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 25px;
   overflow: hidden;
-  transition: box-shadow var(--transition-normal);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
 }
 
 .card-header {
-  background: var(--bg-light);
-  border-bottom: 1px solid var(--border-color);
-  padding: 1rem 1.5rem;
+  padding: 15px 20px;
+  background-color: var(--light);
+  border-bottom: 1px solid #eee;
+  font-weight: bold;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.card-header > div:first-child {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.card-header > div:last-child {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
 .card-body {
-  padding: 1.5rem;
+  padding: 20px;
 }
 
-.card-footer {
-  background: var(--bg-light);
-  border-top: 1px solid var(--border-color);
-  padding: 1rem 1.5rem;
-}
-
-/* ============================================================================
-   6. BOTTONI
-   ============================================================================ */
-
-.btn {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  margin: 0.25rem;
-  border: 1px solid transparent;
-  border-radius: var(--border-radius);
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  outline: none;
-  white-space: nowrap;
-  user-select: none;
-}
-
-.btn:focus {
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
-}
-
-.btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Varianti dei bottoni */
-.btn-primary {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: var(--text-white);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
-  color: var(--text-white);
-}
-
-.btn-secondary {
-  background-color: var(--secondary);
-  border-color: var(--secondary);
-  color: var(--text-white);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--secondary-light);
-  border-color: var(--secondary-light);
-  color: var(--text-white);
-}
-
-.btn-success {
-  background-color: var(--success);
-  border-color: var(--success);
-  color: var(--text-white);
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: var(--success-light);
-  border-color: var(--success-light);
-  color: var(--text-white);
-}
-
-.btn-warning {
-  background-color: var(--warning);
-  border-color: var(--warning);
-  color: var(--text-white);
-}
-
-.btn-warning:hover:not(:disabled) {
-  background-color: var(--warning-light);
-  border-color: var(--warning-light);
-  color: var(--text-white);
-}
-
-.btn-danger {
-  background-color: var(--danger);
-  border-color: var(--danger);
-  color: var(--text-white);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--danger-light);
-  border-color: var(--danger-light);
-  color: var(--text-white);
-}
-
-.btn-info {
-  background-color: var(--info);
-  border-color: var(--info);
-  color: var(--text-white);
-}
-
-.btn-info:hover:not(:disabled) {
-  background-color: var(--info-light);
-  border-color: var(--info-light);
-  color: var(--text-white);
-}
-
-/* Bottoni outline */
-.btn-outline-primary {
-  background-color: transparent;
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.btn-outline-primary:hover:not(:disabled) {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: var(--text-white);
-}
-
-.btn-outline-secondary {
-  background-color: transparent;
-  border-color: var(--secondary);
-  color: var(--secondary);
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background-color: var(--secondary);
-  border-color: var(--secondary);
-  color: var(--text-white);
-}
-
-/* Dimensioni dei bottoni */
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8rem;
-}
-
-.btn-lg {
-  padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
-}
-
-/* ============================================================================
-   7. FORM E INPUT
-   ============================================================================ */
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-row {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.form-row .form-group {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.form-control, input, select, textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  background-color: var(--bg-white);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.form-control:focus, input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
-}
-
-.form-control.error, input.error, select.error, textarea.error {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.25);
-}
-
-.error-text, .error-message-field {
-  color: var(--danger);
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-  display: block;
-}
-
-/* ============================================================================
-   8. TABELLE
-   ============================================================================ */
-
+/* Table styles */
 .table-responsive {
   overflow-x: auto;
-  margin-bottom: 1rem;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  background-color: var(--bg-white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-}
-
-thead {
-  background-color: var(--bg-light);
 }
 
 th, td {
-  padding: 0.75rem;
+  padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid #eee;
 }
 
-th {
-  font-weight: 600;
-  background-color: var(--bg-light);
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-color);
+thead th {
+  background-color: var(--light);
+  font-weight: bold;
+  color: var(--dark);
 }
 
 tbody tr:hover {
-  background-color: rgba(52, 152, 219, 0.05);
+  background-color: #f9f9f9;
 }
 
-tbody tr.weekend-row {
-  background-color: rgba(108, 117, 125, 0.1);
+.weekend-row {
+  background-color: #f5f5f5;
 }
 
-tbody tr.no-data-row {
-  background-color: rgba(248, 249, 250, 0.8);
+.error {
+  background-color: #ffecec !important;
 }
 
-tbody tr.auto-sync-row {
-  background-color: rgba(40, 167, 69, 0.05);
-  border-left: 4px solid var(--success);
-}
-
-tbody tr.error {
-  background-color: rgba(231, 76, 60, 0.1);
-  border-left: 4px solid var(--danger);
-}
-
-/* ============================================================================
-   9. ALERT E NOTIFICHE
-   ============================================================================ */
-
-.alert {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid transparent;
-  border-radius: var(--border-radius);
-  font-size: 0.9rem;
-}
-
-.alert-info {
-  background-color: rgba(23, 162, 184, 0.1);
-  border-color: rgba(23, 162, 184, 0.2);
-  color: var(--text-primary);
-}
-
-.alert-success {
-  background-color: rgba(40, 167, 69, 0.1);
-  border-color: rgba(40, 167, 69, 0.2);
-  color: var(--text-primary);
-}
-
-.alert-warning {
-  background-color: rgba(243, 156, 18, 0.1);
-  border-color: rgba(243, 156, 18, 0.2);
-  color: var(--text-primary);
-}
-
-.alert-danger {
-  background-color: rgba(231, 76, 60, 0.1);
-  border-color: rgba(231, 76, 60, 0.2);
-  color: var(--text-primary);
-}
-
-.notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1050;
-  min-width: 300px;
-  max-width: 500px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-lg);
-}
-
-/* ============================================================================
-   10. BADGE E STATI
-   ============================================================================ */
-
-.badge {
-  display: inline-block;
-  padding: 0.35em 0.65em;
-  font-size: 0.75em;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text-white);
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: var(--border-radius);
-}
-
-.badge-primary {
-  background-color: var(--primary);
-}
-
-.badge-secondary {
-  background-color: var(--secondary);
-}
-
-.badge-success {
-  background-color: var(--success);
-}
-
-.badge-danger {
-  background-color: var(--danger);
-}
-
-.badge-warning {
-  background-color: var(--warning);
-}
-
-.badge-info {
-  background-color: var(--info);
-}
-
-.badge-weekend {
-  background-color: var(--secondary);
-  color: var(--text-white);
-}
-
-.badge-holiday {
-  background-color: var(--warning);
-  color: var(--text-white);
-}
-
-/* Status Badge specifici */
-.status-badge {
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--border-radius);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-pending {
-  background-color: rgba(243, 156, 18, 0.15);
-  color: var(--warning);
-  border: 1px solid rgba(243, 156, 18, 0.3);
-}
-
-.status-approved {
-  background-color: rgba(40, 167, 69, 0.15);
-  color: var(--success);
-  border: 1px solid rgba(40, 167, 69, 0.3);
-}
-
-.status-rejected {
-  background-color: rgba(231, 76, 60, 0.15);
-  color: var(--danger);
-  border: 1px solid rgba(231, 76, 60, 0.3);
-}
-
-/* ============================================================================
-   11. LOADING E STATI SPECIALI
-   ============================================================================ */
-
-.loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-  font-size: 1.1rem;
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
+/* Button styles */
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  display: inline-flex;
   align-items: center;
-  min-height: 200px;
-  flex-direction: column;
-  gap: 1rem;
+  justify-content: center;
 }
 
-.error-message {
-  background-color: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.2);
-  color: var(--text-primary);
-  padding: 1rem;
-  border-radius: var(--border-radius);
-  margin-bottom: 1rem;
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
 }
 
-.text-center {
-  text-align: center;
+.btn-primary:hover {
+  background-color: var(--secondary);
 }
 
-.text-muted {
-  color: var(--text-muted) !important;
+.btn-success {
+  background-color: var(--success);
+  color: white;
 }
 
+.btn-success:hover {
+  background-color: #27ae60;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+/* Text status colors */
 .text-success {
-  color: var(--success) !important;
-}
-
-.text-danger {
-  color: var(--danger) !important;
+  color: var(--success);
+  font-weight: bold;
 }
 
 .text-warning {
-  color: var(--warning) !important;
+  color: var(--warning);
+  font-weight: bold;
 }
 
-.text-info {
-  color: var(--info) !important;
+.text-danger {
+  color: var(--danger);
+  font-weight: bold;
 }
 
-/* ============================================================================
-   12. UTILITY CLASSES
-   ============================================================================ */
-
-.d-none {
-  display: none !important;
+/* User info component */
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
-.d-block {
-  display: block !important;
+.date-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
-.d-flex {
-  display: flex !important;
+.date-controls select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
 }
 
-.justify-content-center {
-  justify-content: center !important;
+/* Report form */
+.report-form {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 8px;
 }
 
-.justify-content-between {
-  justify-content: space-between !important;
+.report-form h3 {
+  margin-top: 0;
+  color: var(--dark);
 }
 
-.align-items-center {
-  align-items: center !important;
+.report-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  min-height: 100px;
+  resize: vertical;
 }
 
-.mb-0 { margin-bottom: 0 !important; }
-.mb-1 { margin-bottom: 0.25rem !important; }
-.mb-2 { margin-bottom: 0.5rem !important; }
-.mb-3 { margin-bottom: 1rem !important; }
-.mb-4 { margin-bottom: 1.5rem !important; }
-.mb-5 { margin-bottom: 3rem !important; }
+.report-form div {
+  display: flex;
+  gap: 10px;
+}
 
-.mt-0 { margin-top: 0 !important; }
-.mt-1 { margin-top: 0.25rem !important; }
-.mt-2 { margin-top: 0.5rem !important; }
-.mt-3 { margin-top: 1rem !important; }
-.mt-4 { margin-top: 1.5rem !important; }
-.mt-5 { margin-top: 3rem !important; }
+/* Empty state */
+.no-data {
+  text-align: center;
+  padding: 30px;
+  color: var(--gray);
+  font-style: italic;
+}
 
-.p-0 { padding: 0 !important; }
-.p-1 { padding: 0.25rem !important; }
-.p-2 { padding: 0.5rem !important; }
-.p-3 { padding: 1rem !important; }
-.p-4 { padding: 1.5rem !important; }
-.p-5 { padding: 3rem !important; }
+.no-user-selected {
+  text-align: center;
+  padding: 30px;
+  color: var(--gray);
+  font-style: italic;
+}
 
-/* ============================================================================
-   13. RESPONSIVE DESIGN
-   ============================================================================ */
+/* Buttons group */
+.buttons-group {
+  display: flex;
+  gap: 10px;
+}
 
+/* Bulk options */
+.bulk-options {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.bulk-options button {
+  margin-bottom: 8px;
+}
+
+.bulk-options small {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.notification-container {
+  margin-bottom: 15px;
+}
+
+.notification {
+  border-radius: 4px;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+}
+
+.notification-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.notification-error {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* Responsive breakpoints */
 @media (max-width: 768px) {
-  .container {
-    padding: 1rem;
+  .admin-controls {
+    flex-direction: column;
+    gap: 15px;
   }
   
   .header {
-    padding: 1rem;
     flex-direction: column;
-    gap: 1rem;
-    text-align: center;
+    padding: 10px;
   }
   
-  .header h1 {
-    font-size: 1.5rem;
+  .main-nav {
+    margin: 15px 0;
+  }
+  
+  .user-panel {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  #admin-reports-table {
+    font-size: 0.9rem;
   }
   
   .form-row {
@@ -721,330 +1141,824 @@ tbody tr.error {
     gap: 0;
   }
   
-  .form-row .form-group {
-    margin-bottom: 1.5rem;
+  .form-group {
+    flex: 1 1 100%;
   }
   
-  .card-header {
-    padding: 1rem;
+  .admin-work-hours-form {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .header-container {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 10px;
     text-align: center;
   }
   
-  .card-body {
-    padding: 1rem;
+  .header-user {
+    flex-direction: column;
+    width: 100%;
   }
   
-  .table-responsive {
+  .user-info-header {
+    text-align: center;
+  }
+  
+  .logout-btn {
+    width: 100%;
+  }
+  
+  .monthly-days-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  
+  .monthly-form {
+    padding: 15px;
+    width: 95%;
+  }
+  
+  .day-card {
+    padding: 10px;
+  }
+  
+  .day-date {
+    font-size: 1rem;
+  }
+  
+  .hours-input-group input, .notes-input-group input {
+    padding: 6px;
     font-size: 0.9rem;
   }
   
-  th, td {
-    padding: 0.5rem 0.25rem;
+  .user-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
   }
   
-  .btn {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
+  .month-selector {
+    width: 100%;
   }
   
-  .notification {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    max-width: none;
+  .month-selector select {
+    flex-grow: 1;
+  }
+}
+/* Aggiungi a src/index.css - Stili per la sincronizzazione nel timesheet */
+
+/* Righe con sincronizzazione automatica */
+.auto-sync-row {
+  background-color: #f0f8f0 !important;
+  border-left: 3px solid #28a745;
+}
+
+.auto-sync-row:hover {
+  background-color: #e8f5e8 !important;
+}
+
+/* Info box sincronizzazione nel timesheet */
+.sync-info-notice {
+  background-color: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.sync-info-notice p {
+  margin: 0;
+  color: #2d5a2d;
+}
+
+/* Legenda aggiornata */
+.timesheet-legend {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  font-size: 0.9rem;
+}
+
+.timesheet-legend > div:first-child {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.timesheet-legend > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+/* Indicatori di sincronizzazione nelle celle */
+.sync-indicator {
+  color: #17a2b8;
+  margin-left: 6px;
+  font-size: 14px;
+  cursor: help;
+}
+
+.sync-indicator:hover {
+  color: #138496;
+}
+
+/* Tooltip per indicatori di sincronizzazione */
+.sync-indicator[title] {
+  position: relative;
+}
+
+.sync-indicator[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.sync-indicator[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
+  z-index: 1000;
+  margin-bottom: 1px;
+}
+
+/* Stili per le note con sincronizzazione */
+.notes-with-sync {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.notes-with-sync .sync-icon {
+  color: #17a2b8;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Stati speciali con indicatori */
+.special-state-with-sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.special-state-with-sync .sync-icon {
+  color: #17a2b8;
+  font-size: 14px;
+}
+
+/* Evidenziazione per righe sincronizzate */
+.table tbody tr.auto-sync-row td {
+  border-left: 3px solid #28a745;
+  padding-left: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sync-info-notice {
+    padding: 10px;
+    font-size: 13px;
+  }
+  
+  .timesheet-legend > div:last-child {
+    gap: 10px;
+  }
+  
+  .sync-indicator {
+    font-size: 12px;
+  }
+  
+  .notes-with-sync {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .special-state-with-sync {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Animazioni per feedback visivo */
+@keyframes sync-highlight {
+  0% { background-color: #f0f8f0; }
+  50% { background-color: #d4edda; }
+  100% { background-color: #f0f8f0; }
+}
+
+.auto-sync-row.recently-synced {
+  animation: sync-highlight 2s ease-in-out;
+}
+
+/* Icone specifiche per tipo di sincronizzazione */
+.sync-vacation::before { content: "🏖️"; }
+.sync-permission::before { content: "📋"; }
+.sync-sickness::before { content: "🏥"; }
+
+/* Miglioramenti per accessibilità */
+.sync-indicator:focus {
+  outline: 2px solid #17a2b8;
+  outline-offset: 2px;
+}
+
+/* Badge di stato con sincronizzazione */
+.status-badge-with-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-badge-with-sync .sync-icon {
+  font-size: 12px;
+}
+/* Aggiungi questo CSS a src/index.css per risolvere il problema del login */
+
+/* Fix specifico per il form di login */
+.login-page input[type="text"],
+.login-page input[type="email"], 
+.login-page input[type="password"] {
+  color: #333 !important; /* Forza il colore del testo scuro */
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+}
+
+.login-page input[type="text"]:focus,
+.login-page input[type="email"]:focus,
+.login-page input[type="password"]:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.login-page input[type="text"]::placeholder,
+.login-page input[type="email"]::placeholder,
+.login-page input[type="password"]::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Fix per i label del form di login */
+.login-page label {
+  color: #555 !important;
+  font-weight: 500 !important;
+}
+
+/* Fix per il testo degli errori nel login */
+.login-page .error-message-field {
+  color: #dc3545 !important;
+  background-color: transparent !important;
+}
+
+.login-page .error-message {
+  color: #dc3545 !important;
+  background-color: #f8d7da !important;
+  border: 1px solid #f5c6cb !important;
+  padding: 10px !important;
+  border-radius: 4px !important;
+  margin: 10px 0 !important;
+}
+
+/* Assicurati che gli input con errore abbiano il bordo rosso ma testo nero */
+.login-page input.error {
+  border-color: #dc3545 !important;
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Fix per i checkbox nel login */
+.login-page input[type="checkbox"] {
+  width: auto !important;
+  height: auto !important;
+  margin-right: 8px !important;
+}
+
+.login-page .checkbox-label {
+  color: #555 !important;
+  font-weight: normal !important;
+}
+
+/* Aggiungi questo al file src/index.css esistente */
+
+/* Import dei nuovi stili per la funzionalità di eliminazione */
+@import './styles/admin-delete.css';
+@import './styles/sync-monitor.css';
+@import './styles/holidays.css';
+
+/* Stili aggiuntivi per migliorare l'integrazione */
+
+/* Miglioramenti per i pulsanti di azione */
+.admin-table .action-buttons {
+  min-width: 140px;
+}
+
+/* Stili per le righe con sincronizzazione automatica */
+.auto-sync-row {
+  background-color: #f0f8f0 !important;
+  border-left: 3px solid #17a2b8;
+}
+
+.auto-sync-row:hover {
+  background-color: #e8f5e8 !important;
+}
+
+/* Indicatori di stato migliorati */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator.synced {
+  color: #28a745;
+}
+
+.status-indicator.error {
+  color: #dc3545;
+}
+
+.status-indicator.pending {
+  color: #ffc107;
+}
+
+/* Animazioni per feedback utente */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.processing {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Miglioramenti per la tabella admin */
+.admin-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-table tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Stili per le notifiche di eliminazione */
+.notification.delete-success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.notification.delete-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+/* Responsive per dispositivi mobili */
+@media (max-width: 768px) {
+  .admin-table {
+    font-size: 0.85rem;
+  }
+  
+  .admin-table th,
+  .admin-table td {
+    padding: 8px 6px;
+  }
+  
+  .action-buttons {
+    min-width: 100px;
+  }
+  
+  .action-buttons .btn {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+  }
+  
+  /* Nascondi alcune colonne su mobile */
+  .admin-table th:nth-child(4),
+  .admin-table td:nth-child(4) {
+    display: none;
   }
 }
 
 @media (max-width: 576px) {
-  .header h1 {
-    font-size: 1.3rem;
+  .admin-table th:nth-child(3),
+  .admin-table td:nth-child(3),
+  .admin-table th:nth-child(6),
+  .admin-table td:nth-child(6) {
+    display: none;
   }
   
-  .card-header > div:first-child {
-    font-size: 1rem;
-  }
-  
-  h1 { font-size: 2rem; }
-  h2 { font-size: 1.75rem; }
-  h3 { font-size: 1.5rem; }
-  h4 { font-size: 1.25rem; }
-  h5 { font-size: 1.1rem; }
-  h6 { font-size: 1rem; }
-}
-
-/* ============================================================================
-   14. PRINT STYLES
-   ============================================================================ */
-
-@media print {
-  .btn, .notification, .error-message {
-    display: none !important;
-  }
-  
-  .card {
-    box-shadow: none;
-    border: 1px solid #000;
-  }
-  
-  .card-header {
-    background-color: #f5f5f5 !important;
-    -webkit-print-color-adjust: exact;
-    color-adjust: exact;
-  }
-  
-  table {
-    border-collapse: collapse;
-  }
-  
-  th, td {
-    border: 1px solid #000;
-  }
-  
-  .badge, .status-badge {
-    border: 1px solid #000;
-    background-color: #f5f5f5 !important;
-    color: #000 !important;
-    -webkit-print-color-adjust: exact;
-    color-adjust: exact;
+  .action-buttons {
+    flex-direction: column;
+    gap: 3px;
   }
 }
 
-/* ============================================================================
-   15. FOCUS E ACCESSIBILITÀ
-   ============================================================================ */
+/* Stili per indicatori di sincronizzazione nella TimesheetTable */
+.timesheet-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #17a2b8;
+  margin-left: 8px;
+}
 
-/* Focus visibile per accessibilità */
-*:focus-visible {
-  outline: 2px solid var(--primary);
+.timesheet-sync-indicator:hover {
+  color: #138496;
+}
+
+/* Miglioramenti per la legenda */
+.timesheet-legend {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.timesheet-legend .legend-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timesheet-legend .legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+}
+
+.timesheet-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Stili per le info box */
+.info-box {
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-left: 4px solid;
+}
+
+.info-box.success {
+  background-color: #e8f5e8;
+  border-left-color: #28a745;
+  color: #155724;
+}
+
+.info-box.warning {
+  background-color: #fff3cd;
+  border-left-color: #ffc107;
+  color: #856404;
+}
+
+.info-box.info {
+  background-color: #d1ecf1;
+  border-left-color: #17a2b8;
+  color: #0c5460;
+}
+
+.info-box.danger {
+  background-color: #f8d7da;
+  border-left-color: #dc3545;
+  color: #721c24;
+}
+
+.info-box h4 {
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.info-box ul {
+  margin: 8px 0 0 20px;
+  font-size: 14px;
+}
+
+.info-box li {
+  margin-bottom: 4px;
+}
+
+.info-box code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* Stili per i badge migliorati */
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: white;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 0.375rem;
+}
+
+.badge.badge-sync {
+  background-color: #17a2b8;
+}
+
+.badge.badge-manual {
+  background-color: #6c757d;
+}
+
+.badge.badge-pending {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.badge.badge-approved {
+  background-color: #28a745;
+}
+
+.badge.badge-rejected {
+  background-color: #dc3545;
+}
+
+/* Animazioni per transizioni fluide */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Miglioramenti per l'accessibilità */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.focus-visible:focus {
+  outline: 2px solid #0066cc;
   outline-offset: 2px;
 }
 
-/* Rimuovi outline per mouse clicks ma mantienilo per keyboard navigation */
-*:focus:not(:focus-visible) {
-  outline: none;
+/* Stili per tooltip personalizzati */
+.tooltip {
+  position: relative;
 }
 
-/* Improved contrast for better accessibility */
-.text-muted {
-  color: #5a6268 !important; /* Improved contrast */
+.tooltip::before,
+.tooltip::after {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --border-color: #000000;
-    --text-muted: #000000;
-  }
-  
-  .card {
-    border: 2px solid #000000;
-  }
-  
-  .btn {
-    border-width: 2px;
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ============================================================================
-   21. STILI SPECIFICI PER TAB GESTIONE ORE
-   ============================================================================ */
-
-/* Container principale per il tab gestione ore */
-.hours-management-tab {
-  background: #f8f9fa;
-  min-height: 100vh;
-  padding: 1rem 0;
-}
-
-/* Spacing tra i componenti del tab gestione ore */
-.hours-management-tab > * {
-  margin-bottom: 2rem;
-}
-
-.hours-management-tab > *:last-child {
-  margin-bottom: 0;
-}
-
-/* Miglioramenti per la responsività del tab */
-@media (max-width: 768px) {
-  .hours-management-tab {
-    padding: 0.5rem 0;
-  }
-  
-  .hours-management-tab > * {
-    margin-bottom: 1.5rem;
-  }
-}
-
-/* Smooth scroll per anchor links */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Stili per focus keyboard navigation migliorati */
-*:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+.tooltip::before {
+  content: attr(data-tooltip);
+  background: #333;
+  color: white;
+  padding: 6px 10px;
   border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
 }
 
-/* ============================================================================
-   22. CORREZIONI FINALI SPECIFICHE
-   ============================================================================ */
-
-/* Assicura che tutti i testi siano leggibili */
-.card *,
-.table-responsive *,
-.user-info-container *,
-.monthly-stats-card *,
-.timesheet-legend * {
-  color: inherit;
+.tooltip::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: #333;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  z-index: 1000;
 }
 
-/* Forza colori specifici dove necessario */
-.card-body,
-.card-body p,
-.card-body div,
-.card-body span,
-.card-body h1,
-.card-body h2,
-.card-body h3,
-.card-body h4,
-.card-body h5,
-.card-body h6 {
-  color: var(--text-primary) !important;
-}
-
-/* Correzioni per tabelle */
-table,
-table *,
-thead,
-thead *,
-tbody,
-tbody *,
-tfoot,
-tfoot * {
-  color: var(--text-primary) !important;
-}
-
-/* Eccezioni per elementi con colori specifici */
-.text-success,
-.text-danger,
-.text-warning,
-.text-info,
-.text-muted {
-  color: inherit !important;
-}
-
-/* Correzioni per badge */
-.badge,
-.status-badge,
-.badge-weekend,
-.badge-holiday {
-  color: var(--text-white) !important;
-}
-
-/* ============================================================================
-   23. ANIMAZIONI FLUIDE
-   ============================================================================ */
-
-/* Transizioni globali fluide */
-* {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-
-/* Eccezioni per elementi che non dovrebbero avere transizioni */
-canvas,
-img,
-video,
-iframe {
-  transition: none;
-}
-
-/* ============================================================================
-   24. OTTIMIZZAZIONI PERFORMANCE
-   ============================================================================ */
-
-/* Ottimizzazioni rendering */
-.card,
-.table-responsive,
-.user-info,
-.monthly-stats-card {
-  contain: layout style;
-  will-change: transform;
-}
-
-/* GPU acceleration per animazioni */
-.btn,
-.stat-item,
-.qrcode-toggle-btn {
-  transform: translateZ(0);
-}
-
-/* ============================================================================
-   25. CORREZIONI CROSS-BROWSER
-   ============================================================================ */
-
-/* Fix per Safari */
-@supports (-webkit-appearance: none) {
-  select,
-  input[type="date"],
-  input[type="time"] {
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 0.7rem center;
-    background-size: 0.65rem auto;
-    padding-right: 2rem;
-  }
-}
-
-/* Correzioni per form */
-.form-control::placeholder,
-input::placeholder,
-textarea::placeholder {
-  color: var(--text-muted);
+.tooltip:hover::before,
+.tooltip:hover::after {
   opacity: 1;
 }
 
-/* Correzioni per select */
-select option {
-  color: var(--text-primary);
-  background-color: var(--bg-white);
+/* Stili per stati di caricamento */
+.loading-overlay {
+  position: relative;
 }
 
-/* Assicura contrasto adeguato per tutti gli stati */
-.alert * {
-  color: inherit; /* Eredita il colore dall'alert parent */
+.loading-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
 
-/* Correzioni finali per evitare testo bianco su sfondo chiaro */
-.bg-light,
-.card-header,
-.card-footer,
-thead,
-.alert {
-  color: var(--text-primary) !important;
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.bg-light *,
-.card-header *,
-.card-footer *,
-thead *,
-.alert * {
-  color: inherit !important;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Stili per messaggi di conferma */
+.confirmation-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.confirmation-content {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.confirmation-content h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+}
+
+.confirmation-content p {
+  margin: 0 0 20px 0;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.confirmation-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Dark mode support (opzionale) */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: #2d3748;
+    color: #e2e8f0;
+  }
+  
+  .modal-header {
+    border-bottom-color: #4a5568;
+  }
+  
+  .modal-footer {
+    border-top-color: #4a5568;
+  }
+  
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    background: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+  }
+  
+  .info-box.success {
+    background-color: #2d5a2d;
+    color: #68d391;
+  }
+  
+  .info-box.warning {
+    background-color: #744210;
+    color: #f6e05e;
+  }
+  
+  .info-box.info {
+    background-color: #2c5282;
+    color: #63b3ed;
+  }
+  
+  .info-box.danger {
+    background-color: #742a2a;
+    color: #fc8181;
+  }
+}
+
+/* Print styles per i report */
+@media print {
+  .action-buttons,
+  .modal-overlay,
+  .notification,
+  .loading {
+    display: none !important;
+  }
+  
+  .admin-table {
+    border-collapse: collapse;
+  }
+  
+  .admin-table th,
+  .admin-table td {
+    border: 1px solid #333 !important;
+    padding: 8px !important;
+  }
+  
+  .admin-table th {
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  .info-box {
+    border: 1px solid #333 !important;
+    background: #f9f9f9 !important;
+    -webkit-print-color-adjust: exact;
+  }
 }

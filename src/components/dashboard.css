@@ -1,471 +1,228 @@
-/* ============================================================================
-   USER DASHBOARD COMPONENT STYLES
-   Stili specifici per il componente UserDashboard
-   ============================================================================ */
+/* src/components/dashboard.css (updated with timekeeping styles) */
+.dashboard-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-/* ============================================================================
-   1. CONTAINER PRINCIPALE DASHBOARD
-   ============================================================================ */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
 
-   .dashboard-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem;
-    color: #2c3e50;
+.dashboard-header h2 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.8rem;
+}
+
+.current-date {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Main dashboard layout */
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+/* Card generico */
+.dashboard-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--dark);
+  font-size: 1.3rem;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* Monthly Stats Card */
+.monthly-stats-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  transition: all 0.3s ease;
+}
+
+.monthly-stats-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.monthly-stats-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--dark);
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background-color: #f1f3f5;
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+}
+
+.stat-item.warning .stat-value {
+  color: var(--warning);
+}
+
+.stat-note {
+  font-size: 0.85rem;
+  color: #999;
+  text-align: center;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+/* QR Code card */
+.qrcode-card {
+  text-align: center;
+  padding: 30px;
+}
+
+.qrcode-card .user-qrcode-container {
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+.qrcode-instructions {
+  margin-top: 25px;
+  text-align: left;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.qrcode-instructions h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--dark);
+  font-size: 1.1rem;
+}
+
+.qrcode-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.qrcode-instructions li {
+  margin-bottom: 8px;
+  color: #555;
+}
+
+/* User info card */
+.user-info-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.user-info-content p {
+  margin: 5px 0;
+  color: #444;
+}
+
+/* Effetto di evidenziazione per il QR code */
+@keyframes gentle-highlight {
+  0% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   }
-  
+  50% {
+    box-shadow: 0 4px 20px rgba(52, 152, 219, 0.25);
+  }
+  100% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.qrcode-card {
+  animation: gentle-highlight 3s infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
   .dashboard-header {
-    text-align: center;
-    margin-bottom: 2rem;
-    padding: 2rem 1rem;
-    background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
-    color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   
-  .dashboard-header h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #ffffff;
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  
-  .dashboard-header .current-date {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    color: #ffffff;
-    font-weight: 400;
-  }
-  
-  /* ============================================================================
-     2. CONTENUTO DASHBOARD
-     ============================================================================ */
-  
-  .dashboard-content {
-    display: grid;
-    gap: 2rem;
+}
+
+@media (max-width: 576px) {
+  .user-info-content {
     grid-template-columns: 1fr;
   }
   
-  .dashboard-main {
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-  
-  /* ============================================================================
-     3. CARD DASHBOARD
-     ============================================================================ */
-  
   .dashboard-card {
-    background: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    color: #2c3e50;
+    padding: 15px;
   }
-  
-  .dashboard-card:hover {
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-  }
-  
-  .dashboard-card h3,
-  .dashboard-card h4,
-  .dashboard-card p,
-  .dashboard-card div,
-  .dashboard-card span {
-    color: #2c3e50 !important;
-  }
-  
-  /* ============================================================================
-     4. CARD QR CODE SPECIFICO
-     ============================================================================ */
   
   .qrcode-card {
-    padding: 2rem;
-    text-align: center;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid #dee2e6;
-    position: relative;
-    overflow: visible;
+    padding: 20px 15px;
   }
   
-  .qrcode-card h3,
-  .qrcode-card h4 {
-    color: #2c3e50 !important;
-    margin-bottom: 1rem;
-    font-weight: 600;
-    text-shadow: none;
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .qrcode-card * {
-    color: #2c3e50 !important;
-  }
-  
-  .qrcode-instructions {
-    margin-top: 2rem;
-    text-align: left;
-    background-color: #e8f4f8;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .qrcode-instructions h4 {
-    color: #2c3e50 !important;
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .qrcode-instructions h4::before {
-    content: "📱";
-    font-size: 1.2rem;
-  }
-  
-  .qrcode-instructions ol {
-    margin: 0;
-    padding-left: 1.5rem;
-    color: #2c3e50;
-    counter-reset: step-counter;
-    list-style: none;
-  }
-  
-  .qrcode-instructions ol li {
-    margin-bottom: 0.75rem;
-    line-height: 1.6;
-    color: #2c3e50 !important;
-    position: relative;
-    padding-left: 0.5rem;
-    counter-increment: step-counter;
-  }
-  
-  .qrcode-instructions ol li::before {
-    content: counter(step-counter);
-    position: absolute;
-    left: -1.5rem;
-    top: 0;
-    background: #3498db;
-    color: #ffffff;
-    width: 1.2rem;
-    height: 1.2rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 600;
-  }
-  
-  .qrcode-instructions ol li:last-child {
-    margin-bottom: 0;
-  }
-  
-  /* ============================================================================
-     5. LOADING STATES
-     ============================================================================ */
-  
-  .loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-    color: #6c757d;
-  }
-  
-  .loading-container {
-    text-align: center;
-    padding: 2rem;
-  }
-  
-  .loading-container .loading {
-    font-size: 1.1rem;
-    color: #6c757d;
-  }
-  
-  /* ============================================================================
-     6. ERROR STATES
-     ============================================================================ */
-  
-  .error-message {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #f5c6cb;
-    margin-bottom: 1rem;
-  }
-  
-  .error-message p {
-    margin: 0.5rem 0;
-    color: #721c24 !important;
-  }
-  
-  .error-message p:first-child {
-    font-weight: 600;
-  }
-  
-  /* ============================================================================
-     7. RESPONSIVE DESIGN
-     ============================================================================ */
-  
-  @media (max-width: 768px) {
-    .dashboard-container {
-      padding: 0.5rem;
-    }
-    
-    .dashboard-header {
-      margin-bottom: 1.5rem;
-      padding: 1.5rem 1rem;
-    }
-    
-    .dashboard-header h2 {
-      font-size: 1.8rem;
-    }
-    
-    .dashboard-header .current-date {
-      font-size: 1rem;
-    }
-    
-    .dashboard-main {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-    
-    .qrcode-card {
-      padding: 1.5rem;
-      margin: 0 -0.5rem;
-    }
-    
-    .qrcode-instructions {
-      padding: 1rem;
-      margin-top: 1.5rem;
-    }
-    
-    .qrcode-instructions h4 {
-      font-size: 1rem;
-    }
-    
-    .qrcode-instructions ol {
-      padding-left: 1.2rem;
-    }
-    
-    .qrcode-instructions ol li {
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
-      padding-left: 0.3rem;
-    }
-    
-    .qrcode-instructions ol li::before {
-      width: 1rem;
-      height: 1rem;
-      left: -1.2rem;
-      font-size: 0.6rem;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .dashboard-header {
-      padding: 1rem 0.5rem;
-    }
-    
-    .dashboard-header h2 {
-      font-size: 1.6rem;
-    }
-    
-    .dashboard-header .current-date {
-      font-size: 0.9rem;
-    }
-    
-    .qrcode-card {
-      padding: 1rem;
-      margin: 0;
-      border-radius: 8px;
-    }
-    
-    .qrcode-instructions {
-      padding: 0.75rem;
-      margin-top: 1rem;
-    }
-    
-    .qrcode-instructions h4 {
-      font-size: 0.95rem;
-    }
-    
-    .qrcode-instructions ol li {
-      font-size: 0.85rem;
-      margin-bottom: 0.4rem;
-      line-height: 1.4;
-    }
-    
-    .qrcode-instructions ol li::before {
-      width: 0.9rem;
-      height: 0.9rem;
-      font-size: 0.55rem;
-    }
-  }
-  
-  /* ============================================================================
-     8. TEMA SCURO (opzionale)
-     ============================================================================ */
-  
-  @media (prefers-color-scheme: dark) {
-    .dashboard-container {
-      color: #ecf0f1;
-    }
-    
-    .dashboard-card {
-      background: #2c3e50;
-      border-color: #34495e;
-      color: #ecf0f1;
-    }
-    
-    .dashboard-card h3,
-    .dashboard-card h4,
-    .dashboard-card p,
-    .dashboard-card div,
-    .dashboard-card span {
-      color: #ecf0f1 !important;
-    }
-    
-    .qrcode-card {
-      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-      border-color: #34495e;
-    }
-    
-    .qrcode-instructions {
-      background-color: #34495e;
-      border-left-color: #3498db;
-    }
-    
-    .qrcode-instructions ol li {
-      color: #ecf0f1 !important;
-    }
-    
-    .error-message {
-      background-color: #e74c3c;
-      color: #ffffff;
-      border-color: #c0392b;
-    }
-    
-    .error-message p {
-      color: #ffffff !important;
-    }
-  }
-  
-  /* ============================================================================
-     9. PRINT STYLES
-     ============================================================================ */
-  
-  @media print {
-    .dashboard-header {
-      background: #f5f5f5 !important;
-      color: #000 !important;
-      -webkit-print-color-adjust: exact;
-      color-adjust: exact;
-    }
-    
-    .dashboard-header h2,
-    .dashboard-header .current-date {
-      color: #000 !important;
-    }
-    
-    .dashboard-card {
-      box-shadow: none;
-      border: 2px solid #000;
-      background: #fff !important;
-    }
-    
-    .dashboard-card h3,
-    .dashboard-card h4,
-    .dashboard-card p,
-    .dashboard-card div,
-    .dashboard-card span {
-      color: #000 !important;
-    }
-    
-    .qrcode-instructions {
-      background-color: #f5f5f5 !important;
-      border-left: 4px solid #000;
-    }
-    
-    .qrcode-instructions ol li {
-      color: #000 !important;
-    }
-  }
-  
-  /* ============================================================================
-     10. ACCESSIBILITÀ
-     ============================================================================ */
-  
-  .dashboard-card:focus-within {
-    outline: 2px solid #3498db;
-    outline-offset: 2px;
-  }
-  
-  /* High contrast mode */
-  @media (prefers-contrast: high) {
-    .dashboard-card {
-      border-width: 2px;
-      border-color: #000;
-    }
-    
-    .dashboard-header {
-      border: 2px solid #000;
-    }
-    
-    .qrcode-instructions {
-      border: 2px solid #000;
-      border-left-width: 4px;
-    }
-  }
-  
-  /* ============================================================================
-     11. ANIMAZIONI E TRANSIZIONI
-     ============================================================================ */
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .dashboard-card {
-    animation: fadeIn 0.5s ease-out;
-  }
-  
-  .dashboard-card:nth-child(1) {
-    animation-delay: 0.1s;
-  }
-  
-  .dashboard-card:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  
-  .dashboard-card:nth-child(3) {
-    animation-delay: 0.3s;
-  }
-  
-  /* Riduci animazioni se l'utente preferisce meno movimento */
-  @media (prefers-reduced-motion: reduce) {
-    .dashboard-card {
-      animation: none;
-    }
-    
-    .dashboard-card:hover {
-      transform: none;
-    }
-  }
+}

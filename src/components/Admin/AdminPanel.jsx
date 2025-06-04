@@ -81,9 +81,9 @@ const AdminPanel = () => {
   }, [filters, reports, activeTab]);
 
   // Gestisce il cambio di stato di una segnalazione
-  const handleStatusChange = async (reportId, newStatus, adminNotes = '') => {
+  const handleStatusChange = async (reportId, newStatus) => {
     try {
-      await updateReportStatus(reportId, newStatus, adminNotes);
+      await updateReportStatus(reportId, newStatus);
       
       // Aggiorna lo stato locale
       setReports(prevReports => 
@@ -92,11 +92,7 @@ const AdminPanel = () => {
             ? { 
                 ...report, 
                 status: newStatus, 
-                lastUpdate: new Date(),
-                ...(adminNotes && adminNotes.trim() ? { 
-                  adminNotes: adminNotes.trim(),
-                  adminNotesDate: new Date()
-                } : {})
+                lastUpdate: new Date()
               } 
             : report
         )
@@ -109,11 +105,7 @@ const AdminPanel = () => {
             ? { 
                 ...report, 
                 status: newStatus, 
-                lastUpdate: new Date(),
-                ...(adminNotes && adminNotes.trim() ? { 
-                  adminNotes: adminNotes.trim(),
-                  adminNotesDate: new Date()
-                } : {})
+                lastUpdate: new Date()
               } 
             : report
         )
