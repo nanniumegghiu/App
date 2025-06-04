@@ -1,4 +1,4 @@
-// src/components/UserDashboard.jsx - Simplified version without user info card
+// src/components/UserDashboard.jsx - Versione semplificata con design pulito
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -9,15 +9,14 @@ import './userQRCode.css';
 import './dashboard.css';
 
 /**
- * Enhanced user dashboard component with timekeeping status
- * Simplified version without user info card as requested
+ * Dashboard utente semplificata con design pulito
  */
 const UserDashboard = () => {
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch basic user information on load
+  // Fetch user information on load
   useEffect(() => {
     const fetchUserData = async () => {
       setIsLoading(true);
@@ -48,7 +47,7 @@ const UserDashboard = () => {
         
         setError(null);
         
-        // Auto-close any open sessions from previous days - wrapped in try/catch
+        // Auto-close any open sessions from previous days
         try {
           await timekeepingService.autoCloseOpenSessions(currentUser.uid);
         } catch (sessionError) {
@@ -57,7 +56,7 @@ const UserDashboard = () => {
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
-        setError("Could not load data. Please try again later.");
+        setError("Impossibile caricare i dati. Riprova più tardi.");
         
         // Set minimal user data if available
         if (auth.currentUser) {
@@ -85,11 +84,22 @@ const UserDashboard = () => {
     return new Date().toLocaleDateString('it-IT', options);
   };
 
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!userData) return 'Utente';
+    
+    if (userData.nome && userData.cognome) {
+      return `${userData.nome} ${userData.cognome}`;
+    }
+    
+    return userData.email || 'Utente';
+  };
+
   if (isLoading) {
     return (
-      <div className="loading">
+      <div className="dashboard-container">
         <div className="loading-container">
-          <div className="loading">Loading dashboard...</div>
+          <div className="loading">Caricamento dashboard...</div>
         </div>
       </div>
     );
@@ -100,26 +110,45 @@ const UserDashboard = () => {
     return (
       <div className="dashboard-container">
         <div className="dashboard-header">
-          <h2>Pannello Personale</h2>
-          <p className="current-date">{getCurrentDate()}</p>
+          <div>
+            <h2>Benvenuto, {getUserDisplayName()}</h2>
+            <p className="current-date">{getCurrentDate()}</p>
+          </div>
         </div>
         
-        <div className="error-message" style={{ marginBottom: '20px' }}>
-          {error}
+        <div className="error-message">
+          <h4>⚠️ Attenzione</h4>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="btn btn-primary"
+            style={{
+              marginTop: '10px',
+              padding: '8px 16px',
+              backgroundColor: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Ricarica Pagina
+          </button>
         </div>
 
         <div className="dashboard-content">
           <div className="dashboard-main">
             {/* Always show QR code regardless of other errors */}
             <div className="dashboard-card qrcode-card">
+              <h3>Il tuo QR Code</h3>
               <UserQRCode />
               <div className="qrcode-instructions">
-                <h4>Come usare il tuo QRCode:</h4>
+                <h4>Come usare il QR Code:</h4>
                 <ol>
-                  <li>Mostra questo QrCode alle postazioni fisse con scanner o chiedi al tuo responsabile la timbratura di ingresso.</li>
-                  <li>A fine giornata lavorativa, timbra l'uscita mostrando ancora una volta il QrCode alle postazioni fisse o dal tuo responsabile.</li>
-                  <li>Verrà calcolata l'intera giornata lavorativa, inclusi eventuali straordinari e pausa pranzo.</li>
-                  <li>Se dimentichi di timbrare l'uscita, verrà conteggiata una giornata standard di 8 ore e perderai eventuali straordinari.</li>
+                  <li>Mostra questo QR Code alle postazioni fisse con scanner per la timbratura di ingresso</li>
+                  <li>A fine giornata lavorativa, timbra l'uscita mostrando nuovamente il QR Code</li>
+                  <li>Il sistema calcolerà automaticamente le ore lavorate, inclusi eventuali straordinari</li>
+                  <li>Se dimentichi di timbrare l'uscita, verrà registrata una giornata standard di 8 ore</li>
                 </ol>
               </div>
             </div>
@@ -134,13 +163,31 @@ const UserDashboard = () => {
     return (
       <div className="dashboard-container">
         <div className="dashboard-header">
-          <h2>Pannello Personale</h2>
-          <p className="current-date">{getCurrentDate()}</p>
+          <div>
+            <h2>Dashboard Personale</h2>
+            <p className="current-date">{getCurrentDate()}</p>
+          </div>
         </div>
         
         <div className="error-message">
-          {error}
-          <p>Reload the page to try again.</p>
+          <h4>❌ Errore di Caricamento</h4>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="btn btn-primary"
+            style={{
+              marginTop: '15px',
+              padding: '10px 20px',
+              backgroundColor: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.95rem'
+            }}
+          >
+            Ricarica la pagina
+          </button>
         </div>
       </div>
     );
@@ -149,8 +196,10 @@ const UserDashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h2>Pannello Personale</h2>
-        <p className="current-date">{getCurrentDate()}</p>
+        <div>
+          <h2>Benvenuto, {getUserDisplayName()}</h2>
+          <p className="current-date">{getCurrentDate()}</p>
+        </div>
       </div>
 
       <div className="dashboard-content">
@@ -158,17 +207,71 @@ const UserDashboard = () => {
           {/* Timekeeping Status Card */}
           <TimekeepingStatus />
           
-          {/* QR Code as main element */}
+          {/* QR Code Card */}
           <div className="dashboard-card qrcode-card">
+            <h3>Il tuo QR Code Personale</h3>
             <UserQRCode />
             <div className="qrcode-instructions">
-              <h4>Come usare il tuo QRCode:</h4>
+              <h4>📱 Come usare il QR Code:</h4>
               <ol>
-              <li>Mostra questo QrCode alle postazioni fisse con scanner o chiedi al tuo responsabile la timbratura di ingresso.</li>
-                  <li>A fine giornata lavorativa, timbra l'uscita mostrando ancora una volta il QrCode alle postazioni fisse o dal tuo responsabile.</li>
-                  <li>Verrà calcolata l'intera giornata lavorativa, inclusi eventuali straordinari e pausa pranzo.</li>
-                  <li>Se dimentichi di timbrare l'uscita, verrà conteggiata una giornata standard di 8 ore e perderai eventuali straordinari.</li>
+                <li><strong>Ingresso:</strong> Mostra il QR Code al lettore per registrare l'entrata</li>
+                <li><strong>Uscita:</strong> Scansiona nuovamente il QR Code a fine giornata</li>
+                <li><strong>Calcolo automatico:</strong> Le ore verranno calcolate automaticamente</li>
+                <li><strong>Straordinari:</strong> Ore oltre le 8 giornaliere saranno conteggiate come straordinario</li>
+                <li><strong>Importante:</strong> Non dimenticare di timbrare l'uscita per evitare calcoli errati</li>
               </ol>
+            </div>
+          </div>
+
+          {/* Quick Info Card */}
+          <div className="dashboard-card">
+            <h3>📋 Informazioni Rapide</h3>
+            <div style={{ 
+              padding: '0 20px 20px 20px',
+              display: 'grid',
+              gap: '15px'
+            }}>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '15px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#495057', fontSize: '1rem' }}>
+                  🕒 Orario Standard
+                </h4>
+                <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem' }}>
+                  8 ore giornaliere • Straordinari calcolati automaticamente oltre le 8 ore
+                </p>
+              </div>
+
+              <div style={{
+                background: '#f8f9fa',
+                padding: '15px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#495057', fontSize: '1rem' }}>
+                  📊 Gestione Ore
+                </h4>
+                <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem' }}>
+                  Consulta il riepilogo mensile nella sezione "Gestione Ore" del menu principale
+                </p>
+              </div>
+
+              <div style={{
+                background: '#f8f9fa',
+                padding: '15px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#495057', fontSize: '1rem' }}>
+                  📝 Richieste
+                </h4>
+                <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem' }}>
+                  Invia richieste di permessi, ferie o malattia dalla sezione dedicata
+                </p>
+              </div>
             </div>
           </div>
         </div>

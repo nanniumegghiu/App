@@ -81,40 +81,48 @@ const AdminPanel = () => {
   }, [filters, reports, activeTab]);
 
   // Gestisce il cambio di stato di una segnalazione
-  const handleStatusChange = async (reportId, newStatus) => {
-    try {
-      await updateReportStatus(reportId, newStatus);
-      
-      // Aggiorna lo stato locale
-      setReports(prevReports => 
-        prevReports.map(report => 
-          report.id === reportId 
-            ? { 
-                ...report, 
-                status: newStatus, 
-                lastUpdate: new Date()
-              } 
-            : report
-        )
-      );
-      
-      // Assicurati che anche i report filtrati siano aggiornati
-      setFilteredReports(prevReports => 
-        prevReports.map(report => 
-          report.id === reportId 
-            ? { 
-                ...report, 
-                status: newStatus, 
-                lastUpdate: new Date()
-              } 
-            : report
-        )
-      );
-    } catch (err) {
-      console.error("Errore nell'aggiornamento dello stato:", err);
-      alert("Impossibile aggiornare lo stato della segnalazione. Riprova più tardi.");
-    }
-  };
+const handleStatusChange = async (reportId, newStatus, adminNotes = '') => {
+  try {
+    await updateReportStatus(reportId, newStatus, adminNotes);
+    
+    // Aggiorna lo stato locale
+    setReports(prevReports => 
+      prevReports.map(report => 
+        report.id === reportId 
+          ? { 
+              ...report, 
+              status: newStatus, 
+              lastUpdate: new Date(),
+              ...(adminNotes && adminNotes.trim() ? { 
+                adminNotes: adminNotes.trim(),
+                adminNotesDate: new Date()
+              } : {})
+            } 
+          : report
+      )
+    );
+    
+    // Assicurati che anche i report filtrati siano aggiornati
+    setFilteredReports(prevReports => 
+      prevReports.map(report => 
+        report.id === reportId 
+          ? { 
+              ...report, 
+              status: newStatus, 
+              lastUpdate: new Date(),
+              ...(adminNotes && adminNotes.trim() ? { 
+                adminNotes: adminNotes.trim(),
+                adminNotesDate: new Date()
+              } : {})
+            } 
+          : report
+      )
+    );
+  } catch (err) {
+    console.error("Errore nell'aggiornamento dello stato:", err);
+    alert("Impossibile aggiornare lo stato della segnalazione. Riprova più tardi.");
+  }
+};
 
   return (
     <div className="admin-panel">

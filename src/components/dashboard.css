@@ -1,31 +1,38 @@
-/* src/components/dashboard.css (updated with timekeeping styles) */
+/* src/components/dashboard.css - Versione semplificata con sfondi bianchi */
 .dashboard-container {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
+  background-color: #f8f9fa;
+  min-height: calc(100vh - 80px);
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .dashboard-header h2 {
   margin: 0;
-  color: var(--dark);
+  color: #2c3e50;
   font-size: 1.8rem;
+  font-weight: 600;
 }
 
 .current-date {
-  color: #666;
+  color: #6c757d;
   font-size: 1rem;
   margin: 0;
-  font-style: italic;
+  font-weight: 500;
 }
 
-/* Main dashboard layout */
+/* Layout principale della dashboard */
 .dashboard-content {
   display: flex;
   flex-direction: column;
@@ -38,191 +45,380 @@
   gap: 25px;
 }
 
-/* Card generico */
+/* Card generico - design pulito */
 .dashboard-card {
   background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  margin-bottom: 25px;
+  overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .dashboard-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .dashboard-card h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: var(--dark);
-  font-size: 1.3rem;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 10px;
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+  font-weight: 600;
+  padding: 20px 20px 0 20px;
 }
 
-/* Monthly Stats Card */
-.monthly-stats-card {
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  padding: 25px;
-  transition: all 0.3s ease;
+/* Status Card del turno lavorativo */
+.timekeeping-status-card {
+  background: white !important;
+  border: 1px solid #e9ecef !important;
+  color: #2c3e50 !important;
 }
 
-.monthly-stats-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+.timekeeping-status-card::before {
+  background: linear-gradient(90deg, #3498db, #2ecc71) !important;
 }
 
-.monthly-stats-card h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: var(--dark);
-  font-size: 1.3rem;
-  text-align: center;
+.timekeeping-status-card .status-header h3 {
+  color: #2c3e50 !important;
+  text-shadow: none !important;
+  padding: 20px 20px 0 20px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 15px;
-  margin-bottom: 15px;
+.timekeeping-status-card .current-time {
+  background: #f8f9fa !important;
+  color: #495057 !important;
+  border: 1px solid #dee2e6 !important;
+  font-weight: 600;
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+.timekeeping-status-card .status-content {
+  color: #495057 !important;
+  padding: 20px;
 }
 
-.stat-item:hover {
-  background-color: #f1f3f5;
-  transform: translateY(-2px);
+.timekeeping-status-card .status-badge {
+  background: #e9ecef !important;
+  color: #495057 !important;
+  border: 1px solid #ced4da !important;
+  font-weight: 600;
 }
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary);
-  margin-bottom: 5px;
+.timekeeping-status-card .time-details {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
 }
 
-.stat-label {
-  font-size: 0.9rem;
-  color: #666;
-  text-align: center;
+.timekeeping-status-card .time-entry {
+  background: white !important;
+  border: 1px solid #e9ecef !important;
+  color: #495057 !important;
 }
 
-.stat-item.warning .stat-value {
-  color: var(--warning);
+.timekeeping-status-card .time-entry:hover {
+  background: #f8f9fa !important;
 }
 
-.stat-note {
-  font-size: 0.85rem;
-  color: #999;
-  text-align: center;
-  font-style: italic;
-  margin-top: 10px;
+.timekeeping-status-card .time-entry.highlighted {
+  background: #e3f2fd !important;
+  border: 1px solid #90caf9 !important;
+  color: #1976d2 !important;
 }
 
-/* QR Code card */
+.timekeeping-status-card .time-label {
+  color: #6c757d !important;
+}
+
+.timekeeping-status-card .time-value {
+  color: #2c3e50 !important;
+}
+
+.timekeeping-status-card .progress-bar-container {
+  background: #e9ecef !important;
+  border: 1px solid #ced4da;
+}
+
+.timekeeping-status-card .breakdown-item {
+  background: white !important;
+  border: 1px solid #e9ecef !important;
+  color: #495057 !important;
+}
+
+.timekeeping-status-card .breakdown-item:hover {
+  background: #f8f9fa !important;
+}
+
+.timekeeping-status-card .breakdown-value {
+  color: #2c3e50 !important;
+  text-shadow: none !important;
+}
+
+.timekeeping-status-card .shift-info {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  color: #6c757d !important;
+}
+
+.timekeeping-status-card .multi-day-info {
+  background: #e3f2fd !important;
+  border: 1px solid #90caf9 !important;
+  color: #1976d2 !important;
+}
+
+.timekeeping-status-card .auto-close-info {
+  background: #fff3e0 !important;
+  border: 1px solid #ffcc02 !important;
+  color: #f57c00 !important;
+}
+
+.timekeeping-status-card .not-started-message {
+  background: #f8f9fa !important;
+  border: 2px dashed #ced4da !important;
+  color: #6c757d !important;
+}
+
+.timekeeping-status-card .hint {
+  color: #6c757d !important;
+}
+
+/* QR Code card - design pulito */
 .qrcode-card {
   text-align: center;
   padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .qrcode-card .user-qrcode-container {
   box-shadow: none;
   padding: 0;
-  margin: 0;
+  margin: 0 auto;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qrcode-card .qrcode-wrapper {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 25px;
+  margin: 20px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 350px;
+}
+
+.qrcode-card .download-qr-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.qrcode-card .download-qr-btn:hover:not(:disabled) {
+  background: #2980b9;
+  transform: translateY(-1px);
 }
 
 .qrcode-instructions {
   margin-top: 25px;
   text-align: left;
-  background-color: #f8f9fa;
-  padding: 15px;
+  background: #f8f9fa;
+  padding: 20px;
   border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .qrcode-instructions h4 {
   margin-top: 0;
-  margin-bottom: 10px;
-  color: var(--dark);
+  margin-bottom: 15px;
+  color: #2c3e50;
   font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .qrcode-instructions ol {
   margin: 0;
   padding-left: 20px;
+  color: #495057;
 }
 
 .qrcode-instructions li {
-  margin-bottom: 8px;
-  color: #555;
+  margin-bottom: 10px;
+  line-height: 1.5;
 }
 
-/* User info card */
-.user-info-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+/* Loading state */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
 }
 
-.user-info-content p {
-  margin: 5px 0;
-  color: #444;
+.loading {
+  color: #6c757d;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
-/* Effetto di evidenziazione per il QR code */
-@keyframes gentle-highlight {
-  0% {
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  }
-  50% {
-    box-shadow: 0 4px 20px rgba(52, 152, 219, 0.25);
-  }
-  100% {
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  }
+/* Error state */
+.error-message {
+  background: white;
+  color: #dc3545;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #f5c6cb;
+  margin-bottom: 20px;
 }
 
-.qrcode-card {
-  animation: gentle-highlight 3s infinite;
-}
-
-/* Responsive */
+/* Responsive design */
 @media (max-width: 768px) {
+  .dashboard-container {
+    padding: 15px;
+  }
+  
   .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+    padding: 15px;
   }
   
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 576px) {
-  .user-info-content {
-    grid-template-columns: 1fr;
+  .dashboard-header h2 {
+    font-size: 1.5rem;
   }
   
   .dashboard-card {
-    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-card h3 {
+    font-size: 1.2rem;
+    padding: 15px 15px 0 15px;
   }
   
   .qrcode-card {
     padding: 20px 15px;
   }
   
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .qrcode-instructions {
+    padding: 15px;
   }
+  
+  .timekeeping-status-card .status-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .timekeeping-status-card .current-time {
+    align-self: flex-end;
+    font-size: 1.1rem;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-container {
+    padding: 10px;
+  }
+  
+  .dashboard-header {
+    padding: 12px;
+  }
+  
+  .dashboard-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .current-date {
+    font-size: 0.9rem;
+  }
+  
+  .qrcode-card {
+    padding: 15px 10px;
+  }
+  
+  .qrcode-instructions {
+    padding: 12px;
+  }
+  
+  .qrcode-instructions h4 {
+    font-size: 1rem;
+  }
+  
+  .qrcode-instructions li {
+    font-size: 0.9rem;
+  }
+}
+
+/* Animazioni sottili */
+@keyframes gentle-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-card {
+  animation: gentle-fade-in 0.5s ease-out;
+}
+
+/* Stati focus per accessibilità */
+.download-qr-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+}
+
+/* Rimozione degli effetti colorati eccessivi */
+.timekeeping-status-card.status-in-progress,
+.timekeeping-status-card.status-completed,
+.timekeeping-status-card.status-auto-closed,
+.timekeeping-status-card.status-not-started {
+  background: white !important;
+  border: 1px solid #e9ecef !important;
+}
+
+/* Override per mantenere solo bordi colorati sottili */
+.timekeeping-status-card.status-in-progress::before {
+  background: #3498db !important;
+  height: 3px !important;
+}
+
+.timekeeping-status-card.status-completed::before {
+  background: #2ecc71 !important;
+  height: 3px !important;
+}
+
+.timekeeping-status-card.status-auto-closed::before {
+  background: #f39c12 !important;
+  height: 3px !important;
+}
+
+.timekeeping-status-card.status-not-started::before {
+  background: #95a5a6 !important;
+  height: 3px !important;
 }

@@ -1,5 +1,6 @@
 // src/components/UserNavigation.jsx (modificato)
 import React from 'react';
+import './user-navigation.css';
 
 const UserNavigation = ({ activeTab, onTabChange }) => {
   return (

@@ -469,18 +469,6 @@ const TimekeepingStatus = () => {
                 >
                 </div>
               </div>
-              
-              <div className="shift-info">
-                <p style={{ 
-                  fontSize: '0.9rem', 
-                  color: 'rgba(255, 255, 255, 0.8)', 
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  marginTop: '10px'
-                }}>
-                  💡 Il turno può proseguire anche domani secondo le regole aziendali
-                </p>
-              </div>
             </>
           )}
           

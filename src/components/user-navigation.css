@@ -1,0 +1,157 @@
+/* src/user-navigation.css - Versione semplificata */
+.user-navigation {
+  display: flex;
+  background-color: white;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.user-navigation .tab-button {
+  padding: 16px 24px;
+  background: none;
+  border: none;
+  border-right: 1px solid #e9ecef;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.user-navigation .tab-button:last-child {
+  border-right: none;
+}
+
+.user-navigation .tab-button:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.user-navigation .tab-button.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.user-navigation .tab-button:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+/* Indicatori per le tab */
+.user-navigation .tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background-color 0.3s ease;
+}
+
+.user-navigation .tab-button.active::before {
+  background: #3498db;
+}
+
+/* Icone per le tab (opzionali) */
+.user-navigation .tab-button[data-tab="dashboard"]::after {
+  content: ' 🏠';
+  font-size: 0.9em;
+}
+
+.user-navigation .tab-button[data-tab="hours"]::after {
+  content: ' ⏰';
+  font-size: 0.9em;
+}
+
+.user-navigation .tab-button[data-tab="requests"]::after {
+  content: ' 📝';
+  font-size: 0.9em;
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+  .user-navigation {
+    flex-direction: column;
+    border-radius: 12px;
+    margin-bottom: 20px;
+  }
+  
+  .user-navigation .tab-button {
+    border-right: none;
+    border-bottom: 1px solid #e9ecef;
+    text-align: left;
+    padding: 14px 16px;
+    border-left: 3px solid transparent;
+  }
+  
+  .user-navigation .tab-button:last-child {
+    border-bottom: none;
+  }
+  
+  .user-navigation .tab-button.active {
+    border-bottom: 1px solid #e9ecef;
+    border-left: 3px solid #3498db;
+    border-bottom-color: transparent;
+  }
+
+  .user-navigation .tab-button::before {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .user-navigation .tab-button {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+  }
+  
+  .user-navigation .tab-button[data-tab="dashboard"]::after,
+  .user-navigation .tab-button[data-tab="hours"]::after,
+  .user-navigation .tab-button[data-tab="requests"]::after {
+    font-size: 0.8em;
+  }
+}
+
+/* Stati di caricamento */
+.user-navigation .tab-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: #adb5bd;
+}
+
+.user-navigation .tab-button:disabled:hover {
+  background-color: transparent;
+  color: #adb5bd;
+}
+
+/* Accessibilità migliorata */
+.user-navigation .tab-button:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: -2px;
+}
+
+/* Animazioni sottili */
+.user-navigation .tab-button {
+  transform: translateZ(0); /* Forza l'accelerazione hardware */
+}
+
+.user-navigation .tab-button:active {
+  transform: translateY(1px);
+}
+
+/* Stili per la stampa */
+@media print {
+  .user-navigation {
+    display: none;
+  }
+}
