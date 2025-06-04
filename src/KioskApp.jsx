@@ -1,4 +1,4 @@
-// src/KioskApp.jsx - Modalità kiosk dedicata per dispositivi Android con logout di emergenza
+// src/KioskApp.jsx - Modalità kiosk con header in fondo ridimensionato
 import React, { useState, useEffect } from 'react';
 import TimekeepingScanner from './components/TimekeepingScanner';
 import Notification from './components/Notification';
@@ -480,19 +480,43 @@ const KioskApp = () => {
       onClick={handleEmergencyTap}
       onTouchStart={handleEmergencyTap}
     >
-      {/* Header con info dispositivo */}
-      <div className="kiosk-header">
-        <div className="device-info">
-          <div className="device-name">
+      {/* Container principale per contenuto */}
+      <div className="kiosk-main-content">
+        {/* Notifiche */}
+        {notification.show && (
+          <div className="kiosk-notification">
+            <Notification
+              message={notification.message}
+              isVisible={notification.show}
+              onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+              type={notification.type}
+            />
+          </div>
+        )}
+
+        {/* Scanner principale */}
+        <div className="kiosk-scanner-container">
+          <TimekeepingScanner 
+            isAdmin={false}
+            deviceId={deviceId}
+            kioskMode={true}
+          />
+        </div>
+      </div>
+
+      {/* Header spostato in fondo con dimensioni ridotte */}
+      <div className="kiosk-footer">
+        <div className="device-info-compact">
+          <div className="device-name-compact">
             📱 {deviceName}
           </div>
-          <div className="device-status">
-            <span className="time">{getCurrentTime()}</span>
-            <span className={`connection ${connectionStatus}`}>
-              {connectionStatus === 'online' ? '🟢' : '🔴'} {connectionStatus}
+          <div className="device-status-compact">
+            <span className="time-compact">{getCurrentTime()}</span>
+            <span className={`connection-compact ${connectionStatus}`}>
+              {connectionStatus === 'online' ? '🟢' : '🔴'}
             </span>
             {batteryLevel !== null && (
-              <span className="battery">
+              <span className="battery-compact">
                 🔋 {batteryLevel}%
               </span>
             )}
@@ -501,7 +525,7 @@ const KioskApp = () => {
         
         {/* Pulsante nascosto per logout (doppio tap + hold) */}
         <div 
-          className="hidden-logout"
+          className="hidden-logout-compact"
           onDoubleClick={(e) => {
             // Solo per emergenze - richiede doppio click + conferma
             setTimeout(() => {
@@ -515,27 +539,6 @@ const KioskApp = () => {
           ⚙️
         </div>
       </div>
-
-      {/* Scanner principale */}
-      <div className="kiosk-scanner-container">
-        <TimekeepingScanner 
-          isAdmin={false}
-          deviceId={deviceId}
-          kioskMode={true}
-        />
-      </div>
-
-      {/* Notifiche */}
-      {notification.show && (
-        <div className="kiosk-notification">
-          <Notification
-            message={notification.message}
-            isVisible={notification.show}
-            onClose={() => setNotification(prev => ({ ...prev, show: false }))}
-            type={notification.type}
-          />
-        </div>
-      )}
       
       {/* Input di emergenza per il logout */}
       {showEmergencyInput && (
