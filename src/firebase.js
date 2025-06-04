@@ -332,8 +332,8 @@ export const submitReport = async (reportData, userId) => {
   }
 };
 
-export const updateReportStatus = async (reportId, newStatus) => {
-  console.log(`updateReportStatus: Aggiornamento stato per reportId=${reportId} a ${newStatus}`);
+export const updateReportStatus = async (reportId, newStatus, adminNotes = '') => {
+  console.log(`updateReportStatus: Aggiornamento stato per reportId=${reportId} a ${newStatus} con note="${adminNotes}"`);
   
   try {
     if (!reportId) throw new Error("reportId è obbligatorio");
@@ -347,10 +347,18 @@ export const updateReportStatus = async (reportId, newStatus) => {
       throw new Error(`Segnalazione con ID ${reportId} non trovata`);
     }
     
-    await updateDoc(reportRef, {
+    const updateData = {
       status: newStatus,
       lastUpdate: serverTimestamp()
-    });
+    };
+    
+    // Aggiungi le note admin se presenti
+    if (adminNotes && adminNotes.trim()) {
+      updateData.adminNotes = adminNotes.trim();
+      updateData.adminNotesDate = serverTimestamp();
+    }
+    
+    await updateDoc(reportRef, updateData);
     
     console.log(`updateReportStatus: Stato aggiornato con successo a ${newStatus}`);
     return true;

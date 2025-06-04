@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import './timesheetTable.css';
 
 // Funzione per ottenere l'anno corrente
 const getCurrentYear = () => {

@@ -1,627 +1,589 @@
-/* src/components/TimekeepingStatus.css - Design Moderno e Intuitivo */
-
-.timekeeping-status-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  padding: 25px;
-  margin-bottom: 25px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.timekeeping-status-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57);
-  background-size: 300% 100%;
-  animation: gradient-flow 3s ease infinite;
-}
-
-@keyframes gradient-flow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-.timekeeping-status-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-/* Varianti per diversi stati */
-.timekeeping-status-card.status-in-progress {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.timekeeping-status-card.status-in-progress::before {
-  background: linear-gradient(90deg, #4ecdc4, #44a08d);
-  animation: pulse-progress 2s ease-in-out infinite;
-}
-
-@keyframes pulse-progress {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.timekeeping-status-card.status-completed {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-}
-
-.timekeeping-status-card.status-completed::before {
-  background: linear-gradient(90deg, #00b09b, #96c93d);
-}
-
-.timekeeping-status-card.status-auto-closed {
-  background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
-}
-
-.timekeeping-status-card.status-auto-closed::before {
-  background: linear-gradient(90deg, #ff9a9e, #fecfef);
-}
-
-.timekeeping-status-card.status-not-started {
-  background: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);
-  opacity: 0.9;
-}
-
-.timekeeping-status-card.status-not-started::before {
-  background: linear-gradient(90deg, #74b9ff, #0984e3);
-}
-
-/* Stati speciali */
-.timekeeping-status-card.loading {
-  background: linear-gradient(135deg, #e3e3e3 0%, #d6d6d6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  gap: 20px;
-  color: #666;
-}
-
-.timekeeping-status-card.error {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-  color: white;
-}
-
-/* Spinner */
-.card-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Header */
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  position: relative;
-}
-
-.status-header h3 {
-  margin: 0;
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-header h3::before {
-  content: '⏰';
-  font-size: 1.2em;
-  animation: rotate-clock 4s linear infinite;
-}
-
-@keyframes rotate-clock {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.current-time {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  animation: time-pulse 2s ease-in-out infinite;
-}
-
-@keyframes time-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-}
-
-/* Warning status */
-.status-warning {
-  padding: 12px 16px;
-  margin-bottom: 15px;
-  background: rgba(255, 255, 255, 0.15);
-  border-left: 4px solid #f39c12;
-  border-radius: 8px;
-  color: white;
-  font-size: 0.9rem;
-  backdrop-filter: blur(5px);
-  animation: warning-blink 2s ease-in-out infinite;
-}
-
-@keyframes warning-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-/* Content */
-.status-content {
-  color: white;
-}
-
-.status-indicator {
-  text-align: center;
-  margin-bottom: 25px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 12px 24px;
-  border-radius: 25px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: 10px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.status-badge::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  animation: badge-shine 3s infinite;
-}
-
-@keyframes badge-shine {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
-
-.status-date {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-}
-
-/* Time details */
-.time-details {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
-  padding: 20px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.time-entry {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.time-entry:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateX(5px);
-}
-
-.time-entry.highlighted {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  animation: highlight-pulse 2s ease-in-out infinite;
-}
-
-@keyframes highlight-pulse {
-  0%, 100% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
-  50% { box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2); }
-}
-
-.time-label {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.95rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.time-label::before {
-  content: '•';
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1.2em;
-}
-
-.time-value {
-  font-weight: 600;
-  color: white;
-  text-align: right;
-  font-size: 1rem;
-}
-
-/* Progress bar */
-.progress-bar-container {
-  height: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  margin: 15px 0;
-  overflow: hidden;
-  position: relative;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.progress-bar {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: linear-gradient(45deg, 
-    rgba(255, 255, 255, 0.2) 25%, 
-    transparent 25%, 
-    transparent 50%, 
-    rgba(255, 255, 255, 0.2) 50%, 
-    rgba(255, 255, 255, 0.2) 75%, 
-    transparent 75%, 
-    transparent);
-  background-size: 20px 20px;
-  animation: progress-stripes 1s linear infinite;
-}
-
-@keyframes progress-stripes {
-  0% { background-position: 0 0; }
-  100% { background-position: 20px 0; }
-}
-
-/* Hours breakdown */
-.hours-breakdown {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin: 20px 0;
-}
-
-.breakdown-item {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 15px;
-  border-radius: 12px;
-  text-align: center;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.breakdown-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-}
-
-.breakdown-label {
-  display: block;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.breakdown-value {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-/* Special info sections */
-.shift-info,
-.multi-day-info,
-.auto-close-info {
-  margin: 15px 0;
-  padding: 15px;
-  border-radius: 12px;
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: info-appear 0.5s ease-out;
-}
-
-@keyframes info-appear {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.shift-info {
-  background: rgba(255, 255, 255, 0.1);
-  text-align: center;
-}
-
-.multi-day-info {
-  background: rgba(52, 152, 219, 0.2);
-  border-color: rgba(52, 152, 219, 0.4);
-  text-align: center;
-}
-
-.auto-close-info {
-  background: rgba(243, 156, 18, 0.2);
-  border-color: rgba(243, 156, 18, 0.4);
-}
-
-.multi-day-info strong,
-.auto-close-info strong {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 1rem;
-}
-
-.multi-day-info p,
-.auto-close-info p {
-  margin: 8px 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-/* Auto note */
-.auto-note {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-  font-style: italic;
-  margin-left: 8px;
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-/* Not started message */
-.not-started-message {
-  text-align: center;
-  padding: 30px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
-  border: 2px dashed rgba(255, 255, 255, 0.3);
-}
-
-.not-started-message p {
-  margin: 10px 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1rem;
-}
-
-.hint {
-  font-size: 0.9rem;
-  font-style: italic;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.hint::before {
-  content: '💡';
-  animation: hint-glow 2s ease-in-out infinite;
-}
-
-@keyframes hint-glow {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-/* Error state */
-.status-error {
-  text-align: center;
-  padding: 20px;
-  color: white;
-}
-
-.retry-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
-  padding: 12px 24px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 15px;
-  font-size: 0.95rem;
-}
-
-.retry-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .timekeeping-status-card {
-    margin: 15px;
-    padding: 20px;
-    border-radius: 15px;
-  }
-  
-  .status-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
-  }
-  
-  .status-header h3 {
-    font-size: 1.3rem;
-  }
-  
-  .current-time {
-    align-self: flex-end;
-    font-size: 1.1rem;
-    padding: 6px 12px;
-  }
-  
-  .hours-breakdown {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .breakdown-item {
-    padding: 12px;
-  }
-  
-  .breakdown-value {
-    font-size: 1.2rem;
-  }
-  
-  .time-entry {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 15px;
-  }
-  
-  .time-value {
-    text-align: left;
-    font-size: 0.95rem;
-  }
-  
-  .status-badge {
-    font-size: 1rem;
-    padding: 10px 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .timekeeping-status-card {
-    margin: 10px;
-    padding: 15px;
-  }
-  
-  .status-header h3 {
-    font-size: 1.2rem;
-  }
-  
-  .current-time {
-    font-size: 1rem;
-  }
-  
-  .time-details {
-    padding: 15px;
-  }
-  
-  .breakdown-value {
-    font-size: 1.1rem;
-  }
-  
-  .not-started-message {
-    padding: 20px 15px;
-  }
-}
-
-/* Dark theme compatibility */
-@media (prefers-color-scheme: dark) {
-  .timekeeping-status-card {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+/* ============================================================================
+   TIMEKEEPING STATUS COMPONENT STYLES
+   Stili specifici per il componente TimekeepingStatus
+   ============================================================================ */
+
+/* ============================================================================
+   1. CONTAINER PRINCIPALE
+   ============================================================================ */
+
+   .timekeeping-status-card {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    position: relative;
   }
   
   .timekeeping-status-card:hover {
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  }
-}
-
-/* High contrast mode */
-@media (prefers-contrast: high) {
-  .timekeeping-status-card {
-    border: 2px solid white;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
   }
   
-  .time-entry,
-  .breakdown-item {
-    border: 1px solid rgba(255, 255, 255, 0.5);
+  /* ============================================================================
+     2. STATI DEL CARD
+     ============================================================================ */
+  
+  /* Stato: Turno in corso */
+  .timekeeping-status-card.status-in-progress {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: #ffffff;
+    border-color: #27ae60;
+  }
+  
+  .timekeeping-status-card.status-in-progress * {
+    color: #ffffff !important;
+  }
+  
+  .timekeeping-status-card.status-in-progress .status-badge {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Stato: Turno completato */
+  .timekeeping-status-card.status-completed {
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    color: #ffffff;
+    border-color: #3498db;
+  }
+  
+  .timekeeping-status-card.status-completed * {
+    color: #ffffff !important;
+  }
+  
+  .timekeeping-status-card.status-completed .status-badge {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Stato: Turno auto-chiuso */
+  .timekeeping-status-card.status-auto-closed {
+    background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+    color: #ffffff;
+    border-color: #f39c12;
+  }
+  
+  .timekeeping-status-card.status-auto-closed * {
+    color: #ffffff !important;
+  }
+  
+  .timekeeping-status-card.status-auto-closed .status-badge {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Stato: Nessun turno attivo */
+  .timekeeping-status-card.status-not-started {
+    background: #ffffff;
+    color: #2c3e50;
+    border-color: #dee2e6;
+  }
+  
+  .timekeeping-status-card.status-not-started * {
+    color: #2c3e50 !important;
+  }
+  
+  .timekeeping-status-card.status-not-started .status-badge {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+  }
+  
+  /* Stato: Loading */
+  .timekeeping-status-card.loading {
+    background: #ffffff;
+    color: #6c757d;
+    border-color: #dee2e6;
+  }
+  
+  .timekeeping-status-card.loading * {
+    color: #6c757d !important;
+  }
+  
+  /* Stato: Errore */
+  .timekeeping-status-card.error {
+    background: linear-gradient(135deg, #e74c3c 0%, #ec7063 100%);
+    color: #ffffff;
+    border-color: #e74c3c;
+  }
+  
+  .timekeeping-status-card.error * {
+    color: #ffffff !important;
+  }
+  
+  /* ============================================================================
+     3. HEADER DEL CARD
+     ============================================================================ */
+  
+  .status-header {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .status-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: inherit;
+  }
+  
+  .current-time {
+    font-size: 1.1rem;
+    font-weight: 500;
+    font-family: 'Courier New', monospace;
+    color: inherit;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Per status not-started, usa colori diversi per l'header */
+  .timekeeping-status-card.status-not-started .status-header {
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .timekeeping-status-card.status-not-started .current-time {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #2c3e50;
+  }
+  
+  /* ============================================================================
+     4. CONTENUTO DEL CARD
+     ============================================================================ */
+  
+  .status-content {
+    padding: 1.5rem;
+  }
+  
+  .status-indicator {
+    text-align: center;
+    margin-bottom: 1.5rem;
   }
   
   .status-badge {
-    border: 2px solid white;
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+    color: inherit;
   }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .timekeeping-status-card,
-  .time-entry,
-  .breakdown-item,
+  
+  .status-date {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    color: inherit;
+  }
+  
+  /* ============================================================================
+     5. DETTAGLI TEMPORALI
+     ============================================================================ */
+  
+  .time-details {
+    space-y: 1rem;
+  }
+  
+  .time-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .time-entry:last-child {
+    border-bottom: none;
+  }
+  
+  .time-entry.highlighted {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 0.5rem 0;
+  }
+  
+  .time-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: inherit;
+    opacity: 0.9;
+  }
+  
+  .time-value {
+    font-weight: 600;
+    font-size: 1rem;
+    color: inherit;
+  }
+  
+  /* Per status not-started */
+  .timekeeping-status-card.status-not-started .time-entry {
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .timekeeping-status-card.status-not-started .time-entry.highlighted {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+  
+  /* ============================================================================
+     6. BARRA DI PROGRESSO
+     ============================================================================ */
+  
+  .progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  
+  .timekeeping-status-card.status-not-started .progress-bar-container {
+    background-color: #f0f0f0;
+  }
+  
+  .timekeeping-status-card.status-not-started .progress-bar {
+    background-color: #3498db;
+  }
+  
+  /* ============================================================================
+     7. BREAKDOWN DELLE ORE
+     ============================================================================ */
+  
+  .hours-breakdown {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .breakdown-item {
+    text-align: center;
+    flex: 1;
+  }
+  
+  .breakdown-label {
+    display: block;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-bottom: 0.25rem;
+    color: inherit;
+  }
+  
+  .breakdown-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: inherit;
+  }
+  
+  .timekeeping-status-card.status-not-started .hours-breakdown {
+    border-top: 1px solid #f0f0f0;
+  }
+  
+  /* ============================================================================
+     8. INFO AGGIUNTIVE
+     ============================================================================ */
+  
+  .shift-info {
+    margin-top: 1rem;
+    text-align: center;
+  }
+  
+  .shift-info p {
+    margin: 0;
+    font-style: italic;
+    opacity: 0.9;
+    color: inherit;
+  }
+  
+  .multi-day-info {
+    background-color: rgba(52, 152, 219, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    text-align: center;
+    border: 1px solid rgba(52, 152, 219, 0.2);
+  }
+  
+  .multi-day-info strong {
+    color: inherit;
+  }
+  
+  .multi-day-info p {
+    margin: 0.5rem 0 0 0;
+    color: inherit;
+  }
+  
+  .auto-close-info {
+    background-color: rgba(243, 156, 18, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    border: 1px solid rgba(243, 156, 18, 0.2);
+  }
+  
+  .auto-close-info strong {
+    color: inherit;
+  }
+  
+  .auto-close-info p {
+    margin: 0.5rem 0 0 0;
+    color: inherit;
+  }
+  
+  .auto-note {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    color: inherit;
+  }
+  
+  /* ============================================================================
+     9. MESSAGGIO NESSUN TURNO
+     ============================================================================ */
+  
+  .not-started-message {
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+  
+  .not-started-message p {
+    margin: 0.5rem 0;
+    color: inherit;
+  }
+  
+  .not-started-message .hint {
+    font-style: italic;
+    opacity: 0.8;
+    color: inherit;
+  }
+  
+  /* ============================================================================
+     10. WARNING E STATUS SPECIALI
+     ============================================================================ */
+  
+  .status-warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    border-left: 3px solid #f39c12;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  
+  .status-error {
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+  
+  .status-error p {
+    margin-bottom: 1rem;
+    color: inherit;
+  }
+  
   .retry-btn {
-    transition: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
   }
   
-  .card-spinner,
-  .status-header h3::before,
-  .current-time,
-  .status-warning,
-  .badge-shine,
-  .highlight-pulse,
-  .progress-stripes,
-  .hint::before {
-    animation: none;
-  }
-  
-  .timekeeping-status-card:hover,
-  .time-entry:hover,
-  .breakdown-item:hover,
   .retry-btn:hover {
-    transform: none;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
-}
+  
+  /* ============================================================================
+     11. LOADING SPINNER
+     ============================================================================ */
+  
+  .card-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(108, 117, 125, 0.3);
+    border-radius: 50%;
+    border-top-color: #6c757d;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 0.5rem;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* ============================================================================
+     12. RESPONSIVE DESIGN
+     ============================================================================ */
+  
+  @media (max-width: 768px) {
+    .timekeeping-status-card {
+      margin-bottom: 1.5rem;
+    }
+    
+    .status-header {
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    
+    .status-header h3 {
+      font-size: 1.1rem;
+    }
+    
+    .current-time {
+      font-size: 1rem;
+      padding: 0.4rem 0.8rem;
+    }
+    
+    .status-content {
+      padding: 1rem;
+    }
+    
+    .time-entry {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+      padding: 0.5rem 0;
+    }
+    
+    .hours-breakdown {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .breakdown-label {
+      margin-bottom: 0;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .status-header h3 {
+      font-size: 1rem;
+    }
+    
+    .current-time {
+      font-size: 0.9rem;
+    }
+    
+    .status-badge {
+      font-size: 0.9rem;
+      padding: 0.6rem 1.2rem;
+    }
+    
+    .time-value {
+      font-size: 0.9rem;
+    }
+  }
+  
+  /* ============================================================================
+     13. DARK MODE SUPPORT (opzionale)
+     ============================================================================ */
+  
+  @media (prefers-color-scheme: dark) {
+    .timekeeping-status-card.status-not-started {
+      background: #2c3e50;
+      color: #ecf0f1;
+      border-color: #34495e;
+    }
+    
+    .timekeeping-status-card.status-not-started * {
+      color: #ecf0f1 !important;
+    }
+    
+    .timekeeping-status-card.status-not-started .status-badge {
+      background-color: #34495e;
+      color: #ecf0f1;
+      border: 1px solid #4a5568;
+    }
+    
+    .timekeeping-status-card.status-not-started .current-time {
+      background-color: #34495e;
+      border: 1px solid #4a5568;
+      color: #ecf0f1;
+    }
+  }
+  
+  /* ============================================================================
+     14. PRINT STYLES
+     ============================================================================ */
+  
+  @media print {
+    .timekeeping-status-card {
+      box-shadow: none;
+      border: 2px solid #000;
+      background: #fff !important;
+      color: #000 !important;
+      -webkit-print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .timekeeping-status-card * {
+      color: #000 !important;
+    }
+    
+    .retry-btn {
+      display: none;
+    }
+  }
+  
+  /* ============================================================================
+     15. ACCESSIBILITÀ
+     ============================================================================ */
+  
+  .timekeeping-status-card:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+  }
+  
+  .retry-btn:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+  }
+  
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .timekeeping-status-card {
+      border-width: 2px;
+    }
+    
+    .status-badge {
+      border-width: 2px;
+    }
+    
+    .time-entry {
+      border-bottom-width: 2px;
+    }
+  }

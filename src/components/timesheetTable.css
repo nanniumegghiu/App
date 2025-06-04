@@ -1,0 +1,520 @@
+/* ============================================================================
+   TIMESHEET TABLE COMPONENT STYLES
+   Stili specifici per il componente TimesheetTable
+   IMPORTANTE: Importare questo file nel componente TimesheetTable.jsx
+   import './timesheetTable.css';
+   ============================================================================ */
+
+/* ============================================================================
+   1. CONTAINER PRINCIPALE TIMESHEET
+   ============================================================================ */
+
+#timesheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+/* ============================================================================
+   2. HEADER TABELLA
+   ============================================================================ */
+
+#timesheet-table thead {
+  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  color: #ffffff;
+}
+
+#timesheet-table thead th {
+  padding: 1.2rem 1rem;
+  font-weight: 600;
+  text-align: left;
+  color: #ffffff !important;
+  border-bottom: none;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#timesheet-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+#timesheet-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+/* ============================================================================
+   3. RIGHE TABELLA
+   ============================================================================ */
+
+#timesheet-table tbody tr {
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #f0f0f0;
+  background: #ffffff;
+}
+
+#timesheet-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#timesheet-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* ============================================================================
+   4. CELLE TABELLA
+   ============================================================================ */
+
+#timesheet-table td {
+  padding: 1rem;
+  color: #2c3e50 !important;
+  vertical-align: middle;
+  border-bottom: 1px solid #f0f0f0;
+  line-height: 1.5;
+}
+
+#timesheet-table td:first-child {
+  font-weight: 600;
+  color: #3498db !important;
+}
+
+/* ============================================================================
+   5. STATI SPECIALI DELLE RIGHE
+   ============================================================================ */
+
+/* Riga weekend */
+#timesheet-table tbody tr.weekend-row {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-left: 4px solid #6c757d;
+}
+
+#timesheet-table tbody tr.weekend-row:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+/* Riga senza dati */
+#timesheet-table tbody tr.no-data-row {
+  background: linear-gradient(135deg, #fefefe 0%, #f8f9fa 100%);
+  opacity: 0.7;
+}
+
+#timesheet-table tbody tr.no-data-row td {
+  color: #6c757d !important;
+  font-style: italic;
+}
+
+/* Riga con sincronizzazione automatica */
+#timesheet-table tbody tr.auto-sync-row {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-left: 4px solid #28a745;
+  position: relative;
+}
+
+#timesheet-table tbody tr.auto-sync-row::before {
+  content: "🔄";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+#timesheet-table tbody tr.auto-sync-row:hover {
+  background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);
+}
+
+/* Riga con errore/evidenziata */
+#timesheet-table tbody tr.error {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border-left: 4px solid #dc3545;
+  animation: highlight-error 2s ease-in-out;
+}
+
+@keyframes highlight-error {
+  0% { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); }
+  50% { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+  100% { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); }
+}
+
+/* ============================================================================
+   6. BADGE E INDICATORI
+   ============================================================================ */
+
+.badge-weekend {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  color: #ffffff !important;
+  padding: 0.35rem 0.7rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================================
+   7. FOOTER TABELLA (TOTALI)
+   ============================================================================ */
+
+#timesheet-table tfoot {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-top: 2px solid #3498db;
+}
+
+#timesheet-table tfoot td {
+  padding: 1rem;
+  font-weight: 600;
+  color: #2c3e50 !important;
+  border-bottom: none;
+}
+
+#timesheet-table tfoot tr:first-child td:nth-child(3) {
+  color: #3498db !important;
+  font-size: 1.1rem;
+}
+
+#timesheet-table tfoot tr:nth-child(2) td:nth-child(3) {
+  color: #28a745 !important;
+  font-size: 1.1rem;
+}
+
+#timesheet-table tfoot tr:last-child td:nth-child(3) {
+  color: #dc3545 !important;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* ============================================================================
+   8. BOTTONI AZIONI
+   ============================================================================ */
+
+#timesheet-table .btn {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#timesheet-table .btn-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: #ffffff !important;
+}
+
+#timesheet-table .btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+#timesheet-table .btn-outline-secondary {
+  background: transparent;
+  border: 2px solid #6c757d;
+  color: #6c757d !important;
+}
+
+#timesheet-table .btn-outline-secondary:hover:not(:disabled) {
+  background: #6c757d;
+  color: #ffffff !important;
+}
+
+#timesheet-table .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  background: #e9ecef !important;
+  color: #6c757d !important;
+}
+
+/* ============================================================================
+   9. LEGENDA TIMESHEET
+   ============================================================================ */
+
+.timesheet-legend {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.timesheet-legend > div:first-child {
+  font-weight: 700;
+  color: #2c3e50 !important;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timesheet-legend > div:first-child::before {
+  content: "📋";
+  font-size: 1.3rem;
+}
+
+.timesheet-legend > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.timesheet-legend > div:last-child > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #2c3e50 !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.timesheet-legend > div:last-child > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Stili specifici per le lettere nella legenda */
+.timesheet-legend span {
+  font-weight: 700 !important;
+  font-size: 1rem;
+}
+
+/* ============================================================================
+   10. ALERT E NOTIFICHE
+   ============================================================================ */
+
+.alert {
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  border-color: #b6d4d9;
+  color: #0c5460 !important;
+}
+
+.alert-info strong {
+  color: #0c5460 !important;
+}
+
+.alert-info small {
+  color: #0c5460 !important;
+  opacity: 0.8;
+}
+
+/* ============================================================================
+   11. INFO BOX SINCRONIZZAZIONE
+   ============================================================================ */
+
+.sync-info-notice {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border: 1px solid #b1dfbb;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sync-info-notice > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #155724 !important;
+}
+
+.sync-info-notice p {
+  margin: 0;
+  color: #155724 !important;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   12. RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  #timesheet-table {
+    font-size: 0.8rem;
+  }
+  
+  #timesheet-table th,
+  #timesheet-table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  #timesheet-table thead th {
+    font-size: 0.8rem;
+    padding: 1rem 0.5rem;
+  }
+  
+  .timesheet-legend {
+    padding: 1rem;
+  }
+  
+  .timesheet-legend > div:last-child {
+    gap: 1rem;
+  }
+  
+  .timesheet-legend > div:last-child > div {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  
+  #timesheet-table .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+  
+  .badge-weekend {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .table-responsive {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  #timesheet-table {
+    font-size: 0.75rem;
+  }
+  
+  #timesheet-table th,
+  #timesheet-table td {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  #timesheet-table .btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
+  
+  .timesheet-legend > div:last-child {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .timesheet-legend > div:last-child > div {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================================================
+   13. DARK MODE SUPPORT
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  #timesheet-table {
+    background: #2c3e50;
+    color: #ecf0f1;
+  }
+  
+  #timesheet-table thead {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  }
+  
+  #timesheet-table tbody tr {
+    background: #34495e;
+    border-bottom-color: #4a5568;
+  }
+  
+  #timesheet-table tbody tr:hover {
+    background: linear-gradient(135deg, #4a5568 0%, #5a6c7d 100%);
+  }
+  
+  #timesheet-table td {
+    color: #ecf0f1 !important;
+    border-bottom-color: #4a5568;
+  }
+  
+  .timesheet-legend {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border-color: #4a5568;
+    color: #ecf0f1;
+  }
+  
+  .timesheet-legend > div:last-child > div {
+    background: #4a5568;
+    color: #ecf0f1 !important;
+  }
+}
+
+/* ============================================================================
+   14. PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  #timesheet-table {
+    box-shadow: none;
+    border: 2px solid #000;
+  }
+  
+  #timesheet-table thead {
+    background: #f5f5f5 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  #timesheet-table th,
+  #timesheet-table td {
+    color: #000 !important;
+    border: 1px solid #000;
+  }
+  
+  #timesheet-table .btn {
+    display: none;
+  }
+  
+  .timesheet-legend {
+    background: #f5f5f5 !important;
+    border: 1px solid #000;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  .alert {
+    background: #f5f5f5 !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+}

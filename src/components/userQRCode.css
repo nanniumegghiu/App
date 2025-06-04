@@ -1,225 +1,810 @@
-/* src/components/userQRCode.css (con stato disabilitato) */
-.user-qrcode-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 25px;
-  text-align: center;
-  max-width: 380px;
-  margin: 0 auto 25px;
-  transition: all 0.3s ease;
-}
+/* ============================================================================
+   24. STATO FOCUS MIGLIORATO
+   ============================================================================ */
 
-/* Stato QR disabilitato */
-.user-qrcode-container.qr-disabled {
-  background-color: #f8f8f8;
-  border: 1px dashed #ddd;
-  opacity: 0.9;
-}
-
-.user-qrcode-container:hover {
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.qrcode-header {
-  margin-bottom: 15px;
-}
-
-.qrcode-header h3 {
-  margin: 0 0 10px 0;
-  color: var(--dark);
-  font-size: 1.4rem;
-}
-
-.qrcode-description {
-  color: #666;
-  margin: 0 0 15px 0;
-  font-size: 0.95rem;
-}
-
-.qrcode-wrapper {
-  background-color: white;
-  border-radius: 4px;
-  padding: 15px;
-  margin: 0 auto 20px;
-  display: inline-block;
-  border: 1px solid #eee;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.qrcode-wrapper:hover {
-  transform: scale(1.02);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-/* Overlay per QR disabilitato */
-.qrcode-disabled-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.7);
-  z-index: 10;
-}
-
-.disabled-text {
-  background-color: rgba(231, 76, 60, 0.9);
-  color: white;
-  padding: 5px 10px;
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 1rem;
-  transform: rotate(-15deg);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-/* Badge di stato del QR */
-.qr-status-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  z-index: 5;
-}
-
-.qr-status-badge.active {
-  background-color: rgba(46, 204, 113, 0.2);
-  color: #27ae60;
-}
-
-.qr-status-badge.inactive {
-  background-color: rgba(231, 76, 60, 0.2);
-  color: #e74c3c;
-}
-
-.qrcode-wrapper canvas {
-  display: block;
-}
-
-.user-details {
-  margin: 15px 0;
-}
-
-.user-details p {
-  margin: 5px 0;
-  font-size: 0.95rem;
-  color: #555;
-}
-
-/* Messaggio per QR disabilitato */
-.qrcode-disabled-message {
-  background-color: rgba(231, 76, 60, 0.1);
-  color: #c0392b;
-  padding: 10px 15px;
-  border-radius: 5px;
-  margin: 15px 0;
-  font-size: 0.9rem;
-  border-left: 3px solid #e74c3c;
-}
-
-.qrcode-disabled-message p {
-  margin: 5px 0;
-}
-
-/* Azioni QR code - un solo pulsante centrato */
-.qrcode-actions {
-  display: flex;
-  justify-content: center;
-  margin: 15px 0;
-}
-
-.download-qr-btn {
-  padding: 12px 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  border-radius: 6px;
-}
-
-.download-qr-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.download-qr-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: #95a5a6;
-  border-color: #95a5a6;
-}
-
-.download-icon {
-  font-size: 1.2rem;
-}
-
-/* Animazione del pulsante per attirare l'attenzione */
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+   .user-qrcode-container *:focus-visible {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+    border-radius: 4px;
   }
-  70% {
-    box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
-  }
-}
-
-.download-qr-btn:not(:disabled) {
-  animation: pulse 2s infinite;
-}
-
-.qrcode-note {
-  font-size: 0.85rem;
-  color: #777;
-  font-style: italic;
-  margin-top: 15px;
-}
-
-.qrcode-loading,
-.qrcode-error {
-  text-align: center;
-  padding: 30px;
-  color: #666;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  margin: 20px 0;
-}
-
-.qrcode-error {
-  color: var(--danger);
-  background-color: rgba(231, 76, 60, 0.1);
-}
-
-/* Responsive */
-@media (max-width: 576px) {
+  
+  /* Rimuovi outline predefinito ma mantieni quello personalizzato */
+  .user-qrcode-container *:focus:not(:focus-visible) {
+    outline: none;
+  }/* ============================================================================
+     USER QR CODE COMPONENT STYLES
+     Stili specifici per il componente UserQRCode
+     IMPORTANTE: Importare questo file nel componente UserQRCode.jsx
+     import './userQRCode.css';
+     ============================================================================ */
+  
+  /* ============================================================================
+     1. CONTAINER PRINCIPALE QR CODE
+     ============================================================================ */
+  
   .user-qrcode-container {
-    padding: 15px;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
     max-width: 100%;
   }
   
-  .qrcode-wrapper {
-    padding: 10px;
+  .user-qrcode-container:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  /* Stato QR disabilitato */
+  .user-qrcode-container.qr-disabled {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-color: #dc3545;
+    border-width: 2px;
+  }
+  
+  .user-qrcode-container.qr-disabled::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(220, 53, 69, 0.1) 10px,
+      rgba(220, 53, 69, 0.1) 20px
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+  
+  /* ============================================================================
+     2. HEADER QR CODE
+     ============================================================================ */
+  
+  .qrcode-header {
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 2;
   }
   
   .qrcode-header h3 {
+    color: #2c3e50 !important;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+  
+  .qrcode-description {
+    color: #6c757d !important;
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  
+  /* ============================================================================
+     3. WRAPPER QR CODE
+     ============================================================================ */
+  
+  .qrcode-wrapper {
+    position: relative;
+    display: block;
+    margin: 1.5rem 0;
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 3px solid #f8f9fa;
+    z-index: 2;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .qrcode-wrapper canvas {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+    border-radius: 8px;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  
+  /* ============================================================================
+     4. OVERLAY QR DISABILITATO
+     ============================================================================ */
+  
+  .qrcode-disabled-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(220, 53, 69, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    border-radius: 8px;
+  }
+  
+  .disabled-text {
+    color: #ffffff !important;
     font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  /* ============================================================================
+     5. STATUS BADGE QR
+     ============================================================================ */
+  
+  .qr-status-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 4;
+  }
+  
+  .qr-status-badge.active {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: #ffffff !important;
+    border: 2px solid #ffffff;
+  }
+  
+  .qr-status-badge.inactive {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: #ffffff !important;
+    border: 2px solid #ffffff;
+  }
+  
+  /* ============================================================================
+     6. MESSAGGIO QR DISABILITATO
+     ============================================================================ */
+  
+  .qrcode-disabled-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .qrcode-disabled-message p {
+    margin: 0.5rem 0;
+    color: #721c24 !important;
+    font-weight: 500;
+  }
+  
+  .qrcode-disabled-message p:first-child {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  
+  .qrcode-disabled-message p:last-child {
+    font-size: 0.95rem;
+    margin-bottom: 0;
+  }
+  
+  /* ============================================================================
+     7. AZIONI QR CODE
+     ============================================================================ */
+  
+  .qrcode-actions {
+    margin-top: 2rem;
+    position: relative;
+    z-index: 2;
   }
   
   .download-qr-btn {
-    width: 100%;
-    max-width: 250px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: #ffffff !important;
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
   }
-}
+  
+  .download-qr-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2980b9 0%, #1f4e79 100%);
+    box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+    transform: translateY(-2px);
+    color: #ffffff !important;
+  }
+  
+  .download-qr-btn:disabled {
+    background: #6c757d;
+    color: #ffffff !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .download-icon {
+    font-size: 1.1rem;
+  }
+  
+  /* ============================================================================
+     8. NOTE QR CODE
+     ============================================================================ */
+  
+  .qrcode-note {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #e8f4f8;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    color: #0c5460 !important;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    font-style: italic;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .qrcode-note::before {
+    content: "💡";
+    margin-right: 0.5rem;
+    font-style: normal;
+  }
+  
+  /* ============================================================================
+     9. LOADING STATE
+     ============================================================================ */
+  
+  .qrcode-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    color: #6c757d !important;
+    font-size: 1.1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .qrcode-loading::before {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* ============================================================================
+     10. ERROR STATE
+     ============================================================================ */
+  
+  .qrcode-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24 !important;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  
+  .qrcode-error::before {
+    content: "❌";
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* ============================================================================
+     11. RESPONSIVE DESIGN
+     ============================================================================ */
+  
+  /* Tablet */
+  @media (max-width: 768px) {
+    .user-qrcode-container {
+      padding: 1.5rem;
+      margin: 0 -0.5rem;
+    }
+    
+    .qrcode-header h3 {
+      font-size: 1.3rem;
+    }
+    
+    .qrcode-description {
+      font-size: 0.95rem;
+    }
+    
+    .qrcode-wrapper {
+      padding: 0.75rem;
+      margin: 1rem 0;
+      width: 100%;
+    }
+    
+    .qrcode-wrapper canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+    
+    .download-qr-btn {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .qrcode-note {
+      font-size: 0.85rem;
+      padding: 0.875rem;
+    }
+    
+    .disabled-text {
+      font-size: 1rem;
+    }
+    
+    .qr-status-badge {
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+    }
+  }
+  
+  /* Mobile */
+  @media (max-width: 576px) {
+    .user-qrcode-container {
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 0;
+    }
+    
+    .qrcode-header {
+      margin-bottom: 1.5rem;
+    }
+    
+    .qrcode-header h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .qrcode-description {
+      font-size: 0.9rem;
+    }
+    
+    .qrcode-wrapper {
+      padding: 0.5rem;
+      margin: 0.75rem 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      width: 100%;
+    }
+    
+    .qrcode-wrapper canvas {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 250px;
+    }
+    
+    .download-qr-btn {
+      padding: 0.7rem 1.25rem;
+      font-size: 0.85rem;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 100%;
+    }
+    
+    .qrcode-note {
+      font-size: 0.8rem;
+      padding: 0.75rem;
+      margin-top: 1rem;
+    }
+    
+    .qrcode-disabled-message {
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .qrcode-disabled-message p:first-child {
+      font-size: 1rem;
+    }
+    
+    .disabled-text {
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+    }
+    
+    .qr-status-badge {
+      font-size: 0.65rem;
+      padding: 0.25rem 0.5rem;
+      top: -6px;
+      right: -6px;
+    }
+  }
+  
+  /* Mobile piccolo */
+  @media (max-width: 480px) {
+    .user-qrcode-container {
+      padding: 0.75rem;
+    }
+    
+    .qrcode-header h3 {
+      font-size: 1.1rem;
+    }
+    
+    .qrcode-wrapper {
+      padding: 0.5rem;
+      width: 100%;
+    }
+    
+    .qrcode-wrapper canvas {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 220px;
+    }
+    
+    .download-qr-btn {
+      font-size: 0.8rem;
+      padding: 0.6rem 1rem;
+      width: 100%;
+    }
+  }
+  
+  /* ============================================================================
+     12. LANDSCAPE MOBILE
+     ============================================================================ */
+  
+  @media (max-width: 812px) and (orientation: landscape) {
+    .user-qrcode-container {
+      padding: 1rem;
+    }
+    
+    .qrcode-header {
+      margin-bottom: 1rem;
+    }
+    
+    .qrcode-wrapper {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      width: 100%;
+    }
+    
+    .qrcode-wrapper canvas {
+      width: 100% !important;
+      height: auto !important;
+      max-height: 200px;
+    }
+    
+    .qrcode-note {
+      margin-top: 1rem;
+    }
+  }
+  
+  /* ============================================================================
+     13. TEMA SCURO
+     ============================================================================ */
+  
+  @media (prefers-color-scheme: dark) {
+    .user-qrcode-container {
+      background: #2c3e50;
+      border-color: #34495e;
+      color: #ecf0f1;
+    }
+    
+    .user-qrcode-container.qr-disabled {
+      background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    }
+    
+    .qrcode-header h3 {
+      color: #ecf0f1 !important;
+    }
+    
+    .qrcode-description {
+      color: #bdc3c7 !important;
+    }
+    
+    .qrcode-wrapper {
+      background: #34495e;
+      border-color: #4a5568;
+    }
+    
+    .qrcode-note {
+      background: #34495e;
+      border-color: #4a5568;
+      color: #ecf0f1 !important;
+    }
+    
+    .qrcode-disabled-message {
+      background: #e74c3c;
+      border-color: #c0392b;
+      color: #ffffff !important;
+    }
+    
+    .qrcode-disabled-message p {
+      color: #ffffff !important;
+    }
+  }
+  
+  /* ============================================================================
+     14. HIGH CONTRAST MODE
+     ============================================================================ */
+  
+  @media (prefers-contrast: high) {
+    .user-qrcode-container {
+      border-width: 3px;
+      border-color: #000000;
+    }
+    
+    .qrcode-wrapper {
+      border-width: 2px;
+      border-color: #000000;
+    }
+    
+    .download-qr-btn {
+      border: 2px solid #000000;
+    }
+    
+    .qr-status-badge {
+      border-width: 3px;
+      border-color: #000000;
+    }
+    
+    .qrcode-note {
+      border-width: 2px;
+      border-color: #000000;
+    }
+  }
+  
+  /* ============================================================================
+     15. PRINT STYLES
+     ============================================================================ */
+  
+  @media print {
+    .user-qrcode-container {
+      background: #ffffff !important;
+      color: #000000 !important;
+      border: 2px solid #000000;
+      box-shadow: none;
+      page-break-inside: avoid;
+      -webkit-print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    
+    .qrcode-header h3,
+    .qrcode-description,
+    .qrcode-note {
+      color: #000000 !important;
+    }
+    
+    .download-qr-btn {
+      display: none;
+    }
+    
+    .qrcode-disabled-overlay {
+      background: rgba(0, 0, 0, 0.7) !important;
+    }
+    
+    .disabled-text {
+      color: #ffffff !important;
+    }
+    
+    .qr-status-badge {
+      background: #000000 !important;
+      color: #ffffff !important;
+    }
+  }
+  
+  /* ============================================================================
+     16. ACCESSIBILITÀ
+     ============================================================================ */
+  
+  .user-qrcode-container:focus-within {
+    outline: 3px solid #3498db;
+    outline-offset: 2px;
+  }
+  
+  .download-qr-btn:focus {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+  }
+  
+  /* Riduci movimento per utenti che preferiscono meno animazioni */
+  @media (prefers-reduced-motion: reduce) {
+    .user-qrcode-container,
+    .download-qr-btn,
+    .disabled-text {
+      transition: none;
+      animation: none;
+    }
+    
+    .user-qrcode-container:hover {
+      transform: none;
+    }
+    
+    .download-qr-btn:hover {
+      transform: none;
+    }
+  }
+  
+  /* ============================================================================
+     17. CORREZIONI SPECIFICHE PER SAFARI
+     ============================================================================ */
+  
+  @supports (-webkit-appearance: none) {
+    .qrcode-wrapper canvas {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  }
+  
+  /* ============================================================================
+     18. CORREZIONI PER DISPOSITIVI TOUCH
+     ============================================================================ */
+  
+  @media (pointer: coarse) {
+    .download-qr-btn {
+      min-height: 48px; /* Dimensione minima touch-friendly */
+      padding: 0.875rem 2rem;
+    }
+    
+    .user-qrcode-container {
+      padding: 1.5rem; /* Più spazio per touch */
+    }
+  }
+  
+  /* ============================================================================
+     19. OTTIMIZZAZIONI PER DISPOSITIVI RETINA
+     ============================================================================ */
+  
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .qrcode-wrapper canvas {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: pixelated;
+    }
+  }
+  
+  /* ============================================================================
+     21. REGOLE SPECIFICHE PER QRCODE CANVAS
+     ============================================================================ */
+  
+  /* Forza il QR Code a utilizzare tutto lo spazio disponibile */
+  .user-qrcode-container canvas[role="img"] {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    min-width: 200px !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+  
+  /* Forza il container del QR Code a essere responsive */
+  .qrcode-wrapper > div {
+    width: 100% !important;
+    display: block !important;
+  }
+  
+  .qrcode-wrapper > div > canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+  
+  /* Specifico per React QRCode component */
+  .user-qrcode-container .qrcode-wrapper [data-qr-code] {
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .user-qrcode-container .qrcode-wrapper [data-qr-code] canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Regole per container flessibili */
+  .qrcode-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .qrcode-wrapper > * {
+    flex: 1 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  /* ============================================================================
+     22. OTTIMIZZAZIONI PER DIVERSE DIMENSIONI
+     ============================================================================ */
+  
+  /* Desktop - QR Code molto grande */
+  @media (min-width: 992px) {
+    .qrcode-wrapper canvas {
+      min-height: 400px !important;
+      width: 100% !important;
+    }
+  }
+  
+  /* Tablet - QR Code medio-grande */
+  @media (min-width: 768px) and (max-width: 991px) {
+    .qrcode-wrapper canvas {
+      min-height: 350px !important;
+      width: 100% !important;
+    }
+  }
+  
+  /* Mobile - QR Code ancora grande ma proporzionato */
+  @media (max-width: 767px) {
+    .qrcode-wrapper canvas {
+      min-height: 280px !important;
+      width: 100% !important;
+    }
+  }
+  
+  /* Mobile piccolo - QR Code adattato */
+  @media (max-width: 480px) {
+    .qrcode-wrapper canvas {
+      min-height: 250px !important;
+      width: 100% !important;
+    }
+  }
+  
+  /* ============================================================================
+     23. CORREZIONI PER ASPECT RATIO
+     ============================================================================ */
+  
+  .qrcode-wrapper {
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .qrcode-wrapper canvas {
+    object-fit: contain;
+    object-position: center;
+  }

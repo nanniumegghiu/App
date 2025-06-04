@@ -1,0 +1,645 @@
+/* ============================================================================
+   USER INFO COMPONENT STYLES
+   Stili specifici per il componente UserInfo
+   IMPORTANTE: Importare questo file nel componente UserInfo.jsx
+   import './userInfo.css';
+   ============================================================================ */
+
+/* ============================================================================
+   1. CONTAINER PRINCIPALE USER INFO
+   ============================================================================ */
+
+.user-info-container {
+  margin-bottom: 2rem;
+}
+
+.user-info {
+  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  color: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.user-info::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  animation: shine 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.user-info h2 {
+  color: #ffffff !important;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.selection-description {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ============================================================================
+   2. SEZIONE AZIONI UTENTE
+   ============================================================================ */
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================================
+   3. SELETTORE MESE
+   ============================================================================ */
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.75rem 1.25rem;
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.month-selector:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.month-selector label {
+  color: #ffffff !important;
+  font-weight: 600;
+  margin: 0;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.month-selector select {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 15px;
+  color: #2c3e50 !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 160px;
+}
+
+.month-selector select:focus {
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  transform: scale(1.02);
+}
+
+.month-selector select option {
+  color: #2c3e50;
+  background: #ffffff;
+  padding: 0.5rem;
+}
+
+/* ============================================================================
+   4. BOTTONE QR CODE
+   ============================================================================ */
+
+.qrcode-toggle-btn {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: #ffffff !important;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.qrcode-toggle-btn::before {
+  content: "📱";
+  margin-right: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.qrcode-toggle-btn:hover {
+  background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(231, 76, 60, 0.4);
+}
+
+.qrcode-toggle-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* ============================================================================
+   5. CONTAINER QR CODE
+   ============================================================================ */
+
+.qrcode-container {
+  margin: 2rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid #dee2e6;
+  animation: slideDown 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1000px;
+  }
+}
+
+.qrcode-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3498db, #e74c3c, #f39c12, #27ae60);
+  background-size: 200% 100%;
+  animation: rainbow 3s linear infinite;
+}
+
+@keyframes rainbow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* ============================================================================
+   6. CARD STATISTICHE MENSILI
+   ============================================================================ */
+
+.monthly-stats-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.monthly-stats-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.monthly-stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+}
+
+.monthly-stats-card h3 {
+  color: #2c3e50 !important;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.monthly-stats-card h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  border-radius: 2px;
+}
+
+/* ============================================================================
+   7. GRID STATISTICHE
+   ============================================================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.stat-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.stat-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-color: #3498db;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #2c3e50 !important;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6c757d !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+}
+
+/* Colori specifici per diversi tipi di statistiche */
+.stat-item:nth-child(1) .stat-value {
+  color: #3498db !important;
+}
+
+.stat-item:nth-child(2) .stat-value {
+  color: #27ae60 !important;
+}
+
+.stat-item:nth-child(3) .stat-value {
+  color: #f39c12 !important;
+}
+
+.stat-item:nth-child(4) .stat-value {
+  color: #e74c3c !important;
+}
+
+.stat-item:nth-child(5) .stat-value {
+  color: #9b59b6 !important;
+}
+
+.stat-item:nth-child(6) .stat-value {
+  color: #1abc9c !important;
+}
+
+/* ============================================================================
+   8. NOTA STATISTICHE
+   ============================================================================ */
+
+.stat-note {
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  color: #2c5aa0 !important;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+  font-style: italic;
+  position: relative;
+}
+
+.stat-note::before {
+  content: "ℹ️";
+  margin-right: 0.5rem;
+  font-style: normal;
+}
+
+/* ============================================================================
+   9. RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .user-info {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  
+  .user-info h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .user-actions {
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .month-selector {
+    padding: 0.6rem 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .month-selector select {
+    min-width: 140px;
+    font-size: 0.85rem;
+  }
+  
+  .qrcode-toggle-btn {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+  }
+  
+  .monthly-stats-card {
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .monthly-stats-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+  }
+  
+  .stat-item {
+    padding: 1rem 0.75rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .user-info {
+    padding: 1rem;
+  }
+  
+  .user-info h2 {
+    font-size: 1.3rem;
+  }
+  
+  .selection-description {
+    font-size: 0.9rem;
+  }
+  
+  .user-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .month-selector {
+    width: 100%;
+  }
+  
+  .month-selector select {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .qrcode-toggle-btn {
+    width: 100%;
+    max-width: 250px;
+  }
+  
+  .qrcode-container {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .monthly-stats-card {
+    padding: 1rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .stat-item {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .stat-value {
+    font-size: 1.3rem;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem;
+  }
+  
+  .stat-note {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+  }
+}
+
+/* ============================================================================
+   10. DARK MODE SUPPORT
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  .user-info {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  }
+  
+  .month-selector select {
+    background: rgba(255, 255, 255, 0.95);
+    color: #2c3e50 !important;
+  }
+  
+  .qrcode-container {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border-color: #4a5568;
+  }
+  
+  .monthly-stats-card {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border-color: #4a5568;
+  }
+  
+  .monthly-stats-card h3 {
+    color: #ecf0f1 !important;
+  }
+  
+  .stat-item {
+    background: #4a5568;
+    border-color: #5a6c7d;
+  }
+  
+  .stat-value {
+    color: #ecf0f1 !important;
+  }
+  
+  .stat-label {
+    color: #bdc3c7 !important;
+  }
+  
+  .stat-note {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.4);
+    color: #5dade2 !important;
+  }
+}
+
+/* ============================================================================
+   11. PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .user-info {
+    background: #f5f5f5 !important;
+    color: #000 !important;
+    box-shadow: none;
+    border: 2px solid #000;
+  }
+  
+  .user-info h2,
+  .selection-description {
+    color: #000 !important;
+  }
+  
+  .qrcode-toggle-btn {
+    display: none;
+  }
+  
+  .monthly-stats-card {
+    background: #fff !important;
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+  
+  .monthly-stats-card h3 {
+    color: #000 !important;
+  }
+  
+  .stat-item {
+    background: #f5f5f5 !important;
+    border: 1px solid #000;
+  }
+  
+  .stat-value,
+  .stat-label {
+    color: #000 !important;
+  }
+  
+  .stat-note {
+    background: #f5f5f5 !important;
+    border: 1px solid #000;
+    color: #000 !important;
+  }
+}
+
+/* ============================================================================
+   12. ACCESSIBILITY
+   ============================================================================ */
+
+.user-info:focus-within {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.month-selector select:focus {
+  outline: none;
+}
+
+.qrcode-toggle-btn:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .user-info {
+    border: 3px solid #fff;
+  }
+  
+  .monthly-stats-card {
+    border: 3px solid #000;
+  }
+  
+  .stat-item {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .user-info::before,
+  .qrcode-container::before {
+    animation: none;
+  }
+  
+  .qrcode-container {
+    animation: none;
+  }
+  
+  .stat-item:hover,
+  .monthly-stats-card:hover {
+    transform: none;
+  }
+}
