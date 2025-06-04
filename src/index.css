@@ -9,6 +9,154 @@
   --gray: #95a5a6;
 }
 
+/* Reset globale per tutti gli input per evitare testo bianco */
+input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="search"],
+textarea,
+select {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+}
+
+/* Focus states per tutti gli input */
+input:focus,
+textarea:focus,
+select:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Placeholder styles */
+input::placeholder,
+textarea::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Stati di errore */
+input.error,
+textarea.error,
+select.error {
+  border-color: #dc3545 !important;
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Checkbox e radio specifici */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 4px 0 0 !important;
+}
+
+/* Labels */
+label {
+  color: #555 !important;
+  font-weight: 500 !important;
+  margin-bottom: 5px !important;
+  display: block !important;
+}
+
+/* Buttons fix */
+button,
+.btn {
+  font-family: inherit !important;
+  cursor: pointer !important;
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 15px !important;
+}
+
+.form-group label {
+  margin-bottom: 5px !important;
+}
+
+/* Form controls specifici per le classi Bootstrap-like */
+.form-control {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+}
+
+.form-control:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Disabled states */
+input:disabled,
+textarea:disabled,
+select:disabled,
+.form-control:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  border-color: #dee2e6 !important;
+  opacity: 0.65 !important;
+}
+
+/* Error messages */
+.error-message,
+.error-message-field {
+  color: #dc3545 !important;
+  background-color: transparent !important;
+  font-size: 14px !important;
+  margin-top: 5px !important;
+}
+
+/* Admin panel specifics */
+.admin-panel input,
+.admin-panel textarea,
+.admin-panel select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Card components */
+.card input,
+.card textarea,
+.card select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Modal inputs */
+.modal input,
+.modal textarea,
+.modal select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Table inputs */
+table input,
+table textarea,
+table select {
+  color: #333 !important;
+  background-color: white !important;
+}
+
 /* Stile per i campi di input con errore */
 input.error {
   border-color: var(--danger) !important;
@@ -1056,4 +1204,254 @@ tbody tr:hover {
   .month-selector select {
     flex-grow: 1;
   }
+}
+/* Aggiungi a src/index.css - Stili per la sincronizzazione nel timesheet */
+
+/* Righe con sincronizzazione automatica */
+.auto-sync-row {
+  background-color: #f0f8f0 !important;
+  border-left: 3px solid #28a745;
+}
+
+.auto-sync-row:hover {
+  background-color: #e8f5e8 !important;
+}
+
+/* Info box sincronizzazione nel timesheet */
+.sync-info-notice {
+  background-color: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.sync-info-notice p {
+  margin: 0;
+  color: #2d5a2d;
+}
+
+/* Legenda aggiornata */
+.timesheet-legend {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  font-size: 0.9rem;
+}
+
+.timesheet-legend > div:first-child {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.timesheet-legend > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+/* Indicatori di sincronizzazione nelle celle */
+.sync-indicator {
+  color: #17a2b8;
+  margin-left: 6px;
+  font-size: 14px;
+  cursor: help;
+}
+
+.sync-indicator:hover {
+  color: #138496;
+}
+
+/* Tooltip per indicatori di sincronizzazione */
+.sync-indicator[title] {
+  position: relative;
+}
+
+.sync-indicator[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.sync-indicator[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
+  z-index: 1000;
+  margin-bottom: 1px;
+}
+
+/* Stili per le note con sincronizzazione */
+.notes-with-sync {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.notes-with-sync .sync-icon {
+  color: #17a2b8;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Stati speciali con indicatori */
+.special-state-with-sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.special-state-with-sync .sync-icon {
+  color: #17a2b8;
+  font-size: 14px;
+}
+
+/* Evidenziazione per righe sincronizzate */
+.table tbody tr.auto-sync-row td {
+  border-left: 3px solid #28a745;
+  padding-left: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sync-info-notice {
+    padding: 10px;
+    font-size: 13px;
+  }
+  
+  .timesheet-legend > div:last-child {
+    gap: 10px;
+  }
+  
+  .sync-indicator {
+    font-size: 12px;
+  }
+  
+  .notes-with-sync {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .special-state-with-sync {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Animazioni per feedback visivo */
+@keyframes sync-highlight {
+  0% { background-color: #f0f8f0; }
+  50% { background-color: #d4edda; }
+  100% { background-color: #f0f8f0; }
+}
+
+.auto-sync-row.recently-synced {
+  animation: sync-highlight 2s ease-in-out;
+}
+
+/* Icone specifiche per tipo di sincronizzazione */
+.sync-vacation::before { content: "🏖️"; }
+.sync-permission::before { content: "📋"; }
+.sync-sickness::before { content: "🏥"; }
+
+/* Miglioramenti per accessibilità */
+.sync-indicator:focus {
+  outline: 2px solid #17a2b8;
+  outline-offset: 2px;
+}
+
+/* Badge di stato con sincronizzazione */
+.status-badge-with-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-badge-with-sync .sync-icon {
+  font-size: 12px;
+}
+/* Aggiungi questo CSS a src/index.css per risolvere il problema del login */
+
+/* Fix specifico per il form di login */
+.login-page input[type="text"],
+.login-page input[type="email"], 
+.login-page input[type="password"] {
+  color: #333 !important; /* Forza il colore del testo scuro */
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+}
+
+.login-page input[type="text"]:focus,
+.login-page input[type="email"]:focus,
+.login-page input[type="password"]:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.login-page input[type="text"]::placeholder,
+.login-page input[type="email"]::placeholder,
+.login-page input[type="password"]::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Fix per i label del form di login */
+.login-page label {
+  color: #555 !important;
+  font-weight: 500 !important;
+}
+
+/* Fix per il testo degli errori nel login */
+.login-page .error-message-field {
+  color: #dc3545 !important;
+  background-color: transparent !important;
+}
+
+.login-page .error-message {
+  color: #dc3545 !important;
+  background-color: #f8d7da !important;
+  border: 1px solid #f5c6cb !important;
+  padding: 10px !important;
+  border-radius: 4px !important;
+  margin: 10px 0 !important;
+}
+
+/* Assicurati che gli input con errore abbiano il bordo rosso ma testo nero */
+.login-page input.error {
+  border-color: #dc3545 !important;
+  color: #333 !important;
+  background-color: white !important;
+}
+
+/* Fix per i checkbox nel login */
+.login-page input[type="checkbox"] {
+  width: auto !important;
+  height: auto !important;
+  margin-right: 8px !important;
+}
+
+.login-page .checkbox-label {
+  color: #555 !important;
+  font-weight: normal !important;
 }

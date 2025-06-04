@@ -176,3 +176,189 @@
     width: 95%;
   }
 }
+/* Aggiungi a src/admin-requests.css - Stili per la sincronizzazione */
+
+/* Info box sincronizzazione */
+.sync-info-box {
+  background-color: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.sync-info-box ul {
+  margin: 8px 0 0 30px;
+  font-size: 14px;
+  color: #2d5a2d;
+}
+
+.sync-info-box code {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* Icone di sincronizzazione */
+.sync-icon {
+  margin-left: 8px;
+  font-size: 14px;
+  cursor: help;
+}
+
+.sync-icon.success {
+  color: #28a745;
+}
+
+.sync-icon.error {
+  color: #dc3545;
+}
+
+/* Warning box per la sincronizzazione nel modal */
+.sync-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.sync-warning code {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* Spinner per elaborazione */
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Status badges con supporto per icone */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-badge.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-badge.status-approved {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.status-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Dettagli sincronizzazione nelle note */
+.sync-details {
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.sync-details.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.sync-details.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Miglioramenti per i pulsanti di azione */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+  min-width: 80px;
+}
+
+/* Responsive per dispositivi mobili */
+@media (max-width: 768px) {
+  .sync-info-box {
+    padding: 12px;
+  }
+  
+  .sync-info-box ul {
+    margin-left: 20px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+}
+
+/* Animazioni per feedback visivo */
+.processing {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.notification.info {
+  background-color: #17a2b8;
+  border-left: 4px solid #0e6674;
+}
+
+/* Tooltip per icone di sincronizzazione */
+.sync-icon[title] {
+  position: relative;
+}
+
+.sync-icon[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.sync-icon[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #333;
+  z-index: 1000;
+}

@@ -979,6 +979,426 @@ export const deleteLeaveRequest = async (requestId) => {
 };
 
 /**
+ * Sincronizza una richiesta approvata con il sistema workHours
+ * @param {Object} requestData - I dati della richiesta approvata
+ * @returns {Promise<Object>} - Risultato della sincronizzazione
+ */
+export const syncApprovedRequestToWorkHours = async (requestData) => {
+  try {
+    console.log("Sincronizzazione richiesta approvata:", requestData);
+    
+    if (requestData.status !== 'approved') {
+      console.log("Richiesta non approvata, skip sincronizzazione");
+      return { success: true, message: "Richiesta non approvata, nessuna sincronizzazione necessaria" };
+    }
+    
+    // Determina la lettera in base al tipo di richiesta
+    let letterCode;
+    switch (requestData.type) {
+      case 'vacation':
+        letterCode = 'F'; // Ferie
+        break;
+      case 'permission':
+        letterCode = 'P'; // Permesso
+        break;
+      case 'sickness':
+        letterCode = 'M'; // Malattia
+        break;
+      default:
+        throw new Error(`Tipo di richiesta non riconosciuto: ${requestData.type}`);
+    }
+    
+    // Calcola le date da segnare
+    const datesToMark = [];
+    
+    if (requestData.type === 'permission') {
+      // Per i permessi, segna solo la data di inizio
+      if (requestData.permissionType === 'daily') {
+        // Permesso giornaliero
+        datesToMark.push(requestData.dateFrom);
+      }
+      // Per permessi orari, non segniamo nulla nel workHours (rimane gestione manuale)
+      if (requestData.permissionType === 'hourly') {
+        console.log("Permesso orario, nessuna modifica automatica al workHours");
+        return { 
+          success: true, 
+          message: "Permesso orario approvato, gestione manuale richiesta per le ore" 
+        };
+      }
+    } else if (requestData.type === 'vacation') {
+      // Per le ferie, segna tutte le date dal dateFrom al dateTo
+      const startDate = new Date(requestData.dateFrom);
+      const endDate = new Date(requestData.dateTo);
+      
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        
+        // Salta i weekend (opzionale, dipende dalla policy aziendale)
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Non domenica e non sabato
+          datesToMark.push(dateString);
+        }
+      }
+    } else if (requestData.type === 'sickness') {
+      // Per la malattia, segna solo la data di inizio (o tutte le date se è un range)
+      datesToMark.push(requestData.dateFrom);
+      
+      // Se c'è anche una data di fine, aggiungi tutte le date nel range
+      if (requestData.dateTo) {
+        const startDate = new Date(requestData.dateFrom);
+        const endDate = new Date(requestData.dateTo);
+        
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
+          if (!datesToMark.includes(dateString)) {
+            datesToMark.push(dateString);
+          }
+        }
+      }
+    }
+    
+    console.log(`Date da segnare con ${letterCode}:`, datesToMark);
+    
+    if (datesToMark.length === 0) {
+      return { success: true, message: "Nessuna data da segnare" };
+    }
+    
+    // Raggruppa le date per mese/anno per ottimizzare le operazioni
+    const datesByMonth = {};
+    
+    datesToMark.forEach(dateString => {
+      const [year, month, day] = dateString.split('-');
+      const monthKey = `${requestData.userId}_${month.replace(/^0+/, '')}_${year}`;
+      
+      if (!datesByMonth[monthKey]) {
+        datesByMonth[monthKey] = {
+          userId: requestData.userId,
+          month: month.replace(/^0+/, ''),
+          year,
+          dates: []
+        };
+      }
+      
+      datesByMonth[monthKey].dates.push(dateString);
+    });
+    
+    // Aggiorna ogni mese
+    const updateResults = [];
+    
+    for (const [monthKey, monthData] of Object.entries(datesByMonth)) {
+      try {
+        const result = await updateWorkHoursForApprovedRequest(
+          monthData.userId,
+          monthData.month,
+          monthData.year,
+          monthData.dates,
+          letterCode,
+          requestData.type
+        );
+        
+        updateResults.push({
+          monthKey,
+          success: true,
+          ...result
+        });
+      } catch (error) {
+        console.error(`Errore aggiornamento mese ${monthKey}:`, error);
+        updateResults.push({
+          monthKey,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    // Verifica risultati
+    const successfulUpdates = updateResults.filter(r => r.success);
+    const failedUpdates = updateResults.filter(r => !r.success);
+    
+    let message = `Sincronizzazione completata: ${successfulUpdates.length} mesi aggiornati`;
+    if (failedUpdates.length > 0) {
+      message += `, ${failedUpdates.length} errori`;
+    }
+    
+    return {
+      success: failedUpdates.length === 0,
+      message,
+      details: {
+        letterCode,
+        totalDates: datesToMark.length,
+        successfulUpdates: successfulUpdates.length,
+        failedUpdates: failedUpdates.length,
+        updateResults
+      }
+    };
+    
+  } catch (error) {
+    console.error("Errore nella sincronizzazione richiesta approvata:", error);
+    throw error;
+  }
+};
+
+/**
+ * Aggiorna workHours per le date di una richiesta approvata
+ * @param {string} userId - ID dell'utente
+ * @param {string} month - Mese (senza zero iniziale)
+ * @param {string} year - Anno
+ * @param {Array} dates - Array delle date da segnare
+ * @param {string} letterCode - Lettera da usare (F, P, M)
+ * @param {string} requestType - Tipo di richiesta per le note
+ * @returns {Promise<Object>} - Risultato dell'aggiornamento
+ */
+const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, letterCode, requestType) => {
+  try {
+    const workHoursId = `${userId}_${month}_${year}`;
+    const workHoursRef = doc(db, "workHours", workHoursId);
+    
+    console.log(`Aggiornamento workHours: ${workHoursId} per date:`, dates);
+    
+    // Genera il calendario completo del mese se il documento non esiste
+    const generateCompleteMonthCalendar = (month, year) => {
+      const monthInt = parseInt(month);
+      const yearInt = parseInt(year);
+      const daysInMonth = new Date(yearInt, monthInt, 0).getDate();
+      const entries = [];
+      const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(yearInt, monthInt - 1, day);
+        const dayOfWeek = date.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        const dateStr = `${yearInt}-${monthInt.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        
+        entries.push({
+          date: dateStr,
+          day: dayNames[dayOfWeek],
+          total: 0,
+          overtime: 0,
+          notes: "",
+          isWeekend: isWeekend,
+          hasData: false
+        });
+      }
+      
+      return entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+    };
+    
+    // Ottieni il documento esistente o creane uno nuovo
+    const workHoursSnap = await getDoc(workHoursRef);
+    let entries = [];
+    
+    if (workHoursSnap.exists()) {
+      const workHoursData = workHoursSnap.data();
+      entries = workHoursData.entries || [];
+      console.log(`Documento esistente trovato con ${entries.length} entries`);
+    } else {
+      // Crea il calendario completo se il documento non esiste
+      entries = generateCompleteMonthCalendar(month, year);
+      console.log(`Documento non esistente, creato calendario con ${entries.length} entries`);
+    }
+    
+    // Determina la descrizione per le note
+    let noteDescription;
+    switch (requestType) {
+      case 'vacation':
+        noteDescription = 'Ferie approvate';
+        break;
+      case 'permission':
+        noteDescription = 'Permesso approvato';
+        break;
+      case 'sickness':
+        noteDescription = 'Malattia approvata';
+        break;
+      default:
+        noteDescription = 'Richiesta approvata';
+    }
+    
+    // Aggiorna le entries per le date specificate
+    let updatedCount = 0;
+    let conflictCount = 0;
+    const conflicts = [];
+    
+    dates.forEach(dateToMark => {
+      const entryIndex = entries.findIndex(entry => entry.date === dateToMark);
+      
+      if (entryIndex >= 0) {
+        const existingEntry = entries[entryIndex];
+        
+        // Controlla se c'è già un valore diverso da 0 o vuoto
+        const hasConflict = existingEntry.total !== 0 && 
+                           existingEntry.total !== '' && 
+                           existingEntry.total !== letterCode &&
+                           !['M', 'P', 'F', 'A'].includes(existingEntry.total);
+        
+        if (hasConflict) {
+          console.warn(`Conflitto rilevato per ${dateToMark}: valore esistente = ${existingEntry.total}`);
+          conflicts.push({
+            date: dateToMark,
+            existingValue: existingEntry.total,
+            newValue: letterCode
+          });
+          conflictCount++;
+          
+          // Decidere la strategia: sovrascrivere o mantenere
+          // Per ora, sovrascrivi sempre le richieste approvate (hanno priorità)
+        }
+        
+        // Aggiorna l'entry
+        entries[entryIndex] = {
+          ...existingEntry,
+          total: letterCode,
+          overtime: 0, // Reset straordinario per giorni speciali
+          notes: `${noteDescription} - ${new Date().toLocaleDateString('it-IT')}`,
+          hasData: true
+        };
+        
+        updatedCount++;
+      } else {
+        console.warn(`Entry non trovata per data: ${dateToMark}`);
+      }
+    });
+    
+    // Salva il documento aggiornato
+    if (workHoursSnap.exists()) {
+      await updateDoc(workHoursRef, {
+        entries,
+        lastUpdated: serverTimestamp()
+      });
+    } else {
+      await setDoc(workHoursRef, {
+        userId,
+        month,
+        year,
+        entries,
+        lastUpdated: serverTimestamp(),
+        createdBy: 'approved_request_sync'
+      });
+    }
+    
+    console.log(`Aggiornamento completato: ${updatedCount} date segnate con ${letterCode}`);
+    
+    return {
+      updatedCount,
+      conflictCount,
+      conflicts,
+      letterCode,
+      noteDescription
+    };
+    
+  } catch (error) {
+    console.error("Errore nell'aggiornamento workHours:", error);
+    throw error;
+  }
+};
+
+/**
+ * SOSTITUISCE la funzione updateLeaveRequestStatus esistente
+ * Aggiorna lo stato di una richiesta con sincronizzazione automatica
+ */
+export const updateLeaveRequestStatusWithSync = async (requestId, status, adminNotes = '') => {
+  try {
+    console.log(`updateLeaveRequestStatus: Aggiornamento requestId=${requestId} con status=${status}, notes=${adminNotes || 'nessuna'}`);
+    
+    if (!requestId) throw new Error("requestId obbligatorio");
+    if (!status) throw new Error("status obbligatorio");
+    
+    const requestRef = doc(db, "leaveRequests", requestId);
+    
+    // Verifica che la richiesta esista
+    const requestDoc = await getDoc(requestRef);
+    if (!requestDoc.exists()) {
+      throw new Error(`Richiesta con ID ${requestId} non trovata`);
+    }
+    
+    const requestData = requestDoc.data();
+    
+    // Prepara i dati da aggiornare
+    const updateData = {
+      status,
+      lastUpdate: serverTimestamp()
+    };
+    
+    // Aggiungi note admin se presenti
+    if (adminNotes) {
+      updateData.adminNotes = adminNotes;
+    }
+    
+    // Aggiungi info sull'approvazione/rifiuto
+    if (status === 'approved' || status === 'rejected') {
+      updateData.statusUpdateInfo = {
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.uid : 'unknown',
+        previousStatus: requestData.status
+      };
+    }
+    
+    // Aggiorna lo stato della richiesta
+    await updateDoc(requestRef, updateData);
+    console.log(`updateLeaveRequestStatus: Status aggiornato con successo a ${status}`);
+    
+    // Se la richiesta è stata approvata, sincronizza con workHours
+    if (status === 'approved') {
+      try {
+        console.log("Richiesta approvata, avvio sincronizzazione con workHours...");
+        
+        const syncResult = await syncApprovedRequestToWorkHours({
+          ...requestData,
+          status: 'approved'
+        });
+        
+        console.log("Sincronizzazione completata:", syncResult);
+        
+        // Aggiungi info sulla sincronizzazione al documento
+        await updateDoc(requestRef, {
+          syncInfo: {
+            syncedAt: serverTimestamp(),
+            syncResult: syncResult.success,
+            syncDetails: syncResult.details,
+            syncMessage: syncResult.message
+          }
+        });
+        
+      } catch (syncError) {
+        console.error("Errore durante la sincronizzazione:", syncError);
+        
+        // Aggiungi info sull'errore di sincronizzazione al documento
+        await updateDoc(requestRef, {
+          syncInfo: {
+            syncedAt: serverTimestamp(),
+            syncResult: false,
+            syncError: syncError.message
+          }
+        });
+        
+        // Non bloccare l'operazione principale, solo logga l'errore
+        console.warn("Sincronizzazione fallita, ma lo stato della richiesta è stato aggiornato");
+      }
+    }
+    
+    // Restituisci i dati aggiornati
+    const updatedDoc = await getDoc(requestRef);
+    
+    return {
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+      lastUpdate: new Date()
+    };
+    
+  } catch (error) {
+    console.error("updateLeaveRequestStatus: Errore nell'aggiornamento dello stato della richiesta:", error);
+    throw error;
+  }
+};
+
+/**
  * Verifica la connessione a Firebase Storage
  * Utile per debug di problemi di connessione a Storage
  * @returns {Promise<Object>} - Risultato del test

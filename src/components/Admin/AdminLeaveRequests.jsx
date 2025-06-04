@@ -1,6 +1,6 @@
-// src/components/Admin/AdminLeaveRequests.jsx
+// src/components/Admin/AdminLeaveRequests.jsx - Aggiornato con sincronizzazione workHours
 import React, { useState, useEffect } from 'react';
-import { getAllLeaveRequests, updateLeaveRequestStatus } from '../../firebase';
+import { getAllLeaveRequests, updateLeaveRequestStatusWithSync } from '../../firebase'; // Usa la nuova funzione
 import Notification from '../Notification';
 
 const AdminLeaveRequests = () => {
@@ -113,7 +113,7 @@ const AdminLeaveRequests = () => {
     setShowNotesForm(true);
   };
   
-  // Gestisce l'approvazione/rifiuto di una richiesta
+  // Gestisce l'approvazione/rifiuto di una richiesta con sincronizzazione
   const handleRequestAction = async (approve = true) => {
     if (!selectedRequest) return;
     
@@ -122,12 +122,25 @@ const AdminLeaveRequests = () => {
     try {
       const newStatus = approve ? 'approved' : 'rejected';
       
-      // Aggiorna lo stato della richiesta
-      const updatedRequest = await updateLeaveRequestStatus(
+      console.log(`${approve ? 'Approvazione' : 'Rifiuto'} richiesta:`, selectedRequest);
+      
+      // Mostra notifica di elaborazione
+      if (approve) {
+        setNotification({
+          show: true,
+          message: 'Approvazione in corso... sincronizzazione con calendario ore',
+          type: 'info'
+        });
+      }
+      
+      // Aggiorna lo stato della richiesta con sincronizzazione automatica
+      const updatedRequest = await updateLeaveRequestStatusWithSync(
         selectedRequest.id, 
         newStatus, 
         adminNotes
       );
+      
+      console.log('Richiesta aggiornata:', updatedRequest);
       
       // Aggiorna la lista delle richieste
       setRequests(prevRequests => 
@@ -141,23 +154,39 @@ const AdminLeaveRequests = () => {
       setSelectedRequest(null);
       setAdminNotes('');
       
+      // Prepara il messaggio di successo
+      let successMessage = `Richiesta ${approve ? 'approvata' : 'rifiutata'} con successo`;
+      
+      // Se è stata approvata e c'è info sulla sincronizzazione, aggiungi dettagli
+      if (approve && updatedRequest.syncInfo) {
+        if (updatedRequest.syncInfo.syncResult) {
+          const syncDetails = updatedRequest.syncInfo.syncDetails;
+          if (syncDetails && syncDetails.letterCode) {
+            successMessage += `\n✅ Calendario ore aggiornato automaticamente (${syncDetails.totalDates} date segnate con "${syncDetails.letterCode}")`;
+          }
+        } else {
+          successMessage += '\n⚠️ Attenzione: errore nella sincronizzazione automatica del calendario ore. Aggiorna manualmente.';
+        }
+      }
+      
       // Mostra notifica di successo
       setNotification({
         show: true,
-        message: `Richiesta ${approve ? 'approvata' : 'rifiutata'} con successo`,
+        message: successMessage,
         type: 'success'
       });
       
-      // Nascondi la notifica dopo 3 secondi
+      // Nascondi la notifica dopo 6 secondi (più tempo per leggere i dettagli)
       setTimeout(() => {
         setNotification(prev => ({ ...prev, show: false }));
-      }, 3000);
+      }, 6000);
+      
     } catch (err) {
       console.error(`Errore nell'${approve ? 'approvazione' : 'rifiuto'} della richiesta:`, err);
       
       setNotification({
         show: true,
-        message: `Errore nell'${approve ? 'approvazione' : 'rifiuto'} della richiesta`,
+        message: `Errore nell'${approve ? 'approvazione' : 'rifiuto'} della richiesta: ${err.message}`,
         type: 'error'
       });
     } finally {
@@ -259,6 +288,37 @@ const AdminLeaveRequests = () => {
     }
   };
   
+  // Funzione per ottenere l'icona di sincronizzazione
+  const getSyncIcon = (request) => {
+    if (request.status !== 'approved') return null;
+    
+    if (request.syncInfo) {
+      if (request.syncInfo.syncResult) {
+        return (
+          <span 
+            className="sync-icon success" 
+            title={`Sincronizzato: ${request.syncInfo.syncMessage || 'Calendario ore aggiornato'}`}
+            style={{ color: '#28a745', marginLeft: '8px', fontSize: '14px' }}
+          >
+            ✅
+          </span>
+        );
+      } else {
+        return (
+          <span 
+            className="sync-icon error" 
+            title={`Errore sincronizzazione: ${request.syncInfo.syncError || 'Aggiornamento manuale richiesto'}`}
+            style={{ color: '#dc3545', marginLeft: '8px', fontSize: '14px' }}
+          >
+            ⚠️
+          </span>
+        );
+      }
+    }
+    
+    return null;
+  };
+  
   return (
     <div className="admin-leave-requests">
       <h3>Gestione Richieste</h3>
@@ -333,6 +393,29 @@ const AdminLeaveRequests = () => {
         </button>
       </div>
       
+      {/* Info box sulla sincronizzazione automatica */}
+      <div className="sync-info-box" style={{
+        backgroundColor: '#e8f5e8',
+        border: '1px solid #c3e6c3',
+        borderRadius: '6px',
+        padding: '15px',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '20px', marginRight: '10px' }}>🔄</span>
+          <strong>Sincronizzazione Automatica Attiva</strong>
+        </div>
+        <p style={{ margin: 0, fontSize: '14px', color: '#2d5a2d' }}>
+          Quando approvi una richiesta, le date verranno automaticamente segnate nel calendario ore:
+        </p>
+        <ul style={{ margin: '8px 0 0 30px', fontSize: '14px', color: '#2d5a2d' }}>
+          <li><strong>Ferie</strong> → Segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>F</code></li>
+          <li><strong>Permesso giornaliero</strong> → Segnato con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code></li>
+          <li><strong>Malattia</strong> → Segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>M</code></li>
+          <li><strong>Permesso orario</strong> → Gestione manuale richiesta</li>
+        </ul>
+      </div>
+      
       {isLoading ? (
         <div className="loading">Caricamento richieste in corso...</div>
       ) : error ? (
@@ -385,21 +468,40 @@ const AdminLeaveRequests = () => {
                     <td>
                       <span className={`status-badge ${getStatusClass(request.status)}`}>
                         {getStatusName(request.status)}
+                        {getSyncIcon(request)}
                       </span>
                     </td>
-                    <td>{request.adminNotes || '-'}</td>
+                    <td>
+                      {request.adminNotes || '-'}
+                      {/* Mostra dettagli sincronizzazione se disponibili */}
+                      {request.syncInfo && request.syncInfo.syncDetails && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          {request.syncInfo.syncResult ? (
+                            <span style={{ color: '#28a745' }}>
+                              ✓ {request.syncInfo.syncDetails.totalDates} date sincronizzate
+                            </span>
+                          ) : (
+                            <span style={{ color: '#dc3545' }}>
+                              ✗ Sincronizzazione fallita
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       {request.status === 'pending' ? (
                         <div className="action-buttons">
                           <button 
                             className="btn btn-success btn-sm"
                             onClick={() => showNotes(request, 'approved')}
+                            disabled={processingRequest}
                           >
-                            Approva
+                            {processingRequest ? 'Elaborazione...' : 'Approva'}
                           </button>
                           <button 
                             className="btn btn-danger btn-sm"
                             onClick={() => showNotes(request, 'rejected')}
+                            disabled={processingRequest}
                           >
                             Rifiuta
                           </button>
@@ -408,6 +510,7 @@ const AdminLeaveRequests = () => {
                         <button 
                           className="btn btn-secondary btn-sm"
                           onClick={() => showNotes(request, request.status)}
+                          disabled={processingRequest}
                         >
                           Modifica note
                         </button>
@@ -436,6 +539,7 @@ const AdminLeaveRequests = () => {
               <button 
                 className="modal-close"
                 onClick={() => setShowNotesForm(false)}
+                disabled={processingRequest}
               >
                 &times;
               </button>
@@ -451,6 +555,36 @@ const AdminLeaveRequests = () => {
                 <p><strong>Dettagli:</strong> {getRequestDetails(selectedRequest)}</p>
               </div>
               
+              {/* Info sulla sincronizzazione se si sta approvando */}
+              {selectedRequest.defaultStatus === 'approved' && (
+                <div className="sync-warning" style={{
+                  backgroundColor: '#fff3cd',
+                  border: '1px solid #ffeaa7',
+                  borderRadius: '4px',
+                  padding: '12px',
+                  marginBottom: '15px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '16px', marginRight: '8px' }}>🔄</span>
+                    <strong>Sincronizzazione Automatica</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '14px' }}>
+                    {selectedRequest.type === 'vacation' && (
+                      <>Approvando questa richiesta di <strong>ferie</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>F</code> nel calendario ore.</>
+                    )}
+                    {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'daily' && (
+                      <>Approvando questa richiesta di <strong>permesso giornaliero</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
+                    )}
+                    {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'hourly' && (
+                      <>Approvando questa richiesta di <strong>permesso orario</strong>, non verrà effettuata nessuna modifica automatica al calendario ore. Sarà necessario gestire manualmente le ore.</>
+                    )}
+                    {selectedRequest.type === 'sickness' && (
+                      <>Approvando questa richiesta di <strong>malattia</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>M</code> nel calendario ore.</>
+                    )}
+                  </p>
+                </div>
+              )}
+              
               <div className="form-group">
                 <label htmlFor="admin-notes">Note (opzionale)</label>
                 <textarea
@@ -459,6 +593,7 @@ const AdminLeaveRequests = () => {
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Inserisci eventuali note sulla richiesta..."
                   rows="4"
+                  disabled={processingRequest}
                 />
               </div>
             </div>
@@ -469,7 +604,14 @@ const AdminLeaveRequests = () => {
                   onClick={() => handleRequestAction(true)}
                   disabled={processingRequest}
                 >
-                  {processingRequest ? 'Approvazione...' : 'Approva'}
+                  {processingRequest ? (
+                    <>
+                      <span className="spinner" style={{ marginRight: '8px' }}>⏳</span>
+                      Approvazione e sincronizzazione...
+                    </>
+                  ) : (
+                    'Approva e Sincronizza'
+                  )}
                 </button>
               ) : selectedRequest.defaultStatus === 'rejected' ? (
                 <button 
