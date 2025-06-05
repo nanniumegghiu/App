@@ -1,7 +1,8 @@
-// src/components/TimesheetTable.jsx - Versione con logica corretta per le segnalazioni
+// src/components/TimesheetTable.jsx - Versione con supporto festività
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getDayInfo, getMonthHolidays } from '../utils/holidaysUtils';
 
 // Funzione per ottenere l'anno corrente
 const getCurrentYear = () => {
@@ -18,8 +19,21 @@ const TimesheetTable = ({
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [monthHolidays, setMonthHolidays] = useState([]);
 
-  // Funzione per generare tutti i giorni del mese
+  // Carica le festività quando cambiano mese/anno
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
+      const monthInt = parseInt(normalizedMonth);
+      const yearInt = parseInt(selectedYear);
+      const holidays = getMonthHolidays(monthInt, yearInt);
+      setMonthHolidays(holidays);
+      console.log(`Festività trovate per ${normalizedMonth}/${selectedYear}:`, holidays);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  // Funzione per generare tutti i giorni del mese CON INFO FESTIVITÀ
   const generateCompleteMonth = (month, year) => {
     const normalizedMonth = parseInt(month.toString().replace(/^prev-/, '').replace(/^0+/, ''));
     const normalizedYear = parseInt(year);
@@ -29,19 +43,22 @@ const TimesheetTable = ({
     const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(normalizedYear, normalizedMonth - 1, day);
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
       const dateStr = `${normalizedYear}-${normalizedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      
+      // NUOVO: Ottieni informazioni complete sul giorno (weekend + festività)
+      const dayInfo = getDayInfo(dateStr);
       
       entries.push({
         date: dateStr,
-        day: dayNames[dayOfWeek],
+        day: dayNames[dayInfo.dayOfWeek],
         total: 0, // Default vuoto
         overtime: 0, // Default vuoto
         notes: "",
-        isWeekend: isWeekend,
+        isWeekend: dayInfo.isWeekend,
+        isHoliday: dayInfo.isHoliday, // NUOVO
+        holidayName: dayInfo.holidayName, // NUOVO
+        isNonWorkingDay: dayInfo.isNonWorkingDay, // NUOVO
+        dayType: dayInfo.dayType, // NUOVO
         hasData: false // Flag per indicare se ha dati reali
       });
     }
@@ -62,7 +79,7 @@ const TimesheetTable = ({
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         console.log(`TimesheetTable: Mese normalizzato=${normalizedMonth}`);
         
-        // Genera tutti i giorni del mese
+        // Genera tutti i giorni del mese CON INFO FESTIVITÀ
         const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
         
         // Prova a caricare i dati esistenti
@@ -148,18 +165,21 @@ const TimesheetTable = ({
             }
           });
           
-          // Merge con il calendario completo
+          // Merge con il calendario completo, MANTENENDO le info festività
           const mergedData = completeMonthData.map(dayEntry => {
             const existingEntry = existingDataMap[dayEntry.date];
             if (existingEntry) {
-              return existingEntry;
+              return {
+                ...dayEntry, // Mantieni le info su weekend/festività
+                ...existingEntry // Sovrascrivi con i dati esistenti
+              };
             }
             return dayEntry;
           });
           
           setData(mergedData);
         } else {
-          console.log(`TimesheetTable: Nessun dato esistente, usando calendario vuoto`);
+          console.log(`TimesheetTable: Nessun dato esistente, usando calendario vuoto con festività`);
           setData(completeMonthData);
         }
         
@@ -168,7 +188,7 @@ const TimesheetTable = ({
         console.error("TimesheetTable: Errore nel caricamento timesheet:", err);
         setError("Impossibile caricare le ore lavorative. Riprova più tardi.");
         
-        // In caso di errore, mostra comunque il calendario completo
+        // In caso di errore, mostra comunque il calendario completo CON FESTIVITÀ
         const normalizedMonth = selectedMonth.toString().replace(/^prev-/, '').replace(/^0+/, '');
         const completeMonthData = generateCompleteMonth(normalizedMonth, selectedYear);
         setData(completeMonthData);
@@ -204,6 +224,41 @@ const TimesheetTable = ({
     return dateStr;
   };
 
+  // NUOVO: Ottiene la classe CSS per la riga in base al tipo di giorno
+  const getRowClass = (entry) => {
+    const classes = [];
+    
+    if (entry.isHoliday) {
+      classes.push('holiday-row');
+    } else if (entry.isWeekend) {
+      classes.push('weekend-row');
+    }
+    
+    if (!entry.hasData) {
+      classes.push('no-data-row');
+    }
+    
+    if (isAutoSyncNote(entry.notes)) {
+      classes.push('auto-sync-row');
+    }
+    
+    return classes.join(' ');
+  };
+
+  // NUOVO: Ottiene lo stile inline per la riga
+  const getRowStyle = (entry) => {
+    if (entry.isHoliday) {
+      return { backgroundColor: '#fff3cd', borderLeft: '4px solid #f0ad4e' };
+    } else if (entry.isWeekend) {
+      return { backgroundColor: '#f8f9fa' };
+    } else if (!entry.hasData) {
+      return { backgroundColor: '#fafafa' };
+    } else if (isAutoSyncNote(entry.notes)) {
+      return { backgroundColor: '#f0f8f0' };
+    }
+    return {};
+  };
+
   // Determina se una nota indica sincronizzazione automatica
   const isAutoSyncNote = (notes) => {
     if (!notes) return false;
@@ -214,42 +269,78 @@ const TimesheetTable = ({
            lowerNotes.includes('malattia approvata');
   };
 
-  // Componente di legenda per le lettere speciali e le ore
+  // Componente di legenda per le lettere speciali e le ore AGGIORNATO CON FESTIVITÀ
   const TimesheetLegend = () => {
     return (
       <div className="timesheet-legend" style={{ 
         marginBottom: '15px',
-        padding: '10px',
+        padding: '12px',
         backgroundColor: '#f8f9fa',
-        borderRadius: '5px',
+        borderRadius: '6px',
+        border: '1px solid #dee2e6',
         fontSize: '0.9rem'
       }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Legenda:</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-          <div>
+        <div className="legend-title" style={{ 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          color: '#495057',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          📋 Legenda:
+        </div>
+        <div className="legend-items" style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: '15px' 
+        }}>
+          <div className="legend-item">
             <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>M</span> - Malattia
           </div>
-          <div>
+          <div className="legend-item">
             <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>P</span> - Permesso
           </div>
-          <div>
+          <div className="legend-item">
             <span style={{ color: '#9b59b6', fontWeight: 'bold' }}>F</span> - Ferie
           </div>
-          <div>
+          <div className="legend-item">
             <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
           </div>
-          <div>
+          <div className="legend-item">
             <span>8</span> - Ore standard (max)
           </div>
-          <div>
+          <div className="legend-item">
             <span style={{ color: '#3498db' }}>2</span> - Ore straordinario (max 12)
           </div>
-          <div>
-            <span style={{ color: '#17a2b8' }}>🔄</span> - Inserimento automatico da richiesta approvata
+          <div className="legend-item">
+            <span style={{ color: '#17a2b8' }}>🔄</span> - Inserimento automatico
+          </div>
+          <div className="legend-item">
+            <span style={{ 
+              backgroundColor: '#f8f9fa', 
+              padding: '2px 4px', 
+              borderRadius: '3px',
+              border: '1px solid #e9ecef'
+            }}>Grigio</span> - Weekend
+          </div>
+          <div className="legend-item">
+            <span style={{ 
+              backgroundColor: '#fff3cd', 
+              padding: '2px 4px', 
+              borderRadius: '3px', 
+              borderLeft: '3px solid #f0ad4e',
+              border: '1px solid #ffeaa7'
+            }}>Giallo</span> - Festività
           </div>
         </div>
       </div>
     );
+  };
+
+  // NUOVO: Info box sulle festività del mese
+  const HolidaysInfo = () => {
+    if (monthHolidays.length === 0) return null;
   };
 
   // Funzione per formattare e colorare il valore delle ore o stato
@@ -465,7 +556,10 @@ const TimesheetTable = ({
               </div>
             )}
             
-            {/* Aggiungi la legenda */}
+            {/* NUOVO: Info box festività */}
+            <HolidaysInfo />
+            
+            {/* Legenda aggiornata */}
             <TimesheetLegend />
             
             {/* Info box sulla sincronizzazione automatica */}
@@ -510,24 +604,34 @@ const TimesheetTable = ({
                       <tr 
                         key={entry.date}
                         ref={el => rowRef && rowRef(entry.date, el)}
-                        className={`${highlightedRow === entry.date ? 'error' : ''} ${entry.isWeekend ? 'weekend-row' : ''} ${!entry.hasData ? 'no-data-row' : ''} ${isAutoSyncNote(entry.notes) ? 'auto-sync-row' : ''}`}
-                        style={{
-                          ...((!entry.hasData) ? { backgroundColor: '#fafafa' } : {}),
-                          ...(isAutoSyncNote(entry.notes) ? { backgroundColor: '#f0f8f0' } : {})
-                        }}
+                        className={`${highlightedRow === entry.date ? 'error' : ''} ${getRowClass(entry)}`}
+                        style={getRowStyle(entry)}
                       >
                         <td>{formatDate(entry.date)}</td>
                         <td>
                           {entry.day}
                           {entry.isWeekend && (
                             <span className="badge badge-weekend" style={{
-                              backgroundColor: '#f8d7da',
-                              color: '#721c24',
+                              backgroundColor: '#6c757d',
+                              color: 'white',
                               padding: '2px 6px',
                               borderRadius: '4px',
                               fontSize: '0.75rem',
                               marginLeft: '6px'
                             }}>Weekend</span>
+                          )}
+                          {/* NUOVO: Badge per festività */}
+                          {entry.isHoliday && (
+                            <span className="badge badge-holiday" style={{
+                              backgroundColor: '#f0ad4e',
+                              color: 'white',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              marginLeft: '6px'
+                            }} title={entry.holidayName}>
+                              🎉 {entry.holidayName}
+                            </span>
                           )}
                         </td>
                         <td>{formatTotalWithOvertime(entry.total, entry.overtime, entry.hasData, entry.notes)}</td>
