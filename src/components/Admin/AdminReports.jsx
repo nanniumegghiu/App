@@ -12,10 +12,12 @@ const AdminReports = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [debugInfo, setDebugInfo] = useState(null);
+  
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
     return [currentYear, currentYear - 1, currentYear - 2].sort((a, b) => b - a);
   };
+  
   const handleYearChange = (e) => {
     setSelectedYear(e.target.value);
   };
@@ -26,19 +28,19 @@ const AdminReports = () => {
       setIsLoading(true);
       try {
         const allUsers = await getAllUsers();
-// Ordina gli utenti: prima gli admin, poi per nome
-const sortedUsers = allUsers.sort((a, b) => {
-  // Prima gli admin, poi gli altri utenti
-  if (a.role === 'admin' && b.role !== 'admin') return -1;
-  if (a.role !== 'admin' && b.role === 'admin') return 1;
-  
-  // All'interno dello stesso gruppo, ordina per nome
-  const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
-  const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
-  return aName.localeCompare(bName);
-});
+        // Ordina gli utenti: prima gli admin, poi per nome
+        const sortedUsers = allUsers.sort((a, b) => {
+          // Prima gli admin, poi gli altri utenti
+          if (a.role === 'admin' && b.role !== 'admin') return -1;
+          if (a.role !== 'admin' && b.role === 'admin') return 1;
+          
+          // All'interno dello stesso gruppo, ordina per nome
+          const aName = a.nome && a.cognome ? `${a.nome} ${a.cognome}` : a.email;
+          const bName = b.nome && b.cognome ? `${b.nome} ${b.cognome}` : b.email;
+          return aName.localeCompare(bName);
+        });
 
-setUsers(sortedUsers);
+        setUsers(sortedUsers);
       } catch (error) {
         console.error("Errore nel caricamento degli utenti:", error);
         showNotification("Errore nel caricamento degli utenti", "error");
@@ -188,10 +190,10 @@ setUsers(sortedUsers);
         return new Date(a.date) - new Date(b.date);
       });
       
-      // Calcola il totale delle ore standard (solo per i valori numerici, escludendo M, P, A)
+      // Calcola il totale delle ore standard (solo per i valori numerici, escludendo M, P, A, CIG)
       const totalStandardHours = sortedEntries.reduce((sum, entry) => {
         // Controlla se il valore total è una lettera speciale
-        if (["M", "P", "A"].includes(entry.total)) {
+        if (["M", "P", "A", "CIG"].includes(entry.total)) {
           return sum; // Se è una lettera, non sommare
         }
         return sum + (parseInt(entry.total) || 0);
@@ -200,7 +202,7 @@ setUsers(sortedUsers);
       // Calcola il totale delle ore di straordinario
       const totalOvertimeHours = sortedEntries.reduce((sum, entry) => {
         // Somma solo le ore di straordinario per i giorni lavorati (non per i giorni speciali)
-        if (!["M", "P", "A"].includes(entry.total)) {
+        if (!["M", "P", "A", "CIG"].includes(entry.total)) {
           return sum + (parseInt(entry.overtime) || 0);
         }
         return sum;
@@ -213,6 +215,7 @@ setUsers(sortedUsers);
       const mCount = sortedEntries.filter(entry => entry.total === "M").length;
       const pCount = sortedEntries.filter(entry => entry.total === "P").length;
       const aCount = sortedEntries.filter(entry => entry.total === "A").length;
+      const cigCount = sortedEntries.filter(entry => entry.total === "CIG").length;
       
       // Crea la struttura del foglio Excel
       const worksheetData = [
@@ -232,7 +235,7 @@ setUsers(sortedUsers);
         let overtimeValue = entry.overtime || 0;
         
         // Formatta in base al tipo di valore
-        if (["M", "P", "A"].includes(entry.total)) {
+        if (["M", "P", "A", "CIG"].includes(entry.total)) {
           switch(entry.total) {
             case "M":
               totalValue = "M (Malattia)";
@@ -244,6 +247,10 @@ setUsers(sortedUsers);
               break;
             case "A":
               totalValue = "A (Assenza)";
+              overtimeValue = "-";
+              break;
+            case "CIG":
+              totalValue = "CIG (Cassa Integrazione)";
               overtimeValue = "-";
               break;
           }
@@ -269,12 +276,13 @@ setUsers(sortedUsers);
       worksheetData.push(['TOTALE COMPLESSIVO', '', totalHours, '', '']);
       
       // Aggiungi il conteggio dei giorni speciali se presenti
-      if (mCount > 0 || pCount > 0 || aCount > 0) {
+      if (mCount > 0 || pCount > 0 || aCount > 0 || cigCount > 0) {
         worksheetData.push([]);
         worksheetData.push(['RIEPILOGO GIORNI SPECIALI', '', '', '', '']);
         if (mCount > 0) worksheetData.push(['Giorni di malattia (M)', '', mCount, '', '']);
         if (pCount > 0) worksheetData.push(['Giorni di permesso (P)', '', pCount, '', '']);
         if (aCount > 0) worksheetData.push(['Giorni di assenza (A)', '', aCount, '', '']);
+        if (cigCount > 0) worksheetData.push(['Giorni di cassa integrazione (CIG)', '', cigCount, '', '']);
       }
       
       return {
@@ -283,7 +291,7 @@ setUsers(sortedUsers);
         standardHours: totalStandardHours,
         overtimeHours: totalOvertimeHours,
         totalHours: totalHours,
-        specialDays: { mCount, pCount, aCount }
+        specialDays: { mCount, pCount, aCount, cigCount }
       };
     } catch (error) {
       console.error(`Errore nella generazione del report per l'utente ${userId}:`, error);
@@ -376,7 +384,7 @@ setUsers(sortedUsers);
         const summaryData = [
           [`RIEPILOGO ORE LAVORATIVE - ${getMonthName(selectedMonth).toUpperCase()} ${selectedYear}`],
           [],
-          ['Dipendente', 'Ore Standard', 'Ore Straordinario', 'Totale Ore', 'Giorni M', 'Giorni P', 'Giorni A'],
+          ['Dipendente', 'Ore Standard', 'Ore Straordinario', 'Totale Ore', 'Giorni M', 'Giorni P', 'Giorni A', 'Giorni CIG'],
           []
         ];
         
@@ -393,6 +401,7 @@ setUsers(sortedUsers);
             const mCount = userReport.specialDays?.mCount || 0;
             const pCount = userReport.specialDays?.pCount || 0;
             const aCount = userReport.specialDays?.aCount || 0;
+            const cigCount = userReport.specialDays?.cigCount || 0;
             
             // Aggiungi al foglio riepilogativo
             summaryData.push([
@@ -402,7 +411,8 @@ setUsers(sortedUsers);
               userReport.totalHours,
               mCount,
               pCount,
-              aCount
+              aCount,
+              cigCount
             ]);
             
             // Crea un foglio per l'utente
@@ -461,6 +471,10 @@ setUsers(sortedUsers);
         const totalAdays = summaryData
           .slice(4)
           .reduce((total, row) => total + (row[6] || 0), 0);
+          
+        const totalCigDays = summaryData
+          .slice(4)
+          .reduce((total, row) => total + (row[7] || 0), 0);
         
         // Aggiungi i totali complessivi
         summaryData.push([]);
@@ -471,7 +485,8 @@ setUsers(sortedUsers);
           grandTotal, 
           totalMdays, 
           totalPdays, 
-          totalAdays
+          totalAdays,
+          totalCigDays
         ]);
         
         // Crea il foglio riepilogativo
@@ -485,14 +500,15 @@ setUsers(sortedUsers);
           {wch: 15}, // Totale Ore
           {wch: 10}, // Giorni M
           {wch: 10}, // Giorni P
-          {wch: 10}  // Giorni A
+          {wch: 10}, // Giorni A
+          {wch: 10}  // Giorni CIG
         ];
         summarySheet['!cols'] = sumCols;
         
         // Merge per l'intestazione del riepilogo
         if(!summarySheet['!merges']) summarySheet['!merges'] = [];
         summarySheet['!merges'].push(
-          {s: {r: 0, c: 0}, e: {r: 0, c: 6}} // Intestazione principale
+          {s: {r: 0, c: 0}, e: {r: 0, c: 7}} // Intestazione principale (ora 8 colonne)
         );
         
         // Aggiungi il foglio riepilogativo come primo foglio
@@ -567,13 +583,13 @@ setUsers(sortedUsers);
               disabled={isGenerating}
             >
               <option value="all">Tutti i dipendenti (inclusi admin)</option>
-{users.map(user => (
-  <option key={user.id} value={user.id}>
-    {user.role === 'admin' && '👑 '}
-    {user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email}
-    {user.role === 'admin' && ' - Admin'}
-  </option>
-))}
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.role === 'admin' && '👑 '}
+                  {user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email}
+                  {user.role === 'admin' && ' - Admin'}
+                </option>
+              ))}
             </select>
           </div>
           
@@ -598,10 +614,10 @@ setUsers(sortedUsers);
           <div className="form-group">
             <label htmlFor="year-select">Anno:</label>
             <select id="year-select" value={selectedYear} onChange={handleYearChange}>
-  {generateYearOptions().map(year => (
-    <option key={year} value={year.toString()}>{year}</option>
-  ))}
-</select>
+              {generateYearOptions().map(year => (
+                <option key={year} value={year.toString()}>{year}</option>
+              ))}
+            </select>
           </div>
         </div>
         
@@ -624,7 +640,7 @@ setUsers(sortedUsers);
           <li>Dettaglio giornaliero delle ore standard lavorate (max 8 ore)</li>
           <li>Dettaglio delle ore di straordinario</li>
           <li>Totale ore standard, straordinario e complessivo</li>
-          <li>Giorni di malattia (M), permesso (P) o assenza (A)</li>
+          <li>Giorni di malattia (M), permesso (P), assenza (A) o cassa integrazione (CIG)</li>
           <li>Note associate a ciascun giorno</li>
         </ul>
         <p>Se selezioni "Tutti i dipendenti", verrà generato un report con un foglio riepilogativo e un foglio dettagliato per ogni dipendente.</p>

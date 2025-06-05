@@ -180,7 +180,7 @@ const AdminWorkHours = () => {
 
   // Gestisce l'input delle ore totali o le lettere speciali
   const handleTotalHoursChange = (index, value) => {
-    const validLetters = ["M", "P", "F", "A", "m", "p", "f", "a"];
+    const validLetters = ["M", "P", "F", "A", "CIG", "m", "p", "f", "a", "cig"];
     
     if (validLetters.includes(value)) {
       const updatedEntries = [...timeEntries];
@@ -241,6 +241,7 @@ const AdminWorkHours = () => {
     if (total === "P") return "#2ecc71";
     if (total === "F") return "#9b59b6";
     if (total === "A") return "#000000";
+    if (total === "CIG") return "#f39c12"; // Arancione per CIG
     return "";
   };
 
@@ -468,6 +469,9 @@ const AdminWorkHours = () => {
                   </div>
                   <div className="legend-item">
                     <span style={{ backgroundColor: '#f8f9fa', padding: '2px 4px', borderRadius: '3px' }}>Grigio</span> - Weekend
+                  </div>
+                  <div className="legend-item">
+                    <span style={{ color: '#f39c12', fontWeight: 'bold' }}>CIG</span> - Cassa Integrazione
                   </div>
                   <div className="legend-item">
                     <span style={{ backgroundColor: '#fff3cd', padding: '2px 4px', borderRadius: '3px', borderLeft: '3px solid #f0ad4e' }}>Giallo</span> - Festività

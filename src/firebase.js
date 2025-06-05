@@ -385,13 +385,13 @@ export const saveWorkHours = async (userId, month, year, entries) => {
       // Gestisci i valori speciali
       let totalValue = entry.total;
       
-      // Se è una lettera speciale (M, P, F, A), mantienila come stringa
-      if (["M", "P", "F", "A"].includes(entry.total)) {
-        totalValue = entry.total;
-      } else {
-        // Altrimenti converti in numero
-        totalValue = parseInt(entry.total) || 0;
-      }
+      // Se è una lettera speciale (M, P, F, A, CIG), mantienila come stringa
+    if (["M", "P", "F", "A", "CIG"].includes(entry.total)) {
+      totalValue = entry.total;
+    } else {
+    // Altrimenti converti in numero
+      totalValue = parseInt(entry.total) || 0;
+    }
       
       return {
         date: entry.date,

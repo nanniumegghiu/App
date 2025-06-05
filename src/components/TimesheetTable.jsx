@@ -308,6 +308,9 @@ const TimesheetTable = ({
             <span style={{ color: '#000000', fontWeight: 'bold' }}>A</span> - Assenza
           </div>
           <div className="legend-item">
+            <span style={{ color: '#f39c12', fontWeight: 'bold' }}>CIG</span> - Cassa Integrazione
+          </div>
+          <div className="legend-item">
             <span>8</span> - Ore standard (max)
           </div>
           <div className="legend-item">
@@ -404,6 +407,20 @@ const TimesheetTable = ({
           )}
         </div>
       );
+    } else if (total === "CIG") {
+        return (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ color: '#f39c12', fontWeight: 'bold' }}>CIG (Cassa Integrazione)</span>
+            {isAutoSync && (
+              <span 
+                style={{ color: '#17a2b8', marginLeft: '6px', fontSize: '14px' }}
+                title="Inserito automaticamente da richiesta approvata"
+              >
+                🔄
+              </span>
+            )}
+          </div>
+        );
     } else {
       // Per i giorni senza dati, mostra solo trattini
       if (!hasData && total === 0 && overtime === 0) {
