@@ -397,3 +397,22 @@
     display: none !important;
   }
 }
+
+/* Info eliminazione per permessi multi-giorni */
+.delete-multi-day-info {
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 4px;
+}
+
+.delete-multi-day-info h5 {
+  color: #f57c00;
+  margin: 0 0 8px 0;
+}
+
+.delete-multi-day-details {
+  font-size: 0.9rem;
+  color: #e65100;
+}

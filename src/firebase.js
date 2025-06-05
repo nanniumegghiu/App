@@ -1018,12 +1018,28 @@ export const syncApprovedRequestToWorkHours = async (requestData) => {
     
     // Calcola le date da segnare
     const datesToMark = [];
-    
+
     if (requestData.type === 'permission') {
-      // Per i permessi, segna solo la data di inizio
       if (requestData.permissionType === 'daily') {
-        // Permesso giornaliero
+        // Permesso giornaliero - solo la data di inizio
         datesToMark.push(requestData.dateFrom);
+      } else if (requestData.permissionType === 'multi-day') {
+        // Permesso multi-giorni - tutte le date dal dateFrom al dateTo (solo giorni lavorativi)
+        const startDate = new Date(requestData.dateFrom);
+        const endDate = new Date(requestData.dateTo);
+        
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
+          // Salta i weekend (solo giorni lavorativi per i permessi)
+          const dayOfWeek = date.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Non domenica e non sabato
+            datesToMark.push(dateString);
+          }
+        }
       }
       // Per permessi orari, non segniamo nulla nel workHours (rimane gestione manuale)
       if (requestData.permissionType === 'hourly') {
@@ -1034,7 +1050,7 @@ export const syncApprovedRequestToWorkHours = async (requestData) => {
         };
       }
     } else if (requestData.type === 'vacation') {
-      // Per le ferie, segna tutte le date dal dateFrom al dateTo
+      // Per le ferie, segna tutte le date dal dateFrom al dateTo (solo giorni lavorativi)
       const startDate = new Date(requestData.dateFrom);
       const endDate = new Date(requestData.dateTo);
       
@@ -1499,9 +1515,36 @@ const desyncApprovedRequestFromWorkHours = async (requestData) => {
     // Determina le date da desincronizzare
     const datesToDesync = [];
     
-    if (requestData.type === 'permission' && requestData.permissionType === 'daily') {
-      // Permesso giornaliero - solo la data di inizio
-      datesToDesync.push(requestData.dateFrom);
+    if (requestData.type === 'permission') {
+      if (requestData.permissionType === 'daily') {
+        // Permesso giornaliero - solo la data di inizio
+        datesToDesync.push(requestData.dateFrom);
+      } else if (requestData.permissionType === 'multi-day') {
+        // Permesso multi-giorni - tutte le date dal dateFrom al dateTo (solo giorni lavorativi)
+        const startDate = new Date(requestData.dateFrom);
+        const endDate = new Date(requestData.dateTo);
+        
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
+          // Salta i weekend (solo giorni lavorativi per i permessi)
+          const dayOfWeek = date.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Non domenica e non sabato
+            datesToDesync.push(dateString);
+          }
+        }
+      } else if (requestData.permissionType === 'hourly') {
+        // Permesso orario - nessuna desincronizzazione automatica
+        console.log("Permesso orario, nessuna desincronizzazione automatica necessaria");
+        return {
+          success: true,
+          message: "Permesso orario: nessuna desincronizzazione automatica necessaria",
+          datesDesynchronized: 0
+        };
+      }
     } else if (requestData.type === 'vacation') {
       // Ferie - tutte le date dal dateFrom al dateTo (solo giorni lavorativi)
       const startDate = new Date(requestData.dateFrom);
@@ -1539,14 +1582,6 @@ const desyncApprovedRequestFromWorkHours = async (requestData) => {
           }
         }
       }
-    } else if (requestData.type === 'permission' && requestData.permissionType === 'hourly') {
-      // Permesso orario - nessuna desincronizzazione automatica
-      console.log("Permesso orario, nessuna desincronizzazione automatica necessaria");
-      return {
-        success: true,
-        message: "Permesso orario: nessuna desincronizzazione automatica necessaria",
-        datesDesynchronized: 0
-      };
     }
     
     console.log(`Date da desincronizzare:`, datesToDesync);

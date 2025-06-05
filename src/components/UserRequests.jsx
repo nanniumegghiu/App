@@ -103,6 +103,22 @@ const UserRequests = () => {
     }
   };
 
+  // Aggiungi anche questa funzione di supporto se non esiste già:
+const calculateDaysBetween = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Normalizza le date (rimuovi l'ora)
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  // Calcola la differenza in millisecondi
+  const diffTime = Math.abs(end - start);
+  
+  // Converti in giorni e aggiungi 1 (per includere entrambi i giorni)
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+};
+
   // Ottieni la classe CSS per lo stato
   const getStatusClass = (status) => {
     switch (status) {
@@ -155,44 +171,81 @@ const UserRequests = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="text-center">
-                      Non hai ancora fatto nessuna richiesta
-                    </td>
-                  </tr>
-                ) : (
-                  requests.map((request) => (
-                    <tr key={request.id}>
-                      <td>{getRequestTypeName(request.type)}</td>
-                      <td>
-                        {formatDate(request.dateFrom)}
-                        {request.dateTo && ` - ${formatDate(request.dateTo)}`}
-                      </td>
-                      <td>
-                        {request.type === 'permission' && request.permissionType === 'hourly' && (
-                          <>
-                            {request.timeFrom} - {request.timeTo}
-                          </>
-                        )}
-                        {request.type === 'permission' && request.permissionType === 'daily' && (
-                          'Giornata intera'
-                        )}
-                        {request.type === 'sickness' && request.fileInfo && (
-                          <span className="file-indicator">
-                            Certificato caricato: {request.fileInfo.fileName || 'Certificato'}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`status-badge ${getStatusClass(request.status)}`}>
-                          {getStatusName(request.status)}
-                        </span>
-                      </td>
-                      <td>{request.adminNotes || '-'}</td>
-                    </tr>
-                  ))
-                )}
+              {requests.length === 0 ? (
+  <tr>
+    <td colSpan="5" className="text-center">
+      Non hai ancora fatto nessuna richiesta
+    </td>
+  </tr>
+) : (
+  requests.map((request) => (
+    <tr key={request.id}>
+      <td>{getRequestTypeName(request.type)}</td>
+      <td>
+        {formatDate(request.dateFrom)}
+        {(request.dateTo && (request.type === 'vacation' || request.permissionType === 'multi-day')) && 
+          ` - ${formatDate(request.dateTo)}`}
+      </td>
+      <td>
+        {/* Dettagli specifici per tipo di richiesta */}
+        {request.type === 'permission' && request.permissionType === 'hourly' && (
+          <>
+            Orario: {request.timeFrom} - {request.timeTo}
+          </>
+        )}
+        {request.type === 'permission' && request.permissionType === 'daily' && (
+          'Giornata intera'
+        )}
+        {request.type === 'permission' && request.permissionType === 'multi-day' && (
+          <>
+            <div>Multi-giorni</div>
+            {request.workingDaysCount && (
+              <small className="text-muted">
+                {request.workingDaysCount} giorni lavorativi
+              </small>
+            )}
+          </>
+        )}
+        {request.type === 'vacation' && (
+          <>
+            <div>Ferie</div>
+            {request.dateFrom && request.dateTo && (
+              <small className="text-muted">
+                {calculateDaysBetween(request.dateFrom, request.dateTo)} giorni
+              </small>
+            )}
+          </>
+        )}
+        {request.type === 'sickness' && request.fileInfo && (
+          <span className="file-indicator">
+            <span className="file-icon">📄</span>
+            Certificato: {request.fileInfo.fileName || 'Certificato medico'}
+          </span>
+        )}
+      </td>
+      <td>
+        <span className={`status-badge ${getStatusClass(request.status)}`}>
+          {getStatusName(request.status)}
+        </span>
+        {/* Indicatore sincronizzazione per richieste approvate */}
+        {request.status === 'approved' && request.syncInfo && (
+          <div className="sync-status-indicator">
+            {request.syncInfo.syncResult ? (
+              <small className="text-success">
+                ✅ Sincronizzato ({request.syncInfo.syncDetails?.totalDates || 0} date)
+              </small>
+            ) : (
+              <small className="text-warning">
+                ⚠️ Errore sincronizzazione
+              </small>
+            )}
+          </div>
+        )}
+      </td>
+      <td>{request.adminNotes || '-'}</td>
+    </tr>
+  ))
+)}
               </tbody>
             </table>
           </div>

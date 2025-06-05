@@ -302,28 +302,56 @@ const AdminLeaveRequests = () => {
   };
   
   // Ottieni i dettagli della richiesta in base al tipo
-  const getRequestDetails = (request) => {
-    let details = [];
-    
-    if (request.type === 'permission') {
-      details.push(request.permissionType === 'daily' ? 'Giornaliero' : 'Orario');
-      
-      if (request.permissionType === 'hourly' && request.timeFrom && request.timeTo) {
+const getRequestDetails = (request) => {
+  let details = [];
+  
+  if (request.type === 'permission') {
+    if (request.permissionType === 'daily') {
+      details.push('Giornaliero');
+    } else if (request.permissionType === 'hourly') {
+      details.push('Orario');
+      if (request.timeFrom && request.timeTo) {
         details.push(`${request.timeFrom} - ${request.timeTo}`);
       }
-    } else if (request.type === 'vacation') {
-      if (request.dateTo) {
-        const days = calculateDaysBetween(request.dateFrom, request.dateTo);
-        details.push(`${days} ${days === 1 ? 'giorno' : 'giorni'}`);
-      }
-    } else if (request.type === 'sickness') {
-      if (request.fileUrl) {
-        details.push('Certificato medico allegato');
+    } else if (request.permissionType === 'multi-day') {
+      details.push('Multi-giorni');
+      if (request.workingDaysCount) {
+        details.push(`${request.workingDaysCount} giorni lavorativi`);
+      } else if (request.dateFrom && request.dateTo) {
+        const days = calculateWorkingDaysBetween(request.dateFrom, request.dateTo);
+        details.push(`${days} giorni lavorativi`);
       }
     }
-    
-    return details.join(' • ');
-  };
+  } else if (request.type === 'vacation') {
+    if (request.dateTo) {
+      const days = calculateDaysBetween(request.dateFrom, request.dateTo);
+      details.push(`${days} ${days === 1 ? 'giorno' : 'giorni'}`);
+    }
+  } else if (request.type === 'sickness') {
+    if (request.fileUrl) {
+      details.push('Certificato medico allegato');
+    }
+  }
+  
+  return details.join(' • ');
+};
+
+// Aggiungi questa nuova funzione per calcolare i giorni lavorativi
+const calculateWorkingDaysBetween = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let workingDays = 0;
+  
+  for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+    const dayOfWeek = date.getDay();
+    // Escludi sabato (6) e domenica (0)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      workingDays++;
+    }
+  }
+  
+  return workingDays;
+};
   
   // Calcola il numero di giorni tra due date
   const calculateDaysBetween = (startDate, endDate) => {
@@ -685,33 +713,36 @@ const AdminLeaveRequests = () => {
               
               {/* Info sulla sincronizzazione se si sta approvando */}
               {selectedRequest.defaultStatus === 'approved' && (
-                <div className="sync-warning" style={{
-                  backgroundColor: '#fff3cd',
-                  border: '1px solid #ffeaa7',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  marginBottom: '15px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '16px', marginRight: '8px' }}>🔄</span>
-                    <strong>Sincronizzazione Automatica</strong>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '14px' }}>
-                    {selectedRequest.type === 'vacation' && (
-                      <>Approvando questa richiesta di <strong>ferie</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>F</code> nel calendario ore.</>
-                    )}
-                    {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'daily' && (
-                      <>Approvando questa richiesta di <strong>permesso giornaliero</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
-                    )}
-                    {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'hourly' && (
-                      <>Approvando questa richiesta di <strong>permesso orario</strong>, non verrà effettuata nessuna modifica automatica al calendario ore. Sarà necessario gestire manualmente le ore.</>
-                    )}
-                    {selectedRequest.type === 'sickness' && (
-                      <>Approvando questa richiesta di <strong>malattia</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>M</code> nel calendario ore.</>
-                    )}
-                  </p>
-                </div>
-              )}
+  <div className="sync-warning" style={{
+    backgroundColor: '#fff3cd',
+    border: '1px solid #ffeaa7',
+    borderRadius: '4px',
+    padding: '12px',
+    marginBottom: '15px'
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+      <span style={{ fontSize: '16px', marginRight: '8px' }}>🔄</span>
+      <strong>Sincronizzazione Automatica</strong>
+    </div>
+    <p style={{ margin: 0, fontSize: '14px' }}>
+      {selectedRequest.type === 'vacation' && (
+        <>Approvando questa richiesta di <strong>ferie</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>F</code> nel calendario ore.</>
+      )}
+      {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'daily' && (
+        <>Approvando questa richiesta di <strong>permesso giornaliero</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
+      )}
+      {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'multi-day' && (
+        <>Approvando questa richiesta di <strong>permesso multi-giorni</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} (solo giorni lavorativi) verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
+      )}
+      {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'hourly' && (
+        <>Approvando questa richiesta di <strong>permesso orario</strong>, non verrà effettuata nessuna modifica automatica al calendario ore. Sarà necessario gestire manualmente le ore.</>
+      )}
+      {selectedRequest.type === 'sickness' && (
+        <>Approvando questa richiesta di <strong>malattia</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>M</code> nel calendario ore.</>
+      )}
+    </p>
+  </div>
+)}
               
               <div className="form-group">
                 <label htmlFor="admin-notes">Note (opzionale)</label>

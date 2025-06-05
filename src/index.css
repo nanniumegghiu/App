@@ -1962,3 +1962,27 @@ tbody tr:hover {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* Supporto per permessi multi-giorni nella tabella */
+.request-details-multi-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.working-days-count {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.permission-type-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 2px;
+}

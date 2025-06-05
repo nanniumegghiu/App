@@ -1,10 +1,10 @@
-// src/components/RequestForm.jsx (with improved error handling)
+// src/components/RequestForm.jsx - Aggiornato con permessi multi-giorni
 import React, { useState, useRef, useEffect } from 'react';
 import { auth, submitLeaveRequest } from '../firebase';
 
 const RequestForm = ({ isVisible, onClose, onSubmit }) => {
   const [requestType, setRequestType] = useState('');
-  const [permissionType, setPermissionType] = useState('daily'); // 'daily' o 'hourly'
+  const [permissionType, setPermissionType] = useState('daily'); // 'daily', 'hourly', 'multi-day'
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [timeFrom, setTimeFrom] = useState('');
@@ -46,7 +46,7 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
       setTimeFrom('');
       setTimeTo('');
     }
-    if (e.target.value !== 'vacation') {
+    if (e.target.value !== 'vacation' && e.target.value !== 'permission') {
       setDateTo('');
     }
     if (e.target.value !== 'sickness') {
@@ -55,6 +55,22 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  // Gestisce il cambio di tipo di permesso
+  const handlePermissionTypeChange = (e) => {
+    setPermissionType(e.target.value);
+    // Reset campi non rilevanti quando cambia il tipo
+    if (e.target.value === 'daily') {
+      setDateTo('');
+      setTimeFrom('');
+      setTimeTo('');
+    } else if (e.target.value === 'hourly') {
+      setDateTo('');
+    } else if (e.target.value === 'multi-day') {
+      setTimeFrom('');
+      setTimeTo('');
     }
   };
   
@@ -88,6 +104,23 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
       setError('');
     }
   };
+
+  // Calcola il numero di giorni lavorativi tra due date
+  const calculateWorkingDays = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let workingDays = 0;
+    
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const dayOfWeek = date.getDay();
+      // Escludi sabato (6) e domenica (0)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDays++;
+      }
+    }
+    
+    return workingDays;
+  };
   
   // Validazione del form
   const validateForm = () => {
@@ -100,7 +133,7 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
     
     if (requestType === 'permission') {
       if (!dateFrom) {
-        setError('Seleziona la data');
+        setError('Seleziona la data di inizio');
         return false;
       }
       
@@ -113,6 +146,29 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
         // Controlla che l'orario di fine sia successivo a quello di inizio
         if (timeFrom >= timeTo) {
           setError('L\'orario di fine deve essere successivo all\'orario di inizio');
+          return false;
+        }
+      } else if (permissionType === 'multi-day') {
+        if (!dateTo) {
+          setError('Seleziona la data di fine per il permesso multi-giorni');
+          return false;
+        }
+        
+        // Controlla che la data di fine sia successiva a quella di inizio
+        if (dateFrom > dateTo) {
+          setError('La data di fine deve essere successiva alla data di inizio');
+          return false;
+        }
+
+        // Calcola e valida il numero di giorni lavorativi
+        const workingDays = calculateWorkingDays(dateFrom, dateTo);
+        if (workingDays > 10) {
+          setError('I permessi multi-giorni non possono superare i 10 giorni lavorativi. Per periodi più lunghi, utilizza le ferie.');
+          return false;
+        }
+        
+        if (workingDays === 0) {
+          setError('Il periodo selezionato non include giorni lavorativi.');
           return false;
         }
       }
@@ -177,9 +233,13 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
       // Aggiungi campi specifici in base al tipo di richiesta
       if (requestType === 'permission') {
         requestData.permissionType = permissionType;
+        
         if (permissionType === 'hourly') {
           requestData.timeFrom = timeFrom;
           requestData.timeTo = timeTo;
+        } else if (permissionType === 'multi-day') {
+          requestData.dateTo = dateTo;
+          requestData.workingDaysCount = calculateWorkingDays(dateFrom, dateTo);
         }
       } else if (requestType === 'vacation') {
         requestData.dateTo = dateTo;
@@ -218,6 +278,13 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Formatta le date per la visualizzazione
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('it-IT');
   };
   
   // Se il form non è visibile, non renderizzare nulla
@@ -266,9 +333,9 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
                       name="permission-type" 
                       value="daily" 
                       checked={permissionType === 'daily'} 
-                      onChange={() => setPermissionType('daily')} 
+                      onChange={handlePermissionTypeChange} 
                     />
-                    Giornaliero
+                    Giornaliero (1 giorno)
                   </label>
                   <label className="radio-label">
                     <input 
@@ -276,15 +343,27 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
                       name="permission-type" 
                       value="hourly" 
                       checked={permissionType === 'hourly'} 
-                      onChange={() => setPermissionType('hourly')} 
+                      onChange={handlePermissionTypeChange} 
                     />
-                    Orario
+                    Orario (parte del giorno)
+                  </label>
+                  <label className="radio-label">
+                    <input 
+                      type="radio" 
+                      name="permission-type" 
+                      value="multi-day" 
+                      checked={permissionType === 'multi-day'} 
+                      onChange={handlePermissionTypeChange} 
+                    />
+                    Multi-giorni (max 10 giorni lavorativi)
                   </label>
                 </div>
               </div>
               
               <div className="form-group">
-                <label htmlFor="date-from">Data</label>
+                <label htmlFor="date-from">
+                  {permissionType === 'multi-day' ? 'Data inizio' : 'Data'}
+                </label>
                 <input 
                   type="date" 
                   id="date-from" 
@@ -293,6 +372,49 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
                   required
                 />
               </div>
+
+              {permissionType === 'multi-day' && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="date-to">Data fine</label>
+                    <input 
+                      type="date" 
+                      id="date-to" 
+                      value={dateTo} 
+                      onChange={(e) => setDateTo(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  {dateFrom && dateTo && dateFrom <= dateTo && (
+                    <div className="permission-summary">
+                      <div className="summary-box">
+                        <h4>📋 Riepilogo Permesso Multi-giorni</h4>
+                        <div className="summary-details">
+                          <div className="summary-item">
+                            <span className="summary-label">Dal:</span>
+                            <span className="summary-value">{formatDate(dateFrom)}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Al:</span>
+                            <span className="summary-value">{formatDate(dateTo)}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Giorni lavorativi:</span>
+                            <span className="summary-value highlight">{calculateWorkingDays(dateFrom, dateTo)}</span>
+                          </div>
+                        </div>
+                        <div className="summary-note">
+                          <small>
+                            ℹ️ Vengono conteggiati solo i giorni lavorativi (esclusi weekend). 
+                            Massimo consentito: 10 giorni lavorativi.
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
               
               {permissionType === 'hourly' && (
                 <div className="form-row">
