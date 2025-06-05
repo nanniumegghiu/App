@@ -1,0 +1,638 @@
+/* src/components/userInfo.css - Stili dedicati per UserInfo Component */
+
+/* Container principale */
+.user-info-container {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    margin-bottom: 25px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .user-info-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  /* Header section */
+  .user-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .user-info-details h2 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 1.6rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .user-info-details h2::before {
+    content: '📊';
+    font-size: 1.2em;
+  }
+  
+  .selection-description {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .selection-description::before {
+    content: '📅';
+    font-size: 0.9em;
+  }
+  
+  /* Actions section */
+  .user-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
+  /* Month selector */
+  .month-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .month-selector label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+  }
+  
+  .month-selector select {
+    border: none;
+    background: transparent;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    outline: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .month-selector select:focus {
+    background: #f8f9fa;
+    color: #3498db;
+  }
+  
+  .month-selector select:hover {
+    background: #f8f9fa;
+  }
+  
+  /* QR Code toggle button */
+  .qrcode-toggle-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+  }
+  
+  .qrcode-toggle-btn::before {
+    content: '📱';
+    font-size: 1em;
+  }
+  
+  .qrcode-toggle-btn:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+  }
+  
+  .qrcode-toggle-btn:active {
+    transform: translateY(0);
+  }
+  
+  /* QR Code container */
+  .qrcode-container {
+    background: white;
+    padding: 25px;
+    border-top: 1px solid #e9ecef;
+    animation: slideDown 0.3s ease-out;
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Monthly stats card */
+  .monthly-stats-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    margin-top: 25px;
+    padding: 25px;
+    transition: all 0.3s ease;
+  }
+  
+  .monthly-stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  .monthly-stats-card h3 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  .monthly-stats-card h3::before {
+    content: '📈';
+    font-size: 1.1em;
+  }
+  
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #3498db;
+    transition: all 0.3s ease;
+  }
+  
+  .stat-item:hover {
+    background: #f8f9fa;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-item:hover::before {
+    height: 4px;
+    background: #2980b9;
+  }
+  
+  /* Stat value styling */
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    line-height: 1;
+    display: block;
+  }
+  
+  /* Colori specifici per diversi tipi di stat */
+  .stat-item:nth-child(1) .stat-value {
+    color: #3498db; /* Giorni lavorati - blu */
+  }
+  
+  .stat-item:nth-child(2) .stat-value {
+    color: #27ae60; /* Ore totali - verde */
+  }
+  
+  .stat-item:nth-child(3) .stat-value {
+    color: #e67e22; /* Straordinari - arancione */
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
+    color: #e74c3c; /* Malattia - rosso */
+  }
+  
+  .stat-item:nth-child(5) .stat-value {
+    color: #9b59b6; /* Permessi - viola */
+  }
+  
+  .stat-item:nth-child(6) .stat-value {
+    color: #34495e; /* Assenze - grigio scuro */
+  }
+  
+  /* Stat label styling */
+  .stat-label {
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+    line-height: 1.2;
+  }
+  
+  /* Stat note */
+  .stat-note {
+    background: white;
+    border: 1px solid #f39c12;
+    border-left: 4px solid #f39c12;
+    border-radius: 8px;
+    padding: 12px 15px;
+    color: #f57c00;
+    font-size: 0.85rem;
+    text-align: center;
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .stat-note::before {
+    content: 'ℹ️';
+    font-size: 1em;
+  }
+  
+  /* Loading state */
+  .stats-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #6c757d;
+    font-style: italic;
+  }
+  
+  .stats-loading::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e9ecef;
+    border-top-color: #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .user-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 15px;
+    }
+  
+    .user-info-details h2 {
+      font-size: 1.4rem;
+    }
+  
+    .user-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+  
+    .month-selector {
+      flex: 1;
+      min-width: 0;
+    }
+  
+    .month-selector select {
+      width: 100%;
+      min-width: 0;
+    }
+  
+    .qrcode-toggle-btn {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+    }
+  
+    .monthly-stats-card {
+      padding: 20px;
+      margin-top: 20px;
+    }
+  
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+  
+    .stat-item {
+      padding: 15px 10px;
+    }
+  
+    .stat-value {
+      font-size: 1.6rem;
+    }
+  
+    .stat-label {
+      font-size: 0.8rem;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .user-info {
+      padding: 15px;
+    }
+  
+    .user-info-details h2 {
+      font-size: 1.2rem;
+    }
+  
+    .selection-description {
+      font-size: 0.85rem;
+    }
+  
+    .user-actions {
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+  
+    .month-selector,
+    .qrcode-toggle-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  
+    .qrcode-container {
+      padding: 20px 15px;
+    }
+  
+    .monthly-stats-card {
+      padding: 15px;
+    }
+  
+    .monthly-stats-card h3 {
+      font-size: 1.1rem;
+    }
+  
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+  
+    .stat-item {
+      padding: 12px 8px;
+    }
+  
+    .stat-value {
+      font-size: 1.4rem;
+    }
+  
+    .stat-label {
+      font-size: 0.75rem;
+    }
+  
+    .stat-note {
+      font-size: 0.8rem;
+      padding: 10px 12px;
+    }
+  }
+  
+  /* Effetti speciali per valori positivi */
+  .stat-item .stat-value[data-positive="true"] {
+    position: relative;
+  }
+  
+  .stat-item .stat-value[data-positive="true"]::after {
+    content: '✨';
+    position: absolute;
+    right: -15px;
+    top: 0;
+    font-size: 0.6em;
+    opacity: 0.7;
+  }
+  
+  /* Stati vuoti */
+  .stats-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+    background: white;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+  }
+  
+  .stats-empty::before {
+    content: '📊';
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+  
+  /* Animazioni di entrata */
+  .stat-item {
+    animation: fadeInUp 0.5s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  .stat-item:nth-child(1) { animation-delay: 0.1s; }
+  .stat-item:nth-child(2) { animation-delay: 0.2s; }
+  .stat-item:nth-child(3) { animation-delay: 0.3s; }
+  .stat-item:nth-child(4) { animation-delay: 0.4s; }
+  .stat-item:nth-child(5) { animation-delay: 0.5s; }
+  .stat-item:nth-child(6) { animation-delay: 0.6s; }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Focus states per accessibilità */
+  .month-selector select:focus,
+  .qrcode-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+  }
+  
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .user-info-container,
+    .monthly-stats-card {
+      background-color: white;
+      border-color: #e9ecef;
+      color: #2c3e50;
+    }
+    
+    .user-info {
+      background: white;
+      border-bottom-color: #e9ecef;
+    }
+    
+    .user-info-details h2 {
+      color: #2c3e50;
+    }
+    
+    .selection-description {
+      color: #6c757d;
+    }
+    
+    .month-selector {
+      background: white;
+      border-color: #dee2e6;
+    }
+    
+    .month-selector label,
+    .month-selector select {
+      color: #2c3e50;
+    }
+    
+    .stat-item {
+      background: white;
+      border-color: #e9ecef;
+    }
+    
+    .stat-label {
+      color: #6c757d;
+    }
+    
+    .stat-note {
+      background: white;
+      border-color: #f39c12;
+      color: #f57c00;
+    }
+  }
+  
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .user-info-container,
+    .monthly-stats-card {
+      border: 2px solid #000;
+    }
+    
+    .stat-item {
+      border: 2px solid #000;
+    }
+    
+    .qrcode-toggle-btn {
+      border: 2px solid #000;
+    }
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .user-info-container,
+    .monthly-stats-card,
+    .stat-item,
+    .qrcode-toggle-btn {
+      transition: none;
+    }
+    
+    .user-info-container:hover,
+    .monthly-stats-card:hover,
+    .stat-item:hover,
+    .qrcode-toggle-btn:hover {
+      transform: none;
+    }
+    
+    .qrcode-container {
+      animation: none;
+    }
+    
+    .stat-item {
+      animation: none;
+    }
+    
+    .stats-loading::before {
+      animation: none;
+    }
+  }
+  
+  /* Miglioramenti tipografici */
+  .user-info-details h2,
+  .monthly-stats-card h3 {
+    letter-spacing: -0.02em;
+  }
+  
+  .stat-value {
+    font-feature-settings: 'tnum' 1; /* Numeri tabulari */
+  }
+  
+  .stat-label {
+    font-feature-settings: 'smcp' 1; /* Small caps se supportate */
+  }
+  
+  /* Print styles */
+  @media print {
+    .user-info-container,
+    .monthly-stats-card {
+      background: white !important;
+      box-shadow: none !important;
+      border: 1px solid #000 !important;
+      break-inside: avoid;
+    }
+    
+    .qrcode-toggle-btn {
+      display: none !important;
+    }
+    
+    .qrcode-container {
+      display: none !important;
+    }
+    
+    .stats-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+    
+    .stat-item {
+      background: white !important;
+      border: 1px solid #000 !important;
+    }
+  }

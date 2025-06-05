@@ -1,4 +1,4 @@
-// Updated App.jsx with modified Dashboard and Hours Management sections
+// App.jsx - Correzione della logica per il mese di default
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import UserInfo from './components/UserInfo';
@@ -23,36 +23,38 @@ import './components/userQRCode.css';
 import './components/dashboard.css';
 import './components/timekeepingScanner.css';
 
-  // Function to determine the default month and year to show
-  const getDefaultMonthAndYear = () => {
-    const currentDate = new Date();
-    const currentDay = currentDate.getDate();
-    const currentMonth = currentDate.getMonth() + 1; // getMonth returns 0-11
-    const currentYear = currentDate.getFullYear();
-  
-    // If we're in the first 5 days of the month, show previous month
-    if (currentDay <= 5) {
-      // Calculate previous month (handling January case)
-      let previousMonth = currentMonth - 1;
-      let previousYear = currentYear;
-      
-      if (previousMonth === 0) {
-        previousMonth = 12;
-        previousYear = currentYear - 1;
-      }
-      
-      return {
-        month: previousMonth.toString(),
-        year: previousYear.toString()
-      };
+// CORRETTO: Funzione per determinare il mese e anno di default
+const getDefaultMonthAndYear = () => {
+  const currentDate = new Date();
+  const currentDay = currentDate.getDate();
+  const currentMonth = currentDate.getMonth() + 1; // getMonth returns 0-11
+  const currentYear = currentDate.getFullYear();
+
+  // LOGICA CORRETTA:
+  // - Se siamo nei primi 4 giorni del mese (1-4), mostra il mese precedente
+  // - Dal giorno 5 in poi, mostra sempre il mese corrente
+  if (currentDay <= 4) {
+    // Calcola il mese precedente
+    let previousMonth = currentMonth - 1;
+    let previousYear = currentYear;
+    
+    if (previousMonth === 0) {
+      previousMonth = 12;
+      previousYear = currentYear - 1;
     }
     
-    // Otherwise show current month
     return {
-      month: currentMonth.toString(),
-      year: currentYear.toString()
+      month: previousMonth.toString(),
+      year: previousYear.toString()
     };
+  }
+  
+  // Dal giorno 5 in poi, mostra sempre il mese corrente
+  return {
+    month: currentMonth.toString(),
+    year: currentYear.toString()
   };
+};
 
 function App() {
   const defaultSelection = getDefaultMonthAndYear();
@@ -261,10 +263,10 @@ function App() {
           />
 
           {activeTab === 'dashboard' ? (
-            // Dashboard tab content - SIMPLIFIED VERSION
+            // Dashboard tab content
             <UserDashboard />
           ) : activeTab === 'hours' ? (
-            // Hours Management tab content - WITH MONTHLY STATS ADDED
+            // Hours Management tab content
             <>
               <UserInfo
                 selectedMonth={selectedMonth}

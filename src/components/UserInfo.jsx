@@ -1,10 +1,11 @@
-// src/components/UserInfo.jsx
+// src/components/UserInfo.jsx - Corretto
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import UserQRCode from './UserQRCode';
 import './userQRCode.css';
 import './dashboard.css';
+import './userInfo.css';
 
 const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }) => {
   const [availableMonths, setAvailableMonths] = useState([]);
@@ -30,10 +31,11 @@ const UserInfo = ({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYe
       previousYear = currentYear - 1;
     }
 
-    // Determina quale mese dovrebbe essere visualizzato di default
-    // Se siamo nei primi 5 giorni del mese, mostra il mese precedente
-    const defaultMonth = currentDay <= 5 ? previousMonth.toString() : currentMonth.toString();
-    const defaultYear = currentDay <= 5 && currentMonth === 1 ? previousYear.toString() : currentYear.toString();
+    // LOGICA CORRETTA:
+    // - Se siamo nei primi 4 giorni del mese (1-4), mostra il mese precedente come default
+    // - Dal giorno 5 in poi, mostra sempre il mese corrente come default
+    const defaultMonth = currentDay <= 4 ? previousMonth.toString() : currentMonth.toString();
+    const defaultYear = currentDay <= 4 && currentMonth === 1 ? previousYear.toString() : currentYear.toString();
 
     // Costruisci l'array dei mesi disponibili
     const months = [

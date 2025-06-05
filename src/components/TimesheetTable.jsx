@@ -1,4 +1,4 @@
-// src/components/TimesheetTable.jsx - Versione con indicatori di sincronizzazione richieste
+// src/components/TimesheetTable.jsx - Versione con logica corretta per le segnalazioni
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -386,7 +386,7 @@ const TimesheetTable = ({
     return { standardHours, overtimeHours, totalHours: standardHours + overtimeHours };
   };
 
-  // Controlla se è possibile segnalare errori (prima del giorno 5 del mese successivo)
+  // LOGICA CORRETTA per la segnalazione errori
   const canReportError = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -408,16 +408,18 @@ const TimesheetTable = ({
       nextYear += 1;
     }
     
-    // Controlla se oggi è oltre il giorno 5 del mese successivo
+    // LOGICA CORRETTA:
+    // - Segnalazioni consentite fino al giorno 4 del mese successivo (incluso)
+    // - Dal giorno 5 in poi del mese successivo, non è più possibile segnalare
     if (
       (currentYear > nextYear) || 
       (currentYear === nextYear && currentMonth > nextMonth) ||
-      (currentYear === nextYear && currentMonth === nextMonth && currentDay > 5)
+      (currentYear === nextYear && currentMonth === nextMonth && currentDay >= 5)
     ) {
-      return false; // Non è più possibile segnalare errori
+      return false; // Non è più possibile segnalare errori (dal giorno 5 incluso)
     }
     
-    return true; // È ancora possibile segnalare errori
+    return true; // È ancora possibile segnalare errori (fino al giorno 4 incluso)
   };
 
   // Verifica se è possibile segnalare errori
@@ -457,7 +459,7 @@ const TimesheetTable = ({
                 <span>
                   <strong>Termine scaduto:</strong> Non è più possibile segnalare errori per {getMonthName(selectedMonth)} {selectedYear}. 
                   <small className="d-block text-muted" style={{ marginTop: '4px' }}>
-                    La segnalazione degli errori è consentita fino al 5 del mese successivo.
+                    La segnalazione degli errori è consentita fino al 4 del mese successivo.
                   </small>
                 </span>
               </div>
