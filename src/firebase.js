@@ -625,6 +625,434 @@ export const getUserWorkHoursByMonth = async (userId, month, year) => {
   }
 };
 
+// =============================================================================
+// FUNZIONI PER LA GESTIONE DELLE NOTIFICHE
+// =============================================================================
+
+/**
+ * Crea una nuova notifica per un utente
+ * @param {string} userId - ID dell'utente destinatario
+ * @param {string} type - Tipo di notifica ('report_status' | 'request_status')
+ * @param {string} relatedId - ID della segnalazione/richiesta correlata
+ * @param {string} title - Titolo della notifica
+ * @param {string} message - Messaggio della notifica
+ * @param {Object} data - Dati aggiuntivi specifici per tipo
+ * @returns {Promise<Object>} - Dati della notifica creata
+ */
+export const createNotification = async (userId, type, relatedId, title, message, data = {}) => {
+  try {
+    console.log(`createNotification: Creazione notifica per userId=${userId}, type=${type}`);
+    
+    if (!userId) throw new Error("userId è obbligatorio");
+    if (!type) throw new Error("type è obbligatorio");
+    if (!relatedId) throw new Error("relatedId è obbligatorio");
+    if (!title) throw new Error("title è obbligatorio");
+    if (!message) throw new Error("message è obbligatorio");
+    
+    // Validazione del tipo
+    const validTypes = ['report_status', 'request_status'];
+    if (!validTypes.includes(type)) {
+      throw new Error(`Tipo di notifica non valido: ${type}. Tipi supportati: ${validTypes.join(', ')}`);
+    }
+    
+    // Prepara i dati della notifica
+    const notificationData = {
+      userId,
+      type,
+      relatedId,
+      title,
+      message,
+      data,
+      createdAt: serverTimestamp()
+    };
+    
+    console.log("createNotification: Dati notifica:", notificationData);
+    
+    // Salva la notifica nel database
+    const notificationsRef = collection(db, "notifications");
+    const docRef = await addDoc(notificationsRef, notificationData);
+    
+    console.log(`createNotification: Notifica creata con successo, ID: ${docRef.id}`);
+    
+    return {
+      id: docRef.id,
+      ...notificationData,
+      createdAt: new Date()
+    };
+  } catch (error) {
+    console.error("createNotification: Errore nella creazione della notifica:", error);
+    throw error;
+  }
+};
+
+/**
+ * Recupera tutte le notifiche non lette di un utente
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Array>} - Array delle notifiche non lette
+ */
+export const getUserUnreadNotifications = async (userId) => {
+  try {
+    console.log(`getUserUnreadNotifications: Caricamento notifiche per userId=${userId}`);
+    
+    if (!userId) throw new Error("userId è obbligatorio");
+    
+    const notificationsRef = collection(db, "notifications");
+    const q = query(
+      notificationsRef,
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    console.log(`getUserUnreadNotifications: Trovate ${querySnapshot.size} notifiche`);
+    
+    const notifications = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || new Date()
+      };
+    });
+    
+    console.log("getUserUnreadNotifications: Notifiche caricate:", notifications);
+    return notifications;
+  } catch (error) {
+    console.error("getUserUnreadNotifications: Errore nel caricamento delle notifiche:", error);
+    throw error;
+  }
+};
+
+/**
+ * Segna una notifica come letta (la elimina)
+ * @param {string} notificationId - ID della notifica
+ * @returns {Promise<boolean>} - true se l'operazione è riuscita
+ */
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    console.log(`markNotificationAsRead: Eliminazione notifica ID=${notificationId}`);
+    
+    if (!notificationId) throw new Error("notificationId è obbligatorio");
+    
+    const notificationRef = doc(db, "notifications", notificationId);
+    
+    // Verifica che la notifica esista
+    const notificationDoc = await getDoc(notificationRef);
+    if (!notificationDoc.exists()) {
+      throw new Error(`Notifica con ID ${notificationId} non trovata`);
+    }
+    
+    // Elimina la notifica (segnarla come letta = eliminarla)
+    await deleteDoc(notificationRef);
+    
+    console.log(`markNotificationAsRead: Notifica ${notificationId} eliminata con successo`);
+    return true;
+  } catch (error) {
+    console.error("markNotificationAsRead: Errore nell'eliminazione della notifica:", error);
+    throw error;
+  }
+};
+
+/**
+ * Segna tutte le notifiche di un utente come lette (le elimina tutte)
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<number>} - Numero di notifiche eliminate
+ */
+export const markAllNotificationsAsRead = async (userId) => {
+  try {
+    console.log(`markAllNotificationsAsRead: Eliminazione tutte le notifiche per userId=${userId}`);
+    
+    if (!userId) throw new Error("userId è obbligatorio");
+    
+    // Recupera tutte le notifiche dell'utente
+    const notificationsRef = collection(db, "notifications");
+    const q = query(notificationsRef, where("userId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    
+    console.log(`markAllNotificationsAsRead: Trovate ${querySnapshot.size} notifiche da eliminare`);
+    
+    if (querySnapshot.empty) {
+      console.log("markAllNotificationsAsRead: Nessuna notifica da eliminare");
+      return 0;
+    }
+    
+    // Elimina tutte le notifiche in batch
+    const batch = [];
+    let deletedCount = 0;
+    
+    // Firestore ha un limite di 500 operazioni per batch
+    for (const doc of querySnapshot.docs) {
+      batch.push(deleteDoc(doc.ref));
+      deletedCount++;
+      
+      // Se raggiungiamo 500 operazioni, esegui il batch e ricomincia
+      if (batch.length === 500) {
+        await Promise.all(batch);
+        batch.length = 0; // Svuota l'array
+      }
+    }
+    
+    // Esegui le operazioni rimanenti
+    if (batch.length > 0) {
+      await Promise.all(batch);
+    }
+    
+    console.log(`markAllNotificationsAsRead: ${deletedCount} notifiche eliminate con successo`);
+    return deletedCount;
+  } catch (error) {
+    console.error("markAllNotificationsAsRead: Errore nell'eliminazione delle notifiche:", error);
+    throw error;
+  }
+};
+
+/**
+ * Elimina una singola notifica (funzione di utilità)
+ * @param {string} notificationId - ID della notifica
+ * @returns {Promise<boolean>} - true se l'operazione è riuscita
+ */
+export const deleteNotification = async (notificationId) => {
+  try {
+    console.log(`deleteNotification: Eliminazione notifica ID=${notificationId}`);
+    
+    if (!notificationId) throw new Error("notificationId è obbligatorio");
+    
+    const notificationRef = doc(db, "notifications", notificationId);
+    
+    // Verifica che la notifica esista
+    const notificationDoc = await getDoc(notificationRef);
+    if (!notificationDoc.exists()) {
+      throw new Error(`Notifica con ID ${notificationId} non trovata`);
+    }
+    
+    // Elimina la notifica
+    await deleteDoc(notificationRef);
+    
+    console.log(`deleteNotification: Notifica ${notificationId} eliminata con successo`);
+    return true;
+  } catch (error) {
+    console.error("deleteNotification: Errore nell'eliminazione della notifica:", error);
+    throw error;
+  }
+};
+
+/**
+ * Conta il numero di notifiche non lette di un utente
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<number>} - Numero di notifiche non lette
+ */
+export const getUnreadNotificationsCount = async (userId) => {
+  try {
+    console.log(`getUnreadNotificationsCount: Conteggio notifiche per userId=${userId}`);
+    
+    if (!userId) throw new Error("userId è obbligatorio");
+    
+    const notificationsRef = collection(db, "notifications");
+    const q = query(notificationsRef, where("userId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    
+    const count = querySnapshot.size;
+    console.log(`getUnreadNotificationsCount: Trovate ${count} notifiche non lette`);
+    
+    return count;
+  } catch (error) {
+    console.error("getUnreadNotificationsCount: Errore nel conteggio delle notifiche:", error);
+    throw error;
+  }
+};
+
+// =============================================================================
+// FUNZIONI DI UTILITÀ PER CREARE NOTIFICHE SPECIFICHE
+// =============================================================================
+
+/**
+ * Crea una notifica per il cambio stato di una segnalazione
+ * @param {string} userId - ID dell'utente
+ * @param {string} reportId - ID della segnalazione
+ * @param {string} oldStatus - Stato precedente
+ * @param {string} newStatus - Nuovo stato
+ * @param {string} reportDate - Data della segnalazione
+ * @param {string} adminNotes - Note dell'amministratore (opzionale)
+ * @returns {Promise<Object>} - Notifica creata
+ */
+export const createReportStatusNotification = async (userId, reportId, oldStatus, newStatus, reportDate, adminNotes = '') => {
+  try {
+    // Mappatura degli stati in italiano
+    const statusMapping = {
+      'In attesa': 'in attesa',
+      'Presa in carico': 'presa in carico',
+      'Conclusa': 'conclusa'
+    };
+    
+    const newStatusText = statusMapping[newStatus] || newStatus;
+    
+    // Prepara il titolo e il messaggio
+    let title = '';
+    let message = '';
+    
+    switch (newStatus) {
+      case 'Presa in carico':
+        title = 'Segnalazione presa in carico';
+        message = `La tua segnalazione del ${formatDateForNotification(reportDate)} è stata presa in carico e verrà verificata a breve.`;
+        break;
+      case 'Conclusa':
+        title = 'Segnalazione conclusa';
+        message = `La tua segnalazione del ${formatDateForNotification(reportDate)} è stata conclusa.`;
+        break;
+      default:
+        title = 'Segnalazione aggiornata';
+        message = `La tua segnalazione del ${formatDateForNotification(reportDate)} è stata aggiornata.`;
+    }
+    
+    // Aggiungi le note dell'admin al messaggio se presenti
+    if (adminNotes && adminNotes.trim()) {
+      message += ` Note: ${adminNotes}`;
+    }
+    
+    // Dati aggiuntivi
+    const data = {
+      reportDate,
+      oldStatus,
+      newStatus,
+      adminNotes: adminNotes || ''
+    };
+    
+    return await createNotification(userId, 'report_status', reportId, title, message, data);
+  } catch (error) {
+    console.error("createReportStatusNotification: Errore:", error);
+    throw error;
+  }
+};
+
+/**
+ * Crea una notifica per il cambio stato di una richiesta
+ * @param {string} userId - ID dell'utente
+ * @param {string} requestId - ID della richiesta
+ * @param {Object} requestData - Dati della richiesta
+ * @param {string} oldStatus - Stato precedente
+ * @param {string} newStatus - Nuovo stato
+ * @param {string} adminNotes - Note dell'amministratore (opzionale)
+ * @returns {Promise<Object>} - Notifica creata
+ */
+export const createRequestStatusNotification = async (userId, requestId, requestData, oldStatus, newStatus, adminNotes = '') => {
+  try {
+    // Mappatura dei tipi di richiesta
+    const typeMapping = {
+      'permission': 'permesso',
+      'vacation': 'ferie',
+      'sickness': 'malattia'
+    };
+    
+    const requestTypeText = typeMapping[requestData.type] || requestData.type;
+    
+    // Mappatura degli stati
+    const statusMapping = {
+      'pending': 'in attesa',
+      'approved': 'approvata',
+      'rejected': 'rifiutata'
+    };
+    
+    const newStatusText = statusMapping[newStatus] || newStatus;
+    
+    // Prepara il titolo e il messaggio
+    let title = '';
+    let message = '';
+    
+    // Costruisci le informazioni sulle date
+    let dateInfo = '';
+    if (requestData.dateFrom) {
+      dateInfo = formatDateForNotification(requestData.dateFrom);
+      if (requestData.dateTo && requestData.dateTo !== requestData.dateFrom) {
+        dateInfo += ` - ${formatDateForNotification(requestData.dateTo)}`;
+      }
+    }
+    
+    // Personalizza il messaggio in base al tipo e stato
+    switch (newStatus) {
+      case 'approved':
+        title = `Richiesta ${requestTypeText} approvata`;
+        message = `La tua richiesta di ${requestTypeText}`;
+        if (dateInfo) message += ` del ${dateInfo}`;
+        message += ' è stata approvata.';
+        
+        // Aggiungi info specifica per ferie/permessi
+        if (requestData.type === 'vacation' || requestData.type === 'permission') {
+          message += ' Le date sono state automaticamente aggiunte al tuo calendario ore.';
+        }
+        break;
+        
+      case 'rejected':
+        title = `Richiesta ${requestTypeText} rifiutata`;
+        message = `La tua richiesta di ${requestTypeText}`;
+        if (dateInfo) message += ` del ${dateInfo}`;
+        message += ' è stata rifiutata.';
+        break;
+        
+      default:
+        title = `Richiesta ${requestTypeText} aggiornata`;
+        message = `La tua richiesta di ${requestTypeText}`;
+        if (dateInfo) message += ` del ${dateInfo}`;
+        message += ` è stata aggiornata (${newStatusText}).`;
+    }
+    
+    // Aggiungi le note dell'admin se presenti
+    if (adminNotes && adminNotes.trim()) {
+      message += ` Note: ${adminNotes}`;
+    }
+    
+    // Dati aggiuntivi
+    const data = {
+      requestType: requestData.type,
+      dateFrom: requestData.dateFrom || '',
+      dateTo: requestData.dateTo || '',
+      oldStatus,
+      newStatus,
+      adminNotes: adminNotes || ''
+    };
+    
+    return await createNotification(userId, 'request_status', requestId, title, message, data);
+  } catch (error) {
+    console.error("createRequestStatusNotification: Errore:", error);
+    throw error;
+  }
+};
+
+// =============================================================================
+// FUNZIONI DI UTILITÀ
+// =============================================================================
+
+/**
+ * Formatta una data per le notifiche (DD/MM/YYYY)
+ * @param {string} dateString - Data in formato YYYY-MM-DD
+ * @returns {string} - Data formattata
+ */
+const formatDateForNotification = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Se è già in formato DD/MM/YYYY, restituiscila così
+    if (dateString.includes('/')) {
+      return dateString;
+    }
+    
+    // Se è in formato YYYY-MM-DD, convertila
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    
+    // Fallback: prova a parsare come Date
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('it-IT');
+    }
+    
+    return dateString;
+  } catch (error) {
+    console.error('Errore nella formattazione della data:', error);
+    return dateString;
+  }
+};
+
 /**
  * Recupera tutte le richieste di un utente
  * @param {string} userId - ID dell'utente
