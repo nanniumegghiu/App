@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import NotificationCenter from './NotificationCenter';
 
 const Header = ({ userRole, isAdminView, onToggleView }) => {
   const [userData, setUserData] = useState(null);
@@ -68,86 +69,89 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
       <h1>Iacuzzo Construction Group App</h1>
 
       {auth.currentUser && (
-        <div className="user-actions" style={{ 
-          textAlign: "right", 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "10px" 
-        }}>
-          {/* Pulsanti per gli admin */}
-          {userRole === 'admin' && (
-            <div className="admin-buttons" style={{
-              display: "flex",
-              gap: "10px"
-            }}>
-              {/* Pulsante per passare alla vista admin/utente */}
-              {onToggleView && (
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={onToggleView}
-                  style={{
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    borderRadius: '4px',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    border: 'none',
-                    fontSize: '0.9rem'
-                  }}
-                >
-                  {isAdminView ? 'Passa a Vista Utente' : 'Passa a Vista Admin'}
-                </button>
-              )}
-              
-              {/* Pulsante per modalità kiosk */}
-              <button 
-                className="btn btn-kiosk" 
-                onClick={handleKioskMode}
-                style={{
-                  backgroundColor: '#9b59b6',
-                  color: 'white',
-                  borderRadius: '4px',
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  border: 'none',
-                  fontSize: '0.9rem',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#8e44ad';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#9b59b6';
-                }}
-                title="Attiva modalità kiosk per timbrature"
-              >
-                🖥️ Modalità Kiosk
-              </button>
-            </div>
-          )}
-          
-          <div style={{ marginLeft: '10px' }}>
-            <p style={{ margin: 0 }}>
-              👤 {displayName}
-              {userRole === 'admin' && <span style={{ marginLeft: '5px', color: '#007bff' }}>(Admin)</span>}
-            </p>
-            <button 
-              onClick={handleLogout}
-              style={{
-                border: 'none',
-                background: 'none',
-                color: '#dc3545',
-                cursor: 'pointer',
-                padding: '5px 0',
-                textAlign: 'right',
-                width: '100%'
-              }}
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      )}
+  <div className="user-actions" style={{ 
+    textAlign: "right", 
+    display: "flex", 
+    alignItems: "center", 
+    gap: "15px" // Aumentato per fare spazio al NotificationCenter
+  }}>
+    {/* Pulsanti per gli admin */}
+    {userRole === 'admin' && (
+      <div className="admin-buttons" style={{
+        display: "flex",
+        gap: "10px"
+      }}>
+        {/* Pulsante per passare alla vista admin/utente */}
+        {onToggleView && (
+          <button 
+            className="btn btn-secondary" 
+            onClick={onToggleView}
+            style={{
+              backgroundColor: '#6c757d',
+              color: 'white',
+              borderRadius: '4px',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              border: 'none',
+              fontSize: '0.9rem'
+            }}
+          >
+            {isAdminView ? 'Passa a Vista Utente' : 'Passa a Vista Admin'}
+          </button>
+        )}
+        
+        {/* Pulsante per modalità kiosk */}
+        <button 
+          className="btn btn-kiosk" 
+          onClick={handleKioskMode}
+          style={{
+            backgroundColor: '#9b59b6',
+            color: 'white',
+            borderRadius: '4px',
+            padding: '8px 16px',
+            cursor: 'pointer',
+            border: 'none',
+            fontSize: '0.9rem',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = '#8e44ad';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = '#9b59b6';
+          }}
+          title="Attiva modalità kiosk per timbrature"
+        >
+          🖥️ Modalità Kiosk
+        </button>
+      </div>
+    )}
+    
+    {/* NUOVO: Centro Notifiche - Visibile per tutti gli utenti */}
+    <NotificationCenter />
+    
+    <div style={{ marginLeft: '10px' }}>
+      <p style={{ margin: 0 }}>
+        👤 {displayName}
+        {userRole === 'admin' && <span style={{ marginLeft: '5px', color: '#007bff' }}>(Admin)</span>}
+      </p>
+      <button 
+        onClick={handleLogout}
+        style={{
+          border: 'none',
+          background: 'none',
+          color: '#dc3545',
+          cursor: 'pointer',
+          padding: '5px 0',
+          textAlign: 'right',
+          width: '100%'
+        }}
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+)}
     </header>
   );
 };

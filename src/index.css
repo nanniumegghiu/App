@@ -2187,3 +2187,5 @@ tbody tr:hover {
 .admin-leave-requests .sync-warning p {
   color: #6c5400 !important;
 }
+
+@import './components/notificationCenter.css';

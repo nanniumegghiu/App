@@ -341,11 +341,14 @@ export const updateReportStatus = async (reportId, newStatus, adminNotes = '') =
     
     const reportRef = doc(db, "reports", reportId);
     
-    // Controlla che il documento esista
+    // Controlla che il documento esista e ottieni i dati attuali
     const docSnap = await getDoc(reportRef);
     if (!docSnap.exists()) {
       throw new Error(`Segnalazione con ID ${reportId} non trovata`);
     }
+    
+    const currentData = docSnap.data();
+    const oldStatus = currentData.status;
     
     const updateData = {
       status: newStatus,
@@ -361,6 +364,25 @@ export const updateReportStatus = async (reportId, newStatus, adminNotes = '') =
     await updateDoc(reportRef, updateData);
     
     console.log(`updateReportStatus: Stato aggiornato con successo a ${newStatus}`);
+    
+    // NUOVA PARTE: Crea notifica per l'utente
+    try {
+      // Importa il servizio notifiche dinamicamente per evitare dipendenze circolari
+      const { default: NotificationService } = await import('../services/NotificationService');
+      
+      await NotificationService.notifyReportStatusChange(
+        currentData.userId,
+        reportId,
+        currentData,
+        oldStatus,
+        newStatus,
+        adminNotes
+      );
+    } catch (notificationError) {
+      console.error('Errore nella creazione della notifica:', notificationError);
+      // Non bloccare l'operazione principale se la notifica fallisce
+    }
+    
     return true;
   } catch (error) {
     console.error(`updateReportStatus: Errore nell'aggiornamento dello stato:`, error);
@@ -1682,13 +1704,14 @@ export const updateLeaveRequestStatusWithSync = async (requestId, status, adminN
     
     const requestRef = doc(db, "leaveRequests", requestId);
     
-    // Verifica che la richiesta esista
+    // Verifica che la richiesta esista e ottieni i dati attuali
     const requestDoc = await getDoc(requestRef);
     if (!requestDoc.exists()) {
       throw new Error(`Richiesta con ID ${requestId} non trovata`);
     }
     
     const requestData = requestDoc.data();
+    const oldStatus = requestData.status;
     
     // Prepara i dati da aggiornare
     const updateData = {
@@ -1748,9 +1771,26 @@ export const updateLeaveRequestStatusWithSync = async (requestId, status, adminN
           }
         });
         
-        // Non bloccare l'operazione principale, solo logga l'errore
         console.warn("Sincronizzazione fallita, ma lo stato della richiesta è stato aggiornato");
       }
+    }
+    
+    // NUOVA PARTE: Crea notifica per l'utente
+    try {
+      // Importa il servizio notifiche dinamicamente
+      const { default: NotificationService } = await import('../services/NotificationService');
+      
+      await NotificationService.notifyRequestStatusChange(
+        requestData.userId,
+        requestId,
+        requestData,
+        oldStatus,
+        status,
+        adminNotes
+      );
+    } catch (notificationError) {
+      console.error('Errore nella creazione della notifica:', notificationError);
+      // Non bloccare l'operazione principale se la notifica fallisce
     }
     
     // Restituisci i dati aggiornati
