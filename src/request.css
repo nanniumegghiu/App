@@ -574,3 +574,106 @@
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* Fix per il selettore del tipo di richiesta - lato user */
+.request-form select,
+.request-form select option {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+}
+
+.request-form select:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Assicura che le opzioni del select siano leggibili */
+.request-form select option {
+  color: #333 !important;
+  background-color: white !important;
+  padding: 8px !important;
+}
+
+.request-form select option:hover,
+.request-form select option:focus,
+.request-form select option:checked {
+  color: #333 !important;
+  background-color: #f8f9fa !important;
+}
+
+/* Fix per tutti gli input del form richieste */
+.request-form input[type="date"],
+.request-form input[type="time"],
+.request-form input[type="file"],
+.request-form textarea {
+  color: #333 !important;
+  background-color: white !important;
+  border: 1px solid #ddd !important;
+}
+
+.request-form input[type="date"]:focus,
+.request-form input[type="time"]:focus,
+.request-form textarea:focus {
+  color: #333 !important;
+  background-color: white !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Fix per i radio button labels */
+.request-form .radio-label {
+  color: #333 !important;
+}
+
+.request-form .radio-label input[type="radio"]:checked + span {
+  color: #1976d2 !important;
+}
+
+/* Fix per le labels del form */
+.request-form label {
+  color: #555 !important;
+  font-weight: 500 !important;
+}
+
+/* Fix specifico per il selettore dei tipi di permesso */
+.request-form .radio-group .radio-label {
+  color: #333 !important;
+  background-color: transparent !important;
+}
+
+.request-form .radio-group .radio-label:hover {
+  background-color: #f8f9fa !important;
+  color: #333 !important;
+}
+
+/* Fix per i placeholder */
+.request-form input::placeholder,
+.request-form textarea::placeholder {
+  color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Fix per gli stati disabled */
+.request-form select:disabled,
+.request-form input:disabled,
+.request-form textarea:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  border-color: #dee2e6 !important;
+}
+
+/* Fix per il testo del form */
+.request-form .form-text,
+.request-form small {
+  color: #666 !important;
+}
+
+/* Fix per i messaggi di errore nel form */
+.request-form .error-message {
+  color: #dc3545 !important;
+  background-color: #f8d7da !important;
+  border: 1px solid #f5c6cb !important;
+}

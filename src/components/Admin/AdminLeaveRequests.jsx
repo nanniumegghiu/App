@@ -328,8 +328,10 @@ const getRequestDetails = (request) => {
       details.push(`${days} ${days === 1 ? 'giorno' : 'giorni'}`);
     }
   } else if (request.type === 'sickness') {
-    if (request.fileUrl) {
-      details.push('Certificato medico allegato');
+    details.push(`Protocollo: ${request.protocolCode}`);
+    if (request.dateTo) {
+      const days = calculateDaysBetween(request.dateFrom, request.dateTo);
+      details.push(`${days} ${days === 1 ? 'giorno' : 'giorni'}`);
     }
   }
   
@@ -726,19 +728,25 @@ const calculateWorkingDaysBetween = (startDate, endDate) => {
     </div>
     <p style={{ margin: 0, fontSize: '14px' }}>
       {selectedRequest.type === 'vacation' && (
-        <>Approvando questa richiesta di <strong>ferie</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>F</code> nel calendario ore.</>
+        <>Approvando questa richiesta di <strong>ferie</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} verranno automaticamente segnate con F nel calendario ore.</>
       )}
       {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'daily' && (
-        <>Approvando questa richiesta di <strong>permesso giornaliero</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
+        <>Approvando questa richiesta di <strong>permesso giornaliero</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con P nel calendario ore.</>
       )}
       {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'multi-day' && (
-        <>Approvando questa richiesta di <strong>permesso multi-giorni</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} (solo giorni lavorativi) verranno automaticamente segnate con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>P</code> nel calendario ore.</>
+        <>Approvando questa richiesta di <strong>permesso multi-giorni</strong>, tutte le date dal {formatDate(selectedRequest.dateFrom)} al {formatDate(selectedRequest.dateTo)} (solo giorni lavorativi) verranno automaticamente segnate con P nel calendario ore.</>
       )}
       {selectedRequest.type === 'permission' && selectedRequest.permissionType === 'hourly' && (
         <>Approvando questa richiesta di <strong>permesso orario</strong>, non verrà effettuata nessuna modifica automatica al calendario ore. Sarà necessario gestire manualmente le ore.</>
       )}
       {selectedRequest.type === 'sickness' && (
-        <>Approvando questa richiesta di <strong>malattia</strong>, la data {formatDate(selectedRequest.dateFrom)} verrà automaticamente segnata con <code style={{background: '#f0f0f0', padding: '2px 4px'}}>M</code> nel calendario ore.</>
+  <>
+    <p><strong>Codice protocollo:</strong> {selectedRequest.protocolCode}</p>
+    <p><strong>Codice fiscale:</strong> {selectedRequest.taxCode}</p>
+    {selectedRequest.dateTo && (
+      <p><strong>Periodo:</strong> {formatDate(selectedRequest.dateFrom)} - {formatDate(selectedRequest.dateTo)}</p>
+    )}
+  </>
       )}
     </p>
   </div>

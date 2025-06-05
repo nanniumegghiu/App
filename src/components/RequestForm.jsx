@@ -14,6 +14,8 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
   const fileInputRef = useRef(null);
+  const [protocolCode, setProtocolCode] = useState('');
+  const [taxCode, setTaxCode] = useState('');
   
   // Reset del form quando viene aperto
   useEffect(() => {
@@ -29,8 +31,8 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
     setDateTo('');
     setTimeFrom('');
     setTimeTo('');
-    setCertificateFile(null);
-    setFileName('');
+    setProtocolCode('');
+    setTaxCode('');
     setError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -193,8 +195,24 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
     }
     
     if (requestType === 'sickness') {
-      if (!certificateFile) {
-        setError('Carica il certificato medico');
+      if (!dateFrom) {
+        setError('Seleziona la data di inizio');
+        return false;
+      }
+      if (!protocolCode.trim()) {
+        setError('Inserisci il codice di protocollo');
+        return false;
+      }
+      if (!taxCode.trim()) {
+        setError('Inserisci il codice fiscale');
+        return false;
+      }
+      if (taxCode.length !== 16) {
+        setError('Il codice fiscale deve essere di 16 caratteri');
+        return false;
+      }
+      if (dateTo && dateFrom > dateTo) {
+        setError('La data di fine deve essere successiva alla data di inizio');
         return false;
       }
     }
@@ -244,17 +262,12 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
       } else if (requestType === 'vacation') {
         requestData.dateTo = dateTo;
       } else if (requestType === 'sickness') {
-        // Per la malattia, usiamo la data corrente se non è stata specificata
-        if (!dateFrom) {
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const dd = String(today.getDate()).padStart(2, '0');
-          requestData.dateFrom = `${yyyy}-${mm}-${dd}`;
-        } else {
-          requestData.dateFrom = dateFrom;
+        requestData.dateFrom = dateFrom;
+        if (dateTo) {
+          requestData.dateTo = dateTo;
         }
-        requestData.fileName = fileName;
+        requestData.protocolCode = protocolCode.trim();
+        requestData.taxCode = taxCode.trim().toUpperCase();
       }
       
       console.log("Dati della richiesta:", requestData);
@@ -305,6 +318,35 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
             {error}
           </div>
         )}
+
+{requestType === 'sickness' && (
+  <div className="form-legend" style={{
+    backgroundColor: '#e3f2fd',
+    border: '1px solid #90caf9',
+    borderRadius: '6px',
+    padding: '12px',
+    marginBottom: '20px',
+    fontSize: '0.9rem'
+  }}>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px',
+      marginBottom: '8px',
+      color: '#1976d2',
+      fontWeight: '500'
+    }}>
+      <span style={{ fontSize: '16px' }}>ℹ️</span>
+      <strong>Informazioni richiesta malattia</strong>
+    </div>
+    <p style={{ margin: '0 0 8px 0', color: '#1565c0', lineHeight: '1.4' }}>
+      I campi contrassegnati con <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>*</span> sono obbligatori.
+    </p>
+    <p style={{ margin: '0', color: '#1565c0', fontSize: '0.85rem', fontStyle: 'italic' }}>
+      Il periodo di malattia può essere specificato indicando una data di fine opzionale.
+    </p>
+  </div>
+)}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -469,46 +511,55 @@ const RequestForm = ({ isVisible, onClose, onSubmit }) => {
           )}
           
           {requestType === 'sickness' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="date-from">Data (opzionale)</label>
-                <input 
-                  type="date" 
-                  id="date-from" 
-                  value={dateFrom} 
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
-                <small className="form-text">
-                  Se non specificata, verrà usata la data odierna.
-                </small>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="certificate">Certificato medico (PDF, JPG, PNG, max 5MB)</label>
-                <div className="file-input-container">
-                  <input 
-                    type="file" 
-                    id="certificate" 
-                    ref={fileInputRef}
-                    accept=".pdf,.jpg,.jpeg,.png" 
-                    onChange={handleFileChange}
-                    required
-                    style={{ display: 'none' }}
-                  />
-                  <button 
-                    type="button" 
-                    className="file-select-button"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Seleziona file
-                  </button>
-                  <span className="file-name">
-                    {fileName || 'Nessun file selezionato'}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
+  <>
+    <div className="form-group">
+      <label htmlFor="date-from">Data inizio *</label>
+      <input 
+        type="date" 
+        id="date-from" 
+        value={dateFrom} 
+        onChange={(e) => setDateFrom(e.target.value)}
+        required
+      />
+    </div>
+    
+    <div className="form-group">
+      <label htmlFor="date-to">Data fine (opzionale)</label>
+      <input 
+        type="date" 
+        id="date-to" 
+        value={dateTo} 
+        onChange={(e) => setDateTo(e.target.value)}
+      />
+    </div>
+    
+    <div className="form-row">
+      <div className="form-group">
+        <label htmlFor="protocol-code">Codice di protocollo *</label>
+        <input 
+          type="text" 
+          id="protocol-code" 
+          value={protocolCode} 
+          onChange={(e) => setProtocolCode(e.target.value)}
+          placeholder="Inserisci il codice di protocollo"
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="tax-code">Codice fiscale *</label>
+        <input 
+          type="text" 
+          id="tax-code" 
+          value={taxCode} 
+          onChange={(e) => setTaxCode(e.target.value)}
+          placeholder="Inserisci il codice fiscale"
+          maxLength="16"
+          required
+        />
+      </div>
+    </div>
+  </>
+)}
           
           <div className="form-actions">
             <button 

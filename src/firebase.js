@@ -674,7 +674,7 @@ export const getUserLeaveRequests = async (userId) => {
  * @param {File} certificateFile - Il file del certificato (solo per malattia)
  * @returns {Promise<Object>} - I dati della richiesta inviata
  */
-export const submitLeaveRequest = async (requestData, certificateFile = null) => {
+export const submitLeaveRequest = async (requestData) => {
   try {
     console.log("submitLeaveRequest: Tentativo di inviare una richiesta:", requestData);
     
@@ -691,19 +691,11 @@ export const submitLeaveRequest = async (requestData, certificateFile = null) =>
       throw new Error("Data fine obbligatoria per ferie");
     }
     
-    // Validazione del file certificato per malattia
-    if (requestData.type === 'sickness' && certificateFile) {
-      // Verifica il tipo di file
-      if (!isValidFileType(certificateFile)) {
-        throw new Error(`Tipo di file non valido. Sono consentiti solo: ${ALLOWED_FILE_TYPES.join(', ')}`);
-      }
-      
-      // Verifica la dimensione del file
-      if (!isValidFileSize(certificateFile)) {
-        throw new Error(`File troppo grande. La dimensione massima consentita è ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
-      }
-    } else if (requestData.type === 'sickness' && !certificateFile) {
-      throw new Error("Certificato obbligatorio per malattia");
+    // Validazione per malattia
+    if (requestData.type === 'sickness') {
+      if (!requestData.dateFrom) throw new Error("Data inizio obbligatoria per malattia");
+      if (!requestData.protocolCode) throw new Error("Codice protocollo obbligatorio");
+      if (!requestData.taxCode) throw new Error("Codice fiscale obbligatorio");
     }
     
     // Ottieni dati utente
@@ -732,50 +724,8 @@ export const submitLeaveRequest = async (requestData, certificateFile = null) =>
       userName,
       status: 'pending',
       createdAt: serverTimestamp(),
-      lastUpdate: serverTimestamp(),
-      // Aggiungi metadati privacy per GDPR
-      dataPrivacyInfo: {
-        privacyNoticeAccepted: true,
-        retentionPeriod: "1 anno", // Periodo di conservazione
-        dataCategories: requestData.type === 'sickness' ? ["dati sanitari", "dati personali"] : ["dati personali"]
-      }
+      lastUpdate: serverTimestamp()
     };
-    
-    // Gestisci upload file per malattia
-    let fileUrl = null;
-    let fileStoragePath = null;
-    
-    if (requestData.type === 'sickness' && certificateFile) {
-      // Genera un nome file univoco per evitare conflitti
-      const uniqueFileName = generateUniqueFileName(certificateFile.name);
-      
-      // Genera un percorso univoco per il file con struttura organizzata
-      const userId = requestData.userId;
-      const datePrefix = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const filePath = `certificates/${userId}/${datePrefix}_${uniqueFileName}`;
-      
-      console.log(`submitLeaveRequest: Tentativo di caricare file in: ${filePath}`);
-      
-      // Carica il file su Firebase Storage
-      const fileRef = storageRef(firebaseStorage, filePath);
-      await storageUploadBytes(fileRef, certificateFile);
-      
-      // Ottieni URL di download
-      fileUrl = await storageGetDownloadURL(fileRef);
-      fileStoragePath = filePath;
-      
-      console.log(`submitLeaveRequest: File caricato con successo, URL: ${fileUrl}`);
-      
-      // Aggiungi metadati dettagliati del file alla richiesta
-      completeRequestData.fileInfo = {
-        fileName: certificateFile.name,
-        fileType: certificateFile.type,
-        fileSize: certificateFile.size,
-        uploadDate: new Date().toISOString(),
-        fileUrl: fileUrl,
-        fileStoragePath: fileStoragePath
-      };
-    }
     
     console.log("submitLeaveRequest: Dati completi della richiesta:", completeRequestData);
     
@@ -794,22 +744,7 @@ export const submitLeaveRequest = async (requestData, certificateFile = null) =>
     };
   } catch (error) {
     console.error("submitLeaveRequest: Errore nell'invio della richiesta:", error);
-    
-    // Gestione strutturata degli errori
-    let errorMessage = "Si è verificato un errore durante l'invio della richiesta";
-    
-    if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    if (error.code === 'storage/unauthorized') {
-      errorMessage = "Non hai l'autorizzazione per caricare questo file. Verifica le regole di sicurezza.";
-    } else if (error.code === 'storage/quota-exceeded') {
-      errorMessage = "Quota di storage superata. Contatta l'amministratore.";
-    }
-    
-    // Propaga l'errore
-    throw new Error(errorMessage);
+    throw new Error(error.message || "Si è verificato un errore durante l'invio della richiesta");
   }
 };
 
@@ -958,23 +893,6 @@ export const deleteLeaveRequest = async (requestId) => {
       throw new Error(`Richiesta con ID ${requestId} non trovata`);
     }
     
-    const requestData = requestDoc.data();
-    
-    // Se c'è un file associato, eliminalo dallo storage
-    if (requestData.fileInfo && requestData.fileInfo.fileStoragePath) {
-      try {
-        console.log(`deleteLeaveRequest: Tentativo di eliminare il file: ${requestData.fileInfo.fileStoragePath}`);
-        const fileRef = storageRef(firebaseStorage, requestData.fileInfo.fileStoragePath);
-        await storageDeleteObject(fileRef);
-        console.log("deleteLeaveRequest: File eliminato con successo");
-      } catch (fileError) {
-        console.error("Errore nell'eliminazione del file:", fileError);
-        // Continua comunque con l'eliminazione della richiesta,
-        // ma registra l'errore per la pulizia manuale in futuro
-        console.warn("File non eliminato, potrebbe richiedere pulizia manuale:", requestData.fileInfo.fileStoragePath);
-      }
-    }
-    
     // Elimina la richiesta dal database
     await deleteDoc(requestRef);
     console.log(`deleteLeaveRequest: Richiesta ${requestId} eliminata con successo`);
@@ -1067,10 +985,10 @@ export const syncApprovedRequestToWorkHours = async (requestData) => {
         }
       }
     } else if (requestData.type === 'sickness') {
-      // Per la malattia, segna solo la data di inizio (o tutte le date se è un range)
+      // Per la malattia, segna la data di inizio
       datesToMark.push(requestData.dateFrom);
       
-      // Se c'è anche una data di fine, aggiungi tutte le date nel range
+      // Se c'è una data di fine, aggiungi tutte le date nel range
       if (requestData.dateTo) {
         const startDate = new Date(requestData.dateFrom);
         const endDate = new Date(requestData.dateTo);
@@ -1563,10 +1481,10 @@ const desyncApprovedRequestFromWorkHours = async (requestData) => {
         }
       }
     } else if (requestData.type === 'sickness') {
-      // Malattia - solo la data di inizio (o tutte le date se è un range)
+      // Malattia - segna la data di inizio
       datesToDesync.push(requestData.dateFrom);
       
-      // Se c'è anche una data di fine, aggiungi tutte le date nel range
+      // Se c'è una data di fine, aggiungi tutte le date nel range
       if (requestData.dateTo) {
         const startDate = new Date(requestData.dateFrom);
         const endDate = new Date(requestData.dateTo);
@@ -1790,74 +1708,5 @@ const desyncWorkHoursForDates = async (userId, month, year, dates, requestType) 
   } catch (error) {
     console.error("Errore nella desincronizzazione workHours:", error);
     throw error;
-  }
-};
-
-/**
- * Verifica la connessione a Firebase Storage
- * Utile per debug di problemi di connessione a Storage
- * @returns {Promise<Object>} - Risultato del test
- */
-export const testStorageConnection = async () => {
-  try {
-    console.log("Verifica della connessione a Firebase Storage...");
-    
-    // Crea un piccolo file di test
-    const testBlob = new Blob(['Test di connessione a Firebase Storage'], { type: 'text/plain' });
-    const testFile = new File([testBlob], 'test-connection.txt');
-    
-    // Verifica che l'utente sia autenticato
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error("Utente non autenticato. Impossibile testare l'accesso a Firebase Storage.");
-    }
-    
-    // Crea un percorso univoco per il test
-    const testPath = `test/${user.uid}/connection-test-${Date.now()}.txt`;
-    
-    // Carica il file
-    console.log(`testStorageConnection: Tentativo di caricamento file di test in: ${testPath}`);
-    const testRef = storageRef(firebaseStorage, testPath);
-    await storageUploadBytes(testRef, testFile);
-    
-    // Ottieni l'URL del file
-    const downloadURL = await storageGetDownloadURL(testRef);
-    
-    // Elimina il file di test
-    await storageDeleteObject(testRef);
-    
-    console.log("testStorageConnection: Test completato con successo!");
-    return {
-      success: true,
-      message: "La connessione a Firebase Storage è funzionante",
-      userId: user.uid,
-      testPath,
-      downloadURL
-    };
-  } catch (error) {
-    console.error("testStorageConnection: Errore nel test di Firebase Storage:", error);
-    
-    // Genera un messaggio di errore dettagliato
-    let errorMessage = "Errore nella connessione a Firebase Storage";
-    
-    if (error.code === 'storage/unauthorized') {
-      errorMessage = "Non hai l'autorizzazione per accedere a Firebase Storage. Verifica le regole di sicurezza.";
-    } else if (error.code === 'storage/quota-exceeded') {
-      errorMessage = "Quota di storage superata. Contatta l'amministratore.";
-    } else if (error.code === 'storage/invalid-bucket') {
-      errorMessage = "Bucket di storage non valido. Verifica la configurazione di Firebase.";
-    } else if (error.message) {
-      errorMessage = `Errore: ${error.message}`;
-    }
-    
-    return {
-      success: false,
-      message: errorMessage,
-      error: {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      }
-    };
   }
 };

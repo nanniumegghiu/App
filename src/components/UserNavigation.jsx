@@ -21,7 +21,7 @@ const UserNavigation = ({ activeTab, onTabChange }) => {
         className={`tab-button ${activeTab === 'requests' ? 'active' : ''}`}
         onClick={() => onTabChange('requests')}
       >
-        Richieste Permessi/Ferie
+        Richieste Permessi/Ferie/Malattia
       </button>
     </div>
   );

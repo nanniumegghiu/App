@@ -1986,3 +1986,204 @@ tbody tr:hover {
   font-weight: 500;
   margin-top: 2px;
 }
+
+/* Fix per il warning di sincronizzazione automatica */
+.sync-warning {
+  background-color: #fff3cd !important;
+  border: 1px solid #ffeaa7 !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  margin-bottom: 15px !important;
+}
+
+.sync-warning strong,
+.sync-warning h4,
+.sync-warning .sync-warning-title {
+  color: #6c5400 !important; /* Colore più scuro per migliore contrasto */
+  font-weight: 600 !important;
+}
+
+.sync-warning p,
+.sync-warning .sync-warning-text {
+  color: #6c5400 !important; /* Colore più scuro invece del grigio chiaro */
+  font-size: 14px !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Fix per il codice inline nel warning */
+.sync-warning code {
+  background: rgba(108, 84, 0, 0.15) !important; /* Sfondo più scuro */
+  color: #4a3600 !important; /* Testo ancora più scuro */
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(108, 84, 0, 0.2) !important;
+}
+
+/* Fix per le icone nel warning */
+.sync-warning .warning-icon {
+  color: #6c5400 !important;
+  margin-right: 8px !important;
+  font-size: 16px !important;
+}
+
+/* Fix per le liste nel warning */
+.sync-warning ul {
+  margin: 8px 0 0 20px !important;
+  color: #6c5400 !important;
+}
+
+.sync-warning li {
+  color: #6c5400 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Fix per il titolo del warning con icona */
+.sync-warning .warning-header {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+}
+
+.sync-warning .warning-header span {
+  color: #6c5400 !important;
+}
+
+.sync-warning .warning-header strong {
+  color: #6c5400 !important;
+}
+
+/* Fix per info boxes simili */
+.info-box.warning,
+.warning-box,
+.sync-info-warning {
+  background-color: #fff3cd !important;
+  border-left: 4px solid #ffc107 !important;
+  border-radius: 4px !important;
+  padding: 15px !important;
+  margin-bottom: 20px !important;
+}
+
+.info-box.warning h4,
+.info-box.warning strong,
+.warning-box h4,
+.warning-box strong,
+.sync-info-warning h4,
+.sync-info-warning strong {
+  color: #6c5400 !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.info-box.warning p,
+.warning-box p,
+.sync-info-warning p {
+  color: #6c5400 !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+}
+
+/* Fix per le info boxes di sincronizzazione generali */
+.sync-info-box {
+  background-color: #e8f5e8 !important;
+  border: 1px solid #c3e6c3 !important;
+  border-radius: 6px !important;
+  padding: 15px !important;
+  margin-bottom: 20px !important;
+}
+
+.sync-info-box strong,
+.sync-info-box h4 {
+  color: #2d5a2d !important; /* Verde scuro per contrasto */
+}
+
+.sync-info-box p,
+.sync-info-box li {
+  color: #2d5a2d !important; /* Verde scuro invece del grigio */
+  font-size: 14px !important;
+}
+
+/* Fix per le delete info boxes */
+.delete-info-box {
+  background-color: #fff3cd !important;
+  border: 1px solid #ffeaa7 !important;
+  border-radius: 6px !important;
+  padding: 15px !important;
+  margin-bottom: 20px !important;
+}
+
+.delete-info-box strong,
+.delete-info-box h4 {
+  color: #6c5400 !important;
+}
+
+.delete-info-box p {
+  color: #6c5400 !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+}
+
+/* Fix per modalità scura se necessario */
+@media (prefers-color-scheme: dark) {
+  .sync-warning {
+    background-color: #4a3600 !important;
+    border-color: #6c5400 !important;
+  }
+  
+  .sync-warning strong,
+  .sync-warning p,
+  .sync-warning code {
+    color: #ffeaa7 !important;
+  }
+  
+  .sync-warning code {
+    background: rgba(255, 234, 167, 0.2) !important;
+  }
+}
+
+/* Fix per accessibilità - focus states */
+.sync-warning:focus-within {
+  outline: 2px solid #6c5400 !important;
+  outline-offset: 2px !important;
+}
+
+/* Fix per la stampa */
+@media print {
+  .sync-warning {
+    background-color: #f5f5f5 !important;
+    border: 1px solid #333 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  .sync-warning strong,
+  .sync-warning p,
+  .sync-warning code {
+    color: #000 !important;
+  }
+}
+
+/* Fix aggiuntivo per i form modali admin */
+.modal .sync-warning,
+.modal-body .sync-warning {
+  background-color: #fff3cd !important;
+  color: #6c5400 !important;
+}
+
+.modal .sync-warning strong,
+.modal .sync-warning p {
+  color: #6c5400 !important;
+}
+
+/* Specifico per il componente AdminLeaveRequests */
+.admin-leave-requests .sync-warning {
+  background-color: #fff3cd !important;
+  border: 1px solid #ffeaa7 !important;
+}
+
+.admin-leave-requests .sync-warning strong,
+.admin-leave-requests .sync-warning p {
+  color: #6c5400 !important;
+}

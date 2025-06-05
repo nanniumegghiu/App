@@ -216,12 +216,19 @@ const calculateDaysBetween = (startDate, endDate) => {
             )}
           </>
         )}
-        {request.type === 'sickness' && request.fileInfo && (
-          <span className="file-indicator">
-            <span className="file-icon">📄</span>
-            Certificato: {request.fileInfo.fileName || 'Certificato medico'}
-          </span>
-        )}
+        {request.type === 'sickness' && (
+  <>
+    <div>Malattia</div>
+    <small className="text-muted">
+      Protocollo: {request.protocolCode}
+    </small>
+    {request.dateTo && (
+      <small className="text-muted d-block">
+        Periodo: {formatDate(request.dateFrom)} - {formatDate(request.dateTo)}
+      </small>
+    )}
+  </>
+)}
       </td>
       <td>
         <span className={`status-badge ${getStatusClass(request.status)}`}>
