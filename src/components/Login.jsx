@@ -325,7 +325,7 @@ export default function Login({ onLogin }) {
                   id="email" 
                   name="email" 
                   type="email" 
-                  placeholder="nome@azienda.com"
+                  placeholder="email@email.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   className={formErrors.email ? 'error' : ''}

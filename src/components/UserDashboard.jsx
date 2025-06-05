@@ -238,10 +238,10 @@ const UserDashboard = () => {
                 border: '1px solid #e9ecef'
               }}>
                 <h4 style={{ margin: '0 0 10px 0', color: '#495057', fontSize: '1rem' }}>
-                  🕒 Orario Standard
+                  🕒 Timbratura
                 </h4>
                 <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem' }}>
-                  8 ore giornaliere • Straordinari calcolati automaticamente oltre le 8 ore
+                  Ricorda di timbrare correttamente ingresso ed uscita per non perdere le ore lavorative ed eventuali straordinari
                 </p>
               </div>
 
@@ -255,7 +255,7 @@ const UserDashboard = () => {
                   📊 Gestione Ore
                 </h4>
                 <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem' }}>
-                  Consulta il riepilogo mensile nella sezione "Gestione Ore" del menu principale
+                  Consulta il riepilogo mensile nella sezione "Gestione Ore" del menu principale e segnala eventuali incongruenze indicando più informazioni possibili: cantiere e responsabile di cantiere
                 </p>
               </div>
 
