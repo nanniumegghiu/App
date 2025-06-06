@@ -44,16 +44,33 @@ const NotificationCenter = () => {
   // Carica le notifiche dal database
   const loadNotifications = async () => {
     if (!auth.currentUser) return;
-
+  
     setIsLoading(true);
     try {
+      console.log('NotificationCenter: Caricamento notifiche...');
       const userNotifications = await getUserUnreadNotifications(auth.currentUser.uid);
+      console.log('NotificationCenter: Notifiche caricate:', userNotifications);
+      
       setNotifications(userNotifications);
       setUnreadCount(userNotifications.length);
       setError(null);
     } catch (err) {
-      console.error('Errore nel caricamento delle notifiche:', err);
-      setError('Impossibile caricare le notifiche');
+      console.error('NotificationCenter: Errore nel caricamento delle notifiche:', err);
+      
+      // Gestisci errori specifici di Firestore
+      if (err.code === 'permission-denied') {
+        setError('Permessi insufficienti per accedere alle notifiche');
+      } else if (err.code === 'failed-precondition') {
+        setError('Indice database mancante - contatta l\'amministratore');
+      } else if (err.message.includes('index')) {
+        setError('Configurazione database in corso - riprova tra qualche minuto');
+      } else {
+        setError('Impossibile caricare le notifiche');
+      }
+      
+      // Imposta valori di fallback
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }

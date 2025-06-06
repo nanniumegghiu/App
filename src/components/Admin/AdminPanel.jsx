@@ -11,6 +11,7 @@ import AdminQRManagement from './AdminQRManagement';
 import DeviceRegistration from './DeviceRegistration';
 import TimekeepingScanner from '../TimekeepingScanner';
 import './adminQRManagement.css';
+import { createTestNotificationManual } from '../../firebase';
 
 const AdminPanel = () => {
   const [reports, setReports] = useState([]);
@@ -101,6 +102,7 @@ const handleStatusChange = async (reportId, newStatus, adminNotes = '') => {
           : report
       )
     );
+
     
     // Assicurati che anche i report filtrati siano aggiornati
     setFilteredReports(prevReports => 

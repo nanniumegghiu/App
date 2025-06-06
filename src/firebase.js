@@ -1,6 +1,7 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import NotificationService from './services/NotificationService.js';
 import { 
   getFirestore, 
   collection, 
@@ -24,6 +25,7 @@ import {
   getDownloadURL as storageGetDownloadURL, 
   deleteObject as storageDeleteObject 
 } from 'firebase/storage';
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTCte23T93ucmDqdMUq0R16A08RhbAJXg",
@@ -350,6 +352,8 @@ export const updateReportStatus = async (reportId, newStatus, adminNotes = '') =
     const currentData = docSnap.data();
     const oldStatus = currentData.status;
     
+    console.log(`Cambio stato: ${oldStatus} → ${newStatus}`);
+    
     const updateData = {
       status: newStatus,
       lastUpdate: serverTimestamp()
@@ -362,24 +366,33 @@ export const updateReportStatus = async (reportId, newStatus, adminNotes = '') =
     }
     
     await updateDoc(reportRef, updateData);
-    
     console.log(`updateReportStatus: Stato aggiornato con successo a ${newStatus}`);
     
-    // NUOVA PARTE: Crea notifica per l'utente
+    // CREAZIONE NOTIFICA - Versione corretta
     try {
-      // Importa il servizio notifiche dinamicamente per evitare dipendenze circolari
-      const { default: NotificationService } = await import('../services/NotificationService');
+      console.log('Tentativo di creare notifica...');
       
-      await NotificationService.notifyReportStatusChange(
-        currentData.userId,
-        reportId,
-        currentData,
-        oldStatus,
-        newStatus,
-        adminNotes
-      );
+      // Verifica che ci sia un cambio di stato significativo
+      if (oldStatus !== newStatus && ['Presa in carico', 'Conclusa'].includes(newStatus)) {
+        console.log('Cambio di stato significativo rilevato, creazione notifica...');
+        
+        // Crea la notifica direttamente (senza import dinamico)
+        const notification = await NotificationService.notifyReportStatusChange(
+          currentData.userId,
+          reportId,
+          currentData,
+          oldStatus,
+          newStatus,
+          adminNotes
+        );
+        
+        console.log('Notifica creata con successo:', notification);
+      } else {
+        console.log('Cambio di stato non significativo, notifica non creata');
+      }
+      
     } catch (notificationError) {
-      console.error('Errore nella creazione della notifica:', notificationError);
+      console.error('Errore nella creazione della notifica (non bloccante):', notificationError);
       // Non bloccare l'operazione principale se la notifica fallisce
     }
     
@@ -708,7 +721,7 @@ export const createNotification = async (userId, type, relatedId, title, message
 };
 
 /**
- * Recupera tutte le notifiche non lette di un utente
+ * Recupera tutte le notifiche non lette di un utente (versione corretta)
  * @param {string} userId - ID dell'utente
  * @returns {Promise<Array>} - Array delle notifiche non lette
  */
@@ -719,10 +732,11 @@ export const getUserUnreadNotifications = async (userId) => {
     if (!userId) throw new Error("userId è obbligatorio");
     
     const notificationsRef = collection(db, "notifications");
+    
+    // CORREZIONE: Query semplice senza orderBy per evitare errori di indice
     const q = query(
       notificationsRef,
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
+      where("userId", "==", userId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -730,14 +744,34 @@ export const getUserUnreadNotifications = async (userId) => {
     
     const notifications = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      
+      // Gestisci diversi formati di timestamp
+      let createdAt;
+      if (data.createdAt?.toDate && typeof data.createdAt.toDate === 'function') {
+        // Timestamp di Firestore
+        createdAt = data.createdAt.toDate();
+      } else if (data.createdAt instanceof Date) {
+        // Date object
+        createdAt = data.createdAt;
+      } else if (typeof data.createdAt === 'string') {
+        // String date
+        createdAt = new Date(data.createdAt);
+      } else {
+        // Fallback a data corrente
+        createdAt = new Date();
+      }
+      
       return {
         id: doc.id,
         ...data,
-        createdAt: data.createdAt?.toDate?.() || new Date()
+        createdAt
       };
     });
     
-    console.log("getUserUnreadNotifications: Notifiche caricate:", notifications);
+    // Ordina manualmente le notifiche per data di creazione (più recenti prima)
+    notifications.sort((a, b) => b.createdAt - a.createdAt);
+    
+    console.log("getUserUnreadNotifications: Notifiche caricate e ordinate:", notifications.length);
     return notifications;
   } catch (error) {
     console.error("getUserUnreadNotifications: Errore nel caricamento delle notifiche:", error);
