@@ -68,6 +68,14 @@ class NotificationService {
    * @returns {Promise<Object|null>} - Notifica creata o null se non necessaria
    */
   static async notifyRequestStatusChange(userId, requestId, requestData, oldStatus, newStatus, adminNotes = '') {
+    // In NotificationService.js, all'inizio del metodo notifyRequestStatusChange
+console.log('NotificationService.notifyRequestStatusChange chiamato con:', {
+    userId,
+    requestId,
+    oldStatus,
+    newStatus,
+    adminNotes
+  });
     try {
       console.log(`NotificationService: Valutazione notifica per cambio stato richiesta ${requestId}: ${oldStatus} -> ${newStatus}`);
       

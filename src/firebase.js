@@ -335,7 +335,9 @@ export const submitReport = async (reportData, userId) => {
 };
 
 export const updateReportStatus = async (reportId, newStatus, adminNotes = '') => {
-  console.log(`updateReportStatus: Aggiornamento stato per reportId=${reportId} a ${newStatus} con note="${adminNotes}"`);
+  console.log('===== INIZIO updateReportStatus =====');
+  console.log(`Parametri ricevuti: reportId=${reportId}, newStatus=${newStatus}, adminNotes="${adminNotes}"`);
+  console.log('VERSIONE CON FIX 2024-12-06');
   
   try {
     if (!reportId) throw new Error("reportId è obbligatorio");
@@ -343,62 +345,97 @@ export const updateReportStatus = async (reportId, newStatus, adminNotes = '') =
     
     const reportRef = doc(db, "reports", reportId);
     
-    // Controlla che il documento esista e ottieni i dati attuali
-    const docSnap = await getDoc(reportRef);
-    if (!docSnap.exists()) {
+    // STEP 1: Recupera i dati ATTUALI dal database
+    console.log('STEP 1: Recupero dati attuali dal database...');
+    const docSnapBefore = await getDoc(reportRef);
+    
+    if (!docSnapBefore.exists()) {
       throw new Error(`Segnalazione con ID ${reportId} non trovata`);
     }
     
-    const currentData = docSnap.data();
-    const oldStatus = currentData.status;
+    const dataBeforeUpdate = docSnapBefore.data();
+    const oldStatus = dataBeforeUpdate.status;
     
-    console.log(`Cambio stato: ${oldStatus} → ${newStatus}`);
+    console.log('STEP 1 COMPLETATO - Dati PRIMA dell\'aggiornamento:', {
+      reportId: reportId,
+      oldStatus: oldStatus,
+      newStatus: newStatus,
+      tuttiIDati: dataBeforeUpdate
+    });
     
+    console.log(`>>> CAMBIO STATO RILEVATO: "${oldStatus}" → "${newStatus}"`);
+    
+    // STEP 2: Prepara i dati da aggiornare
+    console.log('STEP 2: Preparazione dati per aggiornamento...');
     const updateData = {
       status: newStatus,
       lastUpdate: serverTimestamp()
     };
     
-    // Aggiungi le note admin se presenti
     if (adminNotes && adminNotes.trim()) {
       updateData.adminNotes = adminNotes.trim();
       updateData.adminNotesDate = serverTimestamp();
     }
     
-    await updateDoc(reportRef, updateData);
-    console.log(`updateReportStatus: Stato aggiornato con successo a ${newStatus}`);
+    console.log('Dati che verranno aggiornati:', updateData);
     
-    // CREAZIONE NOTIFICA - Versione corretta
+    // STEP 3: Aggiorna il documento
+    console.log('STEP 3: Aggiornamento documento nel database...');
+    await updateDoc(reportRef, updateData);
+    console.log('STEP 3 COMPLETATO - Documento aggiornato con successo');
+    
+    // STEP 4: Verifica (opzionale) - Rileggi per conferma
+    console.log('STEP 4: Verifica post-aggiornamento...');
+    const docSnapAfter = await getDoc(reportRef);
+    const dataAfterUpdate = docSnapAfter.data();
+    console.log('Stato DOPO aggiornamento:', dataAfterUpdate.status);
+    
+    // STEP 5: Creazione notifica
+    console.log('STEP 5: Gestione notifiche...');
     try {
-      console.log('Tentativo di creare notifica...');
+      console.log('Controllo se creare notifica:', {
+        oldStatus: oldStatus,
+        newStatus: newStatus,
+        sonoUguali: oldStatus === newStatus,
+        tipoOldStatus: typeof oldStatus,
+        tipoNewStatus: typeof newStatus
+      });
       
       // Verifica che ci sia un cambio di stato significativo
       if (oldStatus !== newStatus && ['Presa in carico', 'Conclusa'].includes(newStatus)) {
-        console.log('Cambio di stato significativo rilevato, creazione notifica...');
+        console.log('✓ Cambio di stato significativo rilevato, creazione notifica...');
         
-        // Crea la notifica direttamente (senza import dinamico)
         const notification = await NotificationService.notifyReportStatusChange(
-          currentData.userId,
+          dataBeforeUpdate.userId,
           reportId,
-          currentData,
+          dataBeforeUpdate,
           oldStatus,
           newStatus,
           adminNotes
         );
         
-        console.log('Notifica creata con successo:', notification);
+        console.log('✓ Notifica creata con successo:', notification);
       } else {
-        console.log('Cambio di stato non significativo, notifica non creata');
+        console.log('✗ Cambio di stato non significativo, notifica NON creata');
+        if (oldStatus === newStatus) {
+          console.log('   Motivo: oldStatus e newStatus sono uguali');
+        } else {
+          console.log('   Motivo: newStatus non è tra quelli significativi');
+        }
       }
       
     } catch (notificationError) {
-      console.error('Errore nella creazione della notifica (non bloccante):', notificationError);
-      // Non bloccare l'operazione principale se la notifica fallisce
+      console.error('✗ Errore nella creazione della notifica:', notificationError);
+      console.error('Stack trace:', notificationError.stack);
     }
     
+    console.log('===== FINE updateReportStatus =====');
     return true;
+    
   } catch (error) {
-    console.error(`updateReportStatus: Errore nell'aggiornamento dello stato:`, error);
+    console.error('===== ERRORE in updateReportStatus =====');
+    console.error('Errore:', error);
+    console.error('Stack:', error.stack);
     throw error;
   }
 };
@@ -703,10 +740,15 @@ export const createNotification = async (userId, type, relatedId, title, message
     
     console.log("createNotification: Dati notifica:", notificationData);
     
+    // AGGIUNGI QUESTO LOG PRIMA DI SALVARE
+    console.log('createNotification: Tentativo di salvare nel database...');
+    
     // Salva la notifica nel database
     const notificationsRef = collection(db, "notifications");
     const docRef = await addDoc(notificationsRef, notificationData);
     
+    // AGGIUNGI QUESTO LOG DOPO IL SALVATAGGIO
+    console.log('createNotification: Documento salvato con successo:', docRef.id);
     console.log(`createNotification: Notifica creata con successo, ID: ${docRef.id}`);
     
     return {
@@ -1314,11 +1356,14 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
     
     const requestRef = doc(db, "leaveRequests", requestId);
     
-    // Verifica che la richiesta esista
+    // Verifica che la richiesta esista e ottieni i dati attuali
     const requestDoc = await getDoc(requestRef);
     if (!requestDoc.exists()) {
       throw new Error(`Richiesta con ID ${requestId} non trovata`);
     }
+    
+    const requestData = requestDoc.data();
+    const oldStatus = requestData.status;
     
     // Prepara i dati da aggiornare
     const updateData = {
@@ -1336,13 +1381,70 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
       updateData.statusUpdateInfo = {
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser ? auth.currentUser.uid : 'unknown',
-        previousStatus: requestDoc.data().status
+        previousStatus: requestData.status
       };
     }
     
     // Aggiorna lo stato della richiesta
     await updateDoc(requestRef, updateData);
     console.log(`updateLeaveRequestStatus: Status aggiornato con successo a ${status}`);
+    
+    // Se la richiesta è stata approvata, sincronizza con workHours
+    if (status === 'approved') {
+      try {
+        console.log("Richiesta approvata, avvio sincronizzazione con workHours...");
+        
+        const syncResult = await syncApprovedRequestToWorkHours({
+          ...requestData,
+          status: 'approved'
+        });
+        
+        console.log("Sincronizzazione completata:", syncResult);
+        
+        // Aggiungi info sulla sincronizzazione al documento
+        await updateDoc(requestRef, {
+          syncInfo: {
+            syncedAt: serverTimestamp(),
+            syncResult: syncResult.success,
+            syncDetails: syncResult.details,
+            syncMessage: syncResult.message
+          }
+        });
+        
+      } catch (syncError) {
+        console.error("Errore durante la sincronizzazione:", syncError);
+        
+        // Aggiungi info sull'errore di sincronizzazione al documento
+        await updateDoc(requestRef, {
+          syncInfo: {
+            syncedAt: serverTimestamp(),
+            syncResult: false,
+            syncError: syncError.message
+          }
+        });
+        
+        console.warn("Sincronizzazione fallita, ma lo stato della richiesta è stato aggiornato");
+      }
+    }
+    
+    // NUOVA PARTE: Crea notifica per l'utente
+    try {
+      console.log('Creazione notifica per cambio stato richiesta...');
+      
+      await NotificationService.notifyRequestStatusChange(
+        requestData.userId,
+        requestId,
+        requestData,
+        oldStatus,
+        status,
+        adminNotes
+      );
+      
+      console.log('Notifica creata con successo');
+    } catch (notificationError) {
+      console.error('Errore nella creazione della notifica:', notificationError);
+      // Non bloccare l'operazione principale se la notifica fallisce
+    }
     
     // Restituisci i dati aggiornati
     const updatedDoc = await getDoc(requestRef);
@@ -1352,6 +1454,7 @@ export const updateLeaveRequestStatus = async (requestId, status, adminNotes = '
       ...updatedDoc.data(),
       lastUpdate: new Date()
     };
+    
   } catch (error) {
     console.error("updateLeaveRequestStatus: Errore nell'aggiornamento dello stato della richiesta:", error);
     throw error;
@@ -1811,8 +1914,7 @@ export const updateLeaveRequestStatusWithSync = async (requestId, status, adminN
     
     // NUOVA PARTE: Crea notifica per l'utente
     try {
-      // Importa il servizio notifiche dinamicamente
-      const { default: NotificationService } = await import('../services/NotificationService');
+      console.log('Creazione notifica per cambio stato richiesta...');
       
       await NotificationService.notifyRequestStatusChange(
         requestData.userId,
@@ -1822,6 +1924,8 @@ export const updateLeaveRequestStatusWithSync = async (requestId, status, adminN
         status,
         adminNotes
       );
+      
+      console.log('Notifica creata con successo');
     } catch (notificationError) {
       console.error('Errore nella creazione della notifica:', notificationError);
       // Non bloccare l'operazione principale se la notifica fallisce
