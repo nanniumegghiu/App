@@ -16,6 +16,8 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  arrayUnion,
+  arrayRemove,
   addDoc
 } from "firebase/firestore";
 import { 
@@ -122,6 +124,249 @@ export const updateUserData = async (userId, userData) => {
     ...userData,
     updatedAt: serverTimestamp()
   });
+};
+
+/**
+ * Crea una notifica per tutti gli amministratori
+ * @param {Object} notificationData - Dati della notifica
+ * @param {string} notificationData.type - Tipo di notifica ('new_report', 'new_request')
+ * @param {string} notificationData.title - Titolo della notifica
+ * @param {string} notificationData.message - Messaggio della notifica
+ * @param {string} notificationData.relatedId - ID dell'elemento correlato
+ * @param {Object} notificationData.data - Dati aggiuntivi
+ * @returns {Promise<Object>} - Notifica creata
+ */
+export const createAdminNotification = async (notificationData) => {
+  try {
+    console.log("createAdminNotification: Creazione notifica per admin", notificationData);
+    
+    // Ottieni la lista di tutti gli admin
+    const adminUsers = await getAdminUsers();
+    
+    if (adminUsers.length === 0) {
+      console.log("createAdminNotification: Nessun admin trovato");
+      return null;
+    }
+    
+    const adminIds = adminUsers.map(admin => admin.id);
+    
+    // Prepara i dati della notifica per admin
+    const adminNotificationData = {
+      ...notificationData,
+      targetType: 'admin',
+      targetAdmins: adminIds,
+      readBy: [],
+      createdAt: serverTimestamp()
+    };
+    
+    // Salva la notifica nel database
+    const notificationsRef = collection(db, "admin_notifications");
+    const docRef = await addDoc(notificationsRef, adminNotificationData);
+    
+    console.log(`createAdminNotification: Notifica admin creata con ID: ${docRef.id}`);
+    
+    return {
+      id: docRef.id,
+      ...adminNotificationData,
+      createdAt: new Date()
+    };
+  } catch (error) {
+    console.error("createAdminNotification: Errore nella creazione della notifica admin:", error);
+    throw error;
+  }
+};
+
+/**
+ * Recupera le notifiche non lette per un amministratore
+ */
+export const getAdminUnreadNotifications = async (adminId) => {
+  try {
+    console.log(`getAdminUnreadNotifications: Caricamento notifiche per adminId=${adminId}`);
+    
+    if (!adminId) throw new Error("adminId è obbligatorio");
+    
+    const notificationsRef = collection(db, "admin_notifications");
+    const q = query(
+      notificationsRef,
+      where("targetAdmins", "array-contains", adminId),
+      orderBy("createdAt", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    console.log(`getAdminUnreadNotifications: Trovate ${querySnapshot.size} notifiche totali`);
+    
+    // Filtra solo quelle non lette da questo admin
+    const notifications = querySnapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date()
+        };
+      })
+      .filter(notification => {
+        const readBy = notification.readBy || [];
+        return !readBy.includes(adminId);
+      });
+    
+    console.log(`getAdminUnreadNotifications: ${notifications.length} notifiche non lette`);
+    return notifications;
+  } catch (error) {
+    console.error("getAdminUnreadNotifications: Errore nel recupero delle notifiche admin:", error);
+    throw error;
+  }
+};
+
+/**
+ * Segna una notifica admin come letta da un amministratore
+ */
+export const markAdminNotificationAsRead = async (notificationId, adminId) => {
+  try {
+    console.log(`markAdminNotificationAsRead: Marcando notifica ${notificationId} come letta da admin ${adminId}`);
+    
+    const notificationRef = doc(db, "admin_notifications", notificationId);
+    
+    // Ottieni i dati attuali della notifica
+    const notificationDoc = await getDoc(notificationRef);
+    if (!notificationDoc.exists()) {
+      console.log("markAdminNotificationAsRead: Notifica non trovata");
+      return;
+    }
+    
+    const notificationData = notificationDoc.data();
+    const { targetAdmins, readBy = [] } = notificationData;
+    
+    // Se l'admin ha già letto, non fare nulla
+    if (readBy.includes(adminId)) {
+      console.log("markAdminNotificationAsRead: Admin ha già letto questa notifica");
+      return;
+    }
+    
+    // Aggiungi l'admin alla lista di quelli che hanno letto
+    const newReadBy = [...readBy, adminId];
+    await updateDoc(notificationRef, {
+      readBy: newReadBy
+    });
+    
+    // Se tutti gli admin hanno letto, elimina la notifica
+    if (newReadBy.length >= targetAdmins.length) {
+      console.log(`markAdminNotificationAsRead: Tutti gli admin hanno letto la notifica ${notificationId}, eliminazione...`);
+      await deleteDoc(notificationRef);
+    }
+    
+    console.log(`markAdminNotificationAsRead: Notifica ${notificationId} marcata come letta`);
+    
+  } catch (error) {
+    console.error("markAdminNotificationAsRead: Errore nel marcare la notifica come letta:", error);
+    throw error;
+  }
+};
+
+/**
+ * Recupera tutti gli utenti amministratori
+ */
+export const getAdminUsers = async () => {
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("role", "==", "admin"));
+    
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("getAdminUsers: Errore nel recupero degli admin:", error);
+    throw error;
+  }
+};
+
+/**
+ * Notifica gli admin per una nuova segnalazione
+ */
+export const notifyAdminsNewReport = async (report) => {
+  try {
+    const userName = report.userName || report.userEmail || "Utente";
+    const reportDate = report.createdAt ? 
+      (report.createdAt.seconds ? 
+        new Date(report.createdAt.seconds * 1000).toLocaleDateString('it-IT') :
+        report.createdAt.toLocaleDateString('it-IT')
+      ) : 
+      new Date().toLocaleDateString('it-IT');
+    
+    await createAdminNotification({
+      type: 'new_report',
+      title: 'Nuova segnalazione ricevuta',
+      message: `${userName} ha inviato una nuova segnalazione il ${reportDate}`,
+      relatedId: report.id,
+      data: {
+        reportId: report.id,
+        userName: userName,
+        category: report.category || 'Non specificata',
+        priority: report.priority || 'normale',
+        description: report.description ? report.description.substring(0, 100) + '...' : ''
+      }
+    });
+    
+    console.log("notifyAdminsNewReport: Notifica creata per nuova segnalazione");
+  } catch (error) {
+    console.error("notifyAdminsNewReport: Errore nella notifica per nuova segnalazione:", error);
+  }
+};
+
+/**
+ * Notifica gli admin per una nuova richiesta (permesso/ferie/malattia)
+ */
+export const notifyAdminsNewRequest = async (request) => {
+  try {
+    const userName = request.userName || request.userEmail || "Utente";
+    const requestDate = request.createdAt ? 
+      (request.createdAt.seconds ? 
+        new Date(request.createdAt.seconds * 1000).toLocaleDateString('it-IT') :
+        request.createdAt.toLocaleDateString('it-IT')
+      ) : 
+      new Date().toLocaleDateString('it-IT');
+    
+    const requestTypeNames = {
+      'permission': 'permesso',
+      'vacation': 'ferie',
+      'sickness': 'malattia'
+    };
+    
+    const requestTypeName = requestTypeNames[request.type] || request.type;
+    
+    // Costruisci informazioni sulle date
+    let dateInfo = '';
+    if (request.dateFrom) {
+      dateInfo = `dal ${request.dateFrom}`;
+      if (request.dateTo && request.dateTo !== request.dateFrom) {
+        dateInfo += ` al ${request.dateTo}`;
+      }
+    }
+    
+    const message = `${userName} ha inviato una richiesta di ${requestTypeName} ${dateInfo ? dateInfo : 'il ' + requestDate}`;
+    
+    await createAdminNotification({
+      type: 'new_request',
+      title: `Nuova richiesta di ${requestTypeName}`,
+      message: message,
+      relatedId: request.id,
+      data: {
+        requestId: request.id,
+        userName: userName,
+        requestType: request.type,
+        dateFrom: request.dateFrom || '',
+        dateTo: request.dateTo || '',
+        permissionType: request.permissionType || ''
+      }
+    });
+    
+    console.log("notifyAdminsNewRequest: Notifica creata per nuova richiesta");
+  } catch (error) {
+    console.error("notifyAdminsNewRequest: Errore nella notifica per nuova richiesta:", error);
+  }
 };
 
 // Funzioni per le segnalazioni (reports)
@@ -306,7 +551,8 @@ export const submitReport = async (reportData, userId) => {
       ...reportData,
       userId,
       userEmail: user.email || "",
-      userName: user.nome && user.cognome ? `${user.nome} ${user.cognome}` : user.email,
+      userName: user.nome && user.cognome ? 
+        `${user.nome} ${user.cognome}` : user.email,
       month,
       year,
       status: "In attesa",
@@ -322,12 +568,24 @@ export const submitReport = async (reportData, userId) => {
     
     console.log("submitReport: Segnalazione inviata con successo, ID:", docRef.id);
     
-    return {
+    // NOVITÀ: Crea la segnalazione finale con ID per le notifiche
+    const finalReport = {
       id: docRef.id,
       ...reportObject,
       createdAt: new Date(),
       lastUpdate: new Date()
     };
+    
+    // NOVITÀ: Notifica tutti gli admin della nuova segnalazione
+    try {
+      await notifyAdminsNewReport(finalReport);
+      console.log("submitReport: Notifiche admin inviate con successo");
+    } catch (notificationError) {
+      console.error('submitReport: Errore nella notifica admin per nuova segnalazione:', notificationError);
+      // Non bloccare la creazione della segnalazione per errori di notifica
+    }
+    
+    return finalReport;
   } catch (error) {
     console.error("submitReport: Errore nell'invio della segnalazione:", error);
     throw error;
@@ -1204,7 +1462,7 @@ export const submitLeaveRequest = async (requestData) => {
   try {
     console.log("submitLeaveRequest: Tentativo di inviare una richiesta:", requestData);
     
-    // Validazione dei dati
+    // Validazione dei dati (mantieni la tua validazione esistente)
     if (!requestData.type) throw new Error("Tipo di richiesta obbligatorio");
     if (!requestData.userId) throw new Error("userId è obbligatorio");
 
@@ -1220,59 +1478,58 @@ export const submitLeaveRequest = async (requestData) => {
     // Validazione per malattia
     if (requestData.type === 'sickness') {
       if (!requestData.dateFrom) throw new Error("Data inizio obbligatoria per malattia");
-      if (!requestData.protocolCode) throw new Error("Codice protocollo obbligatorio");
-      if (!requestData.taxCode) throw new Error("Codice fiscale obbligatorio");
+      if (!requestData.protocolCode) throw new Error("Codice protocollo obbligatorio per malattia");
     }
-    
-    // Ottieni dati utente
-    const userDocRef = doc(db, "users", requestData.userId);
-    const userDoc = await getDoc(userDocRef);
-    
-    let userName = "";
-    let userEmail = "";
-    
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      userEmail = userData.email || "";
-      if (userData.nome && userData.cognome) {
-        userName = `${userData.nome} ${userData.cognome}`;
-      } else {
-        userName = userEmail;
-      }
-    } else {
+
+    // Ottieni i dati dell'utente per le notifiche
+    const user = await getUserData(requestData.userId);
+    if (!user) {
       throw new Error("Utente non trovato");
     }
-    
-    // Costruisci i dati completi della richiesta
-    const completeRequestData = {
+
+    // Prepara l'oggetto richiesta (mantieni la tua logica esistente)
+    const requestObject = {
       ...requestData,
-      userEmail,
-      userName,
+      userEmail: user.email || "",
+      userName: user.nome && user.cognome ? 
+        `${user.nome} ${user.cognome}` : user.email,
       status: 'pending',
       createdAt: serverTimestamp(),
       lastUpdate: serverTimestamp()
     };
-    
-    console.log("submitLeaveRequest: Dati completi della richiesta:", completeRequestData);
-    
-    // Salva la richiesta nel database
-    const leaveRequestsRef = collection(db, "leaveRequests");
-    const docRef = await addDoc(leaveRequestsRef, completeRequestData);
-    
-    console.log(`submitLeaveRequest: Richiesta salvata con successo, ID: ${docRef.id}`);
-    
-    // Restituisci i dati completi della richiesta con l'ID del documento
-    return {
+
+    console.log("submitLeaveRequest: Oggetto richiesta completo:", requestObject);
+
+    // Aggiungi la richiesta alla collezione
+    const requestsCollection = collection(db, "leaveRequests");
+    const docRef = await addDoc(requestsCollection, requestObject);
+
+    console.log("submitLeaveRequest: Richiesta inviata con successo, ID:", docRef.id);
+
+    // NOVITÀ: Crea la richiesta finale con ID per le notifiche
+    const finalRequest = {
       id: docRef.id,
-      ...completeRequestData,
+      ...requestObject,
       createdAt: new Date(),
       lastUpdate: new Date()
     };
+
+    // NOVITÀ: Notifica tutti gli admin della nuova richiesta
+    try {
+      await notifyAdminsNewRequest(finalRequest);
+      console.log("submitLeaveRequest: Notifiche admin inviate con successo");
+    } catch (notificationError) {
+      console.error('submitLeaveRequest: Errore nella notifica admin per nuova richiesta:', notificationError);
+      // Non bloccare la creazione della richiesta per errori di notifica
+    }
+
+    return finalRequest;
   } catch (error) {
     console.error("submitLeaveRequest: Errore nell'invio della richiesta:", error);
-    throw new Error(error.message || "Si è verificato un errore durante l'invio della richiesta");
+    throw error;
   }
 };
+
 
 /**
  * Recupera tutte le richieste (per amministratori)

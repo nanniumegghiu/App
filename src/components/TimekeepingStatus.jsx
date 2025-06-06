@@ -537,7 +537,7 @@ const TimekeepingStatus = () => {
                   fontSize: '0.9rem'
                 }}>
                   <strong>⚠️ Motivo auto-chiusura:</strong>
-                  <p style={{ margin: '5px 0', color: 'rgba(255, 255, 255, 0.9)' }}>{shiftStatus.autoClosedReason}</p>
+                  <p style={{ margin: '5px 0', color: 'rgba(0, 0, 0, 0.9)' }}>{shiftStatus.autoClosedReason}</p>
                 </div>
               )}
             </>

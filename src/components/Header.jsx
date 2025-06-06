@@ -4,6 +4,7 @@ import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import NotificationCenter from './NotificationCenter';
+import AdminNotificationCenter from './Admin/AdminNotificationCenter'; // Centro notifiche admin
 
 const Header = ({ userRole, isAdminView, onToggleView }) => {
   const [userData, setUserData] = useState(null);
@@ -127,30 +128,58 @@ const Header = ({ userRole, isAdminView, onToggleView }) => {
       </div>
     )}
     
-    {/* NUOVO: Centro Notifiche - Visibile per tutti gli utenti */}
-    <NotificationCenter />
-    
-    <div style={{ marginLeft: '10px' }}>
-      <p style={{ margin: 0 }}>
-        👤 {displayName}
-        {userRole === 'admin' && <span style={{ marginLeft: '5px', color: '#007bff' }}>(Admin)</span>}
-      </p>
-      <button 
-        onClick={handleLogout}
-        style={{
-          border: 'none',
-          background: 'none',
-          color: '#dc3545',
-          cursor: 'pointer',
-          padding: '5px 0',
-          textAlign: 'right',
-          width: '100%'
-        }}
-      >
-        Logout
-      </button>
-    </div>
-  </div>
+    {/* CENTRO NOTIFICHE - Condizionale in base alla vista */}
+    <div className="notification-center-wrapper">
+            {/* Se sono admin E in vista admin: mostra notifiche admin */}
+            {userRole === 'admin' && isAdminView && (
+              <AdminNotificationCenter />
+            )}
+            
+            {/* Se NON sono in vista admin: mostra notifiche utente */}
+            {!isAdminView && (
+              <NotificationCenter />
+            )}
+          </div>
+          
+          {/* Info utente e logout */}
+          <div style={{ 
+            marginLeft: '15px',
+            borderLeft: '1px solid #ddd',
+            paddingLeft: '15px'
+          }}>
+            <p style={{ margin: 0 }}>
+              👤 {displayName}
+              {userRole === 'admin' && (
+                <span style={{ 
+                  marginLeft: '5px', 
+                  color: '#007bff',
+                  fontSize: '0.9em',
+                  fontWeight: '600'
+                }}>
+                  (Admin)
+                </span>
+              )}
+            </p>
+            <button 
+              onClick={handleLogout}
+              style={{
+                border: 'none',
+                background: 'none',
+                color: '#dc3545',
+                cursor: 'pointer',
+                padding: '5px 0',
+                textAlign: 'right',
+                width: '100%',
+                fontSize: '0.9rem',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#a71d2a'}
+              onMouseLeave={(e) => e.target.style.color = '#dc3545'}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
 )}
     </header>
   );
