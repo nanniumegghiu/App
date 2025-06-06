@@ -179,38 +179,57 @@ const AdminWorkHours = () => {
   };
 
   // Gestisce l'input delle ore totali o le lettere speciali
-  const handleTotalHoursChange = (index, value) => {
-    const validLetters = ["M", "P", "F", "A", "CIG", "m", "p", "f", "a", "cig"];
-    
-    if (validLetters.includes(value)) {
-      const updatedEntries = [...timeEntries];
-      updatedEntries[index].total = value.toUpperCase();
-      updatedEntries[index].hasData = true;
-      setTimeEntries(updatedEntries);
-      return;
-    }
-    
-    if (value === "") {
-      const updatedEntries = [...timeEntries];
-      updatedEntries[index].total = "";
-      updatedEntries[index].hasData = false;
-      setTimeEntries(updatedEntries);
-      return;
-    }
-    
-    let totalHours = parseInt(value);
-    
-    if (isNaN(totalHours)) {
-      return;
-    }
-    
-    totalHours = Math.max(0, Math.min(8, totalHours));
-    
+  
+const handleTotalHoursChange = (index, value) => {
+  // Converti automaticamente le lettere singole
+  let processedValue = value;
+  
+  // Conversioni automatiche per facilitare l'inserimento
+  if (value === "C" || value === "c") {
+    processedValue = "CIG";
+  } else if (value === "M" || value === "m") {
+    processedValue = "M";
+  } else if (value === "P" || value === "p") {
+    processedValue = "P";
+  } else if (value === "F" || value === "f") {
+    processedValue = "F";
+  } else if (value === "A" || value === "a") {
+    processedValue = "A";
+  }
+  
+  // Lista completa delle lettere speciali valide
+  const validLetters = ["M", "P", "F", "A", "CIG"];
+  
+  if (validLetters.includes(processedValue)) {
     const updatedEntries = [...timeEntries];
-    updatedEntries[index].total = totalHours;
+    updatedEntries[index].total = processedValue;
     updatedEntries[index].hasData = true;
     setTimeEntries(updatedEntries);
-  };
+    return;
+  }
+  
+  if (value === "") {
+    const updatedEntries = [...timeEntries];
+    updatedEntries[index].total = "";
+    updatedEntries[index].hasData = false;
+    setTimeEntries(updatedEntries);
+    return;
+  }
+  
+  // Gestione dei valori numerici (ore standard)
+  let totalHours = parseInt(value);
+  
+  if (isNaN(totalHours)) {
+    return;
+  }
+  
+  totalHours = Math.max(0, Math.min(8, totalHours));
+  
+  const updatedEntries = [...timeEntries];
+  updatedEntries[index].total = totalHours;
+  updatedEntries[index].hasData = true;
+  setTimeEntries(updatedEntries);
+};
 
   // Gestisce l'input delle ore di straordinario
   const handleOvertimeChange = (index, value) => {

@@ -712,16 +712,15 @@ export const saveWorkHours = async (userId, month, year, entries) => {
     
     // MIGLIORAMENTO: Prepara le entries per il salvataggio con gestione lettere speciali
     const processedEntries = entries.map(entry => {
-      // Gestisci i valori speciali
       let totalValue = entry.total;
       
       // Se è una lettera speciale (M, P, F, A, CIG), mantienila come stringa
-    if (["M", "P", "F", "A", "CIG"].includes(entry.total)) {
-      totalValue = entry.total;
-    } else {
-    // Altrimenti converti in numero
-      totalValue = parseInt(entry.total) || 0;
-    }
+      if (["M", "P", "F", "A", "CIG"].includes(entry.total)) {
+        totalValue = entry.total;
+      } else {
+        // Altrimenti converti in numero
+        totalValue = parseInt(entry.total) || 0;
+      }
       
       return {
         date: entry.date,
