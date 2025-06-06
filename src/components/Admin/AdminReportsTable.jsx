@@ -117,26 +117,9 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
       if (!reportId) throw new Error("reportId è obbligatorio");
       if (!status) throw new Error("status è obbligatorio");
       
-      const reportRef = doc(db, "reports", reportId);
-      
-      // Controlla che il documento esista
-      const docSnap = await getDoc(reportRef);
-      if (!docSnap.exists()) {
-        throw new Error(`Segnalazione con ID ${reportId} non trovata`);
-      }
-      
-      const updateData = {
-        status: status,
-        lastUpdate: serverTimestamp()
-      };
-      
-      // Aggiungi le note se presenti
-      if (notes && notes.trim()) {
-        updateData.adminNotes = notes.trim();
-        updateData.adminNotesDate = serverTimestamp();
-      }
-      
-      await updateDoc(reportRef, updateData);
+      // USA DIRETTAMENTE updateReportStatus da firebase.js
+      // che già gestisce correttamente old/new status e notifiche
+      await updateReportStatus(reportId, status, notes);
       
       console.log(`updateReportStatusWithNotes: Stato aggiornato con successo a ${status}`);
       return true;
@@ -145,6 +128,7 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
       throw error;
     }
   };
+  
 
   // Gestisce l'invio del form con le note
   const handleNotesSubmit = async () => {

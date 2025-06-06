@@ -1891,8 +1891,8 @@ tbody tr:hover {
 /* Dark mode support (opzionale) */
 @media (prefers-color-scheme: dark) {
   .modal-content {
-    background: #2d3748;
-    color: #e2e8f0;
+    background: #ffffff;
+    color: #000000;
   }
   
   .modal-header {
