@@ -9,6 +9,12 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [newStatus, setNewStatus] = useState('');
+  const [localReports, setLocalReports] = useState(reports); // Stato locale per aggiornamenti immediati
+
+  // Aggiorna lo stato locale quando cambiano i reports dal padre
+  React.useEffect(() => {
+    setLocalReports(reports);
+  }, [reports]);
 
   // Funzione per formattare la data
   const formatDate = (dateString) => {
@@ -77,7 +83,7 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
     
     // Se il nuovo stato è "Conclusa", mostra il form per le note
     if (targetStatus === "Conclusa") {
-      const report = reports.find(r => r.id === reportId);
+      const report = localReports.find(r => r.id === reportId);
       setSelectedReport(report);
       setNewStatus(targetStatus);
       setAdminNotes(''); // Reset note
@@ -98,9 +104,31 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
       // Aggiorna nel database con le note
       await updateReportStatusWithNotes(reportId, status, notes);
       
-      // Chiama la funzione del componente padre per aggiornare lo stato locale
-      await onStatusChange(reportId, status, notes);
+      // Aggiorna lo stato locale immediatamente per feedback visivo
+      setLocalReports(prev => prev.map(report => 
+        report.id === reportId 
+          ? { 
+              ...report, 
+              status: status, 
+              adminNotes: notes || report.adminNotes,
+              adminNotesDate: notes ? new Date() : report.adminNotesDate,
+              lastUpdate: new Date()
+            }
+          : report
+      ));
+      
+      // Chiama la funzione del componente padre SOLO SE ESISTE
+      if (onStatusChange && typeof onStatusChange === 'function') {
+        try {
+          await onStatusChange(reportId, status, notes);
+        } catch (error) {
+          console.warn('Errore nella callback onStatusChange:', error);
+          // Non bloccare il processo se la callback fallisce
+        }
+      }
+      
       console.log("Stato e note aggiornati con successo");
+      
     } catch (error) {
       console.error("Errore nell'aggiornamento dello stato:", error);
       alert("Si è verificato un errore durante l'aggiornamento dello stato. Riprova.");
@@ -167,14 +195,14 @@ const AdminReportsTable = ({ reports, onStatusChange }) => {
             </tr>
           </thead>
           <tbody>
-            {reports.length === 0 ? (
+            {localReports.length === 0 ? (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center' }}>
                   Nessuna segnalazione trovata
                 </td>
               </tr>
             ) : (
-              reports.map((report) => (
+              localReports.map((report) => (
                 <tr key={report.id}>
                   <td>{formatDate(report.date)}</td>
                   <td>{report.userName || report.userEmail}</td>

@@ -1933,6 +1933,7 @@ export const syncApprovedRequestToWorkHours = async (requestData) => {
 
 /**
  * Aggiorna workHours per le date di una richiesta approvata
+ * VERSIONE CORRETTA: Crea entry se non esistono
  * @param {string} userId - ID dell'utente
  * @param {string} month - Mese (senza zero iniziale)
  * @param {string} year - Anno
@@ -1980,8 +1981,9 @@ const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, let
     // Ottieni il documento esistente o creane uno nuovo
     const workHoursSnap = await getDoc(workHoursRef);
     let entries = [];
+    let documentExists = workHoursSnap.exists();
     
-    if (workHoursSnap.exists()) {
+    if (documentExists) {
       const workHoursData = workHoursSnap.data();
       entries = workHoursData.entries || [];
       console.log(`Documento esistente trovato con ${entries.length} entries`);
@@ -2007,15 +2009,17 @@ const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, let
         noteDescription = 'Richiesta approvata';
     }
     
-    // Aggiorna le entries per le date specificate
+    // *** QUESTA È LA PARTE FONDAMENTALE CORRETTA ***
     let updatedCount = 0;
+    let createdCount = 0;
     let conflictCount = 0;
     const conflicts = [];
     
     dates.forEach(dateToMark => {
-      const entryIndex = entries.findIndex(entry => entry.date === dateToMark);
+      let entryIndex = entries.findIndex(entry => entry.date === dateToMark);
       
       if (entryIndex >= 0) {
+        // Entry esistente trovata
         const existingEntry = entries[entryIndex];
         
         // Controlla se c'è già un valore diverso da 0 o vuoto
@@ -2033,11 +2037,10 @@ const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, let
           });
           conflictCount++;
           
-          // Decidere la strategia: sovrascrivere o mantenere
-          // Per ora, sovrascrivi sempre le richieste approvate (hanno priorità)
+          // Sovrascrivi comunque (le richieste approvate hanno priorità)
         }
         
-        // Aggiorna l'entry
+        // Aggiorna l'entry esistente
         entries[entryIndex] = {
           ...existingEntry,
           total: letterCode,
@@ -2047,17 +2050,48 @@ const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, let
         };
         
         updatedCount++;
+        console.log(`Entry aggiornata per data: ${dateToMark}`);
+        
       } else {
-        console.warn(`Entry non trovata per data: ${dateToMark}`);
+        // *** ENTRY NON TROVATA: CREALA ***
+        console.log(`Entry non trovata per data: ${dateToMark}, creazione nuova entry...`);
+        
+        // Calcola il giorno della settimana
+        const date = new Date(dateToMark);
+        const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+        const dayOfWeek = date.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        // Crea nuova entry
+        const newEntry = {
+          date: dateToMark,
+          day: dayNames[dayOfWeek],
+          total: letterCode,
+          overtime: 0,
+          notes: `${noteDescription} - ${new Date().toLocaleDateString('it-IT')}`,
+          isWeekend: isWeekend,
+          hasData: true
+        };
+        
+        // Aggiungi la nuova entry all'array
+        entries.push(newEntry);
+        createdCount++;
+        updatedCount++;
+        
+        console.log(`Nuova entry creata per data: ${dateToMark}`);
       }
     });
     
+    // Ordina le entries per data per mantenere l'ordine cronologico
+    entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
     // Salva il documento aggiornato
-    if (workHoursSnap.exists()) {
+    if (documentExists) {
       await updateDoc(workHoursRef, {
         entries,
         lastUpdated: serverTimestamp()
       });
+      console.log(`Documento esistente aggiornato`);
     } else {
       await setDoc(workHoursRef, {
         userId,
@@ -2067,12 +2101,14 @@ const updateWorkHoursForApprovedRequest = async (userId, month, year, dates, let
         lastUpdated: serverTimestamp(),
         createdBy: 'approved_request_sync'
       });
+      console.log(`Nuovo documento creato`);
     }
     
-    console.log(`Aggiornamento completato: ${updatedCount} date segnate con ${letterCode}`);
+    console.log(`Aggiornamento completato: ${updatedCount} date segnate con ${letterCode} (${createdCount} nuove entry create)`);
     
     return {
       updatedCount,
+      createdCount,
       conflictCount,
       conflicts,
       letterCode,
